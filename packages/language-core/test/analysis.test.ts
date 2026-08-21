@@ -14,7 +14,7 @@ describe("INI semantic analysis", () => {
       expect.arrayContaining(["unknown-section", "unknown-setting"]),
     );
     expect(
-      analyze(parse("[Unit]\nRequiresMountsFor=/srv/data\n", "systemd-unit"), {
+      analyze(parse("[Service]\nCacheDirectoryAccounting=yes\n", "systemd-unit"), {
         targetVersion: "v255",
       }).map(({ code }) => code),
     ).toContain("setting-unavailable");
@@ -59,6 +59,37 @@ describe("INI semantic analysis", () => {
     expect(
       analyze(mkosi, { targetVersions: { mkosi: "26" } }).map(({ code }) => code),
     ).not.toContain("setting-unavailable");
+  });
+
+  it("validates explicit systemd enum values extracted from upstream manuals", () => {
+    expect(
+      codes(
+        "[Link]\nActivationPolicy=always-up\n\n[Network]\nIPMasquerade=both\n",
+        "systemd-network",
+        "file:///workspace/example.network",
+      ),
+    ).not.toContain("invalid-value");
+    expect(
+      codes(
+        "[Network]\nIPMasquerade=yes\n",
+        "systemd-network",
+        "file:///workspace/example.network",
+      ),
+    ).not.toContain("invalid-value");
+    expect(
+      codes(
+        "[Link]\nActivationPolicy=automatic\n",
+        "systemd-network",
+        "file:///workspace/example.network",
+      ),
+    ).toContain("invalid-value");
+    expect(
+      codes(
+        "[Service]\nStandardOutput=file:/var/log/example.log\n",
+        "systemd-unit",
+        "file:///workspace/example.service",
+      ),
+    ).not.toContain("invalid-value");
   });
 
   it("marks preview-only metadata unavailable for an explicit released target", () => {

@@ -12,9 +12,9 @@ const upstreamLock = JSON.parse(await readFile(resolve(root, "data/upstream.lock
 const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
 const failures = [];
 const minimums = {
-  "systemd-unit": 700,
+  "systemd-unit": 500,
   "systemd-network": 900,
-  "systemd-config": 1000,
+  "systemd-config": 700,
   "podman-quadlet": 200,
   mkosi: 175,
 };
@@ -77,8 +77,8 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
     failures.push(name + " does not have a pinned 40-character Git revision");
   }
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 3) {
-  failures.push("upstream lock must use schema version 1 and adapter version 3");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 4) {
+  failures.push("upstream lock must use schema version 1 and adapter version 4");
 }
 for (const name of ["systemd", "podman", "mkosi"]) {
   const source = upstreamLock.sources?.[name];
@@ -121,6 +121,52 @@ for (const [section, name, expected] of [
   if (!definition?.choices?.includes(expected)) {
     failures.push("mkosi enum choices are missing for [" + section + "] " + name + "=");
   }
+}
+for (const [dialect, section, name, choices] of [
+  [
+    "systemd-unit",
+    "Service",
+    "Type",
+    ["simple", "exec", "forking", "oneshot", "dbus", "notify", "notify-reload", "idle"],
+  ],
+  [
+    "systemd-network",
+    "Link",
+    "ActivationPolicy",
+    ["up", "always-up", "manual", "always-down", "down", "bound"],
+  ],
+  ["systemd-network", "Network", "IPMasquerade", ["ipv4", "ipv6", "both", "no"]],
+]) {
+  const definition = registry.directives.find(
+    (directive) =>
+      directive.dialect === dialect && directive.section === section && directive.name === name,
+  );
+  if (JSON.stringify(definition?.choices) !== JSON.stringify(choices)) {
+    failures.push("systemd enum choices are incomplete for [" + section + "] " + name + "=");
+  }
+}
+for (const [dialect, section, name, exclusive] of [
+  ["systemd-unit", "Service", "Type", true],
+  ["systemd-network", "Link", "ActivationPolicy", true],
+  ["systemd-network", "Network", "IPMasquerade", false],
+]) {
+  const definition = registry.directives.find(
+    (directive) =>
+      directive.dialect === dialect && directive.section === section && directive.name === name,
+  );
+  if ((definition?.exclusiveChoices === true) !== exclusive) {
+    failures.push("systemd enum exclusivity is unsafe for [" + section + "] " + name + "=");
+  }
+}
+if (
+  registry.directives.some(
+    (directive) =>
+      directive.dialect === "systemd-unit" &&
+      directive.section === "Install" &&
+      directive.name === "ExecStart",
+  )
+) {
+  failures.push("prose references must not be generated as [Install] ExecStart=");
 }
 if (failures.length > 0) {
   throw new Error("Language coverage failed:\n- " + failures.join("\n- "));

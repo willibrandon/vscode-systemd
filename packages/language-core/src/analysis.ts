@@ -158,7 +158,13 @@ function analyzeIni(
         documentation: definition.documentation,
       });
     }
-    validateValue(node, definition.valueKind, definition.choices, diagnostics);
+    validateValue(
+      node,
+      definition.valueKind,
+      definition.choices,
+      definition.exclusiveChoices === true,
+      diagnostics,
+    );
   }
   validateRequiredStructure(document, diagnostics);
 }
@@ -167,6 +173,7 @@ function validateValue(
   node: AssignmentNode,
   valueKind: string,
   choices: readonly string[],
+  exclusiveChoices: boolean,
   diagnostics: CoreDiagnostic[],
 ): void {
   const value = node.value;
@@ -201,7 +208,7 @@ function validateValue(
     default:
       break;
   }
-  if (choices.length > 0) {
+  if (exclusiveChoices && choices.length > 0) {
     valid = choices.includes(value);
     expectation = "one of: " + choices.join(", ");
   }

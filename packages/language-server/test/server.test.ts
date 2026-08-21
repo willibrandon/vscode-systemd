@@ -416,6 +416,38 @@ describe("language server JSON-RPC contract", () => {
     ).toEqual({ changes: {} });
   });
 
+  it("completes systemd enum values from generated upstream metadata", async () => {
+    const networkUri = "file:///workspace/example.network";
+    const text = "[Link]\nActivationPolicy=\n\n[Network]\nIPMasquerade=both\n";
+    const diagnosticsPromise = nextDiagnostics(client, networkUri);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: networkUri,
+        languageId: "systemd-network",
+        version: 1,
+        text,
+      },
+    });
+    const diagnostics = await diagnosticsPromise;
+    expect(diagnostics.map(({ code }) => code)).not.toContain("invalid-value");
+
+    const completions = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: networkUri },
+      position: { line: 1, character: "ActivationPolicy=".length },
+    });
+    expect(completions.map(({ label }) => label)).toEqual([
+      "up",
+      "always-up",
+      "manual",
+      "always-down",
+      "down",
+      "bound",
+    ]);
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: networkUri },
+    });
+  });
+
   it("applies the matching ecosystem target to diagnostics and completion", async () => {
     const quadletUri = "file:///workspace/image.build";
     await client.sendNotification("systemd/targets/detectedVersions", { podman: "5.6.9" });

@@ -25,7 +25,8 @@ describe("registry queries", () => {
 
   it("looks up exact, wildcard, and inherited Quadlet directives", () => {
     expect(definitionFor("systemd-unit", "Service", "ExecStart")?.name).toBe("ExecStart");
-    expect(definitionFor("systemd-unit", "Service", "Documentation")?.section).toBe("*");
+    expect(definitionFor("systemd-unit", "Unit", "Documentation")?.section).toBe("Unit");
+    expect(definitionFor("systemd-unit", "Service", "Documentation")).toBeUndefined();
     expect(definitionFor("podman-quadlet", "Unit", "Description")?.dialect).toBe("systemd-unit");
     expect(definitionFor("podman-quadlet", "Container", "Image")?.dialect).toBe("podman-quadlet");
     expect(definitionFor("systemd-tmpfiles", null, "Type")).toBeUndefined();
@@ -57,6 +58,42 @@ describe("registry queries", () => {
     expect(isDynamicDirective("ID_NET_NAME_ALLOW_ENP5S0")).toBe(true);
     expect(isDynamicDirective("ID_NET_NAME_ALLOW_")).toBe(false);
     expect(isDynamicDirective("UnknownSetting")).toBe(false);
+  });
+
+  it("preserves predecessor issue regressions in generated stable metadata", () => {
+    expect(definitionFor("systemd-unit", "Service", "User")).toBeDefined();
+    expect(definitionFor("systemd-unit", "Service", "Group")).toBeDefined();
+    expect(definitionFor("systemd-unit", "Unit", "StartLimitIntervalSec")).toBeDefined();
+    expect(definitionFor("systemd-network", "Route", "GatewayOnLink")).toBeDefined();
+    expect(definitionFor("systemd-network", "Network", "IPv4Forwarding")).toBeDefined();
+    expect(definitionFor("systemd-network", "Network", "IPv6Forwarding")).toBeDefined();
+    expect(definitionFor("podman-quadlet", "Container", "CgroupsMode")).toBeDefined();
+    expect(definitionFor("podman-quadlet", "Build", "ImageTag")).toBeDefined();
+    expect(definitionFor("systemd-unit", "Install", "ExecStart")).toBeUndefined();
+    expect(definitionFor("systemd-unit", "Service", "Type")?.choices).toEqual([
+      "simple",
+      "exec",
+      "forking",
+      "oneshot",
+      "dbus",
+      "notify",
+      "notify-reload",
+      "idle",
+    ]);
+    expect(definitionFor("systemd-network", "Link", "ActivationPolicy")?.choices).toEqual([
+      "up",
+      "always-up",
+      "manual",
+      "always-down",
+      "down",
+      "bound",
+    ]);
+    expect(definitionFor("systemd-network", "Link", "ActivationPolicy")?.exclusiveChoices).toBe(
+      true,
+    );
+    expect(definitionFor("systemd-network", "Network", "IPMasquerade")?.exclusiveChoices).toBe(
+      false,
+    );
   });
 
   it("switches between pinned stable data and the compact preview delta", () => {

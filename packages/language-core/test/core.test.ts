@@ -15,7 +15,7 @@ import {
 
 describe("generated registry", () => {
   it("contains authoritative systemd, Quadlet, and mkosi data", () => {
-    expect(directiveDefinitions.length).toBeGreaterThan(3000);
+    expect(directiveDefinitions.length).toBeGreaterThan(2600);
     expect(new Set(directiveDefinitions.map((entry) => entry.dialect))).toEqual(
       new Set(["systemd-unit", "systemd-network", "systemd-config", "podman-quadlet", "mkosi"]),
     );

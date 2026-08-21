@@ -45,6 +45,7 @@ export interface DirectiveDefinition {
   readonly documentation: string;
   readonly summary: string;
   readonly choices: readonly string[];
+  readonly exclusiveChoices?: boolean;
 }
 
 export interface RegistryMetadata {

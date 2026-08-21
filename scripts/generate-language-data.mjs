@@ -10,6 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
+const adapterVersion = 4;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -157,7 +158,7 @@ const stableDelta = createRegistryDelta(directives, stableDirectives, stableUpst
 const serializedStableDelta = JSON.stringify(stableDelta, null, 2) + "\n";
 const upstreamLock = {
   schemaVersion: 1,
-  adapterVersion: 3,
+  adapterVersion,
   sources: {
     systemd: sourceMetadata(
       sources.systemd,
@@ -256,7 +257,11 @@ function sourceMetadata(source, repository, license, stableTag) {
 }
 
 function validateLock(lock, previewRevisions, stableRevisions) {
-  if (lock.schemaVersion !== 1 || lock.adapterVersion !== 3 || typeof lock.sources !== "object") {
+  if (
+    lock.schemaVersion !== 1 ||
+    lock.adapterVersion !== adapterVersion ||
+    typeof lock.sources !== "object"
+  ) {
     throw new Error("Upstream lock has an unsupported schema or adapter version.");
   }
   for (const name of Object.keys(sources)) {
@@ -375,8 +380,45 @@ function add(candidate) {
     value.assignmentMode = candidate.assignmentMode;
   }
   if (candidate.resetGroup !== undefined) value.resetGroup = candidate.resetGroup;
+  if (candidate.exclusiveChoices !== undefined && value.choices.length > 0) {
+    value.exclusiveChoices = candidate.exclusiveChoices;
+  }
   const existing = records.get(key);
-  if (existing === undefined || existing.valueKind === "string") records.set(key, value);
+  if (existing === undefined) {
+    records.set(key, value);
+    return;
+  }
+  const documentation = existing.documentation.includes("/systemd.directives.html#")
+    ? value.documentation
+    : existing.documentation;
+  const useExistingChoices = existing.choices.length > 0;
+  const merged = {
+    ...existing,
+    valueKind: value.valueKind === "string" ? existing.valueKind : value.valueKind,
+    since: earliestVersion(existing.since, value.since),
+    deprecated: existing.deprecated || value.deprecated,
+    documentation,
+    summary: documentation === value.documentation ? value.summary : existing.summary,
+    choices: useExistingChoices ? existing.choices : value.choices,
+  };
+  const exclusiveChoices = useExistingChoices ? existing.exclusiveChoices : value.exclusiveChoices;
+  if (exclusiveChoices !== undefined) merged.exclusiveChoices = exclusiveChoices;
+  if (merged.assignmentMode === undefined && value.assignmentMode !== undefined) {
+    merged.assignmentMode = value.assignmentMode;
+  }
+  if (merged.resetGroup === undefined && value.resetGroup !== undefined) {
+    merged.resetGroup = value.resetGroup;
+  }
+  records.set(key, merged);
+}
+
+function earliestVersion(left, right) {
+  if (left === null) return right;
+  if (right === null) return left;
+  const leftNumber = Number.parseInt(left, 10);
+  const rightNumber = Number.parseInt(right, 10);
+  if (Number.isNaN(leftNumber) || Number.isNaN(rightNumber)) return left;
+  return leftNumber <= rightNumber ? left : right;
 }
 
 async function extractSystemd(source) {
@@ -398,10 +440,18 @@ async function extractSystemd(source) {
       if (match === null) continue;
       const assignmentMode = parserAssignmentMode(match[3] ?? "");
       const resetGroup = parserResetGroup(match[3] ?? "", match[2] ?? "");
-      rememberSemantics(semantics, dialect, match[2] ?? "", assignmentMode, resetGroup);
+      const parserSection = match[1]?.includes("{{") === true ? "*" : (match[1] ?? "*");
+      rememberSemantics(
+        semantics,
+        dialect,
+        match[2] ?? "",
+        parserSection,
+        assignmentMode,
+        resetGroup,
+      );
       add({
         dialect,
-        section: match[1]?.includes("{{") === true ? "*" : match[1],
+        section: parserSection,
         name: match[2],
         valueKind: parserKind(match[3] ?? ""),
         assignmentMode,
@@ -427,27 +477,45 @@ async function extractSystemd(source) {
         : /^systemd\.(?:network|netdev|link|dnssd|dns-delegate)\.xml$/u.test(manual)
           ? "systemd-network"
           : "systemd-config";
-    let section = "*";
+    const defaultSection = manualDefaultSection(manual);
+    let section = defaultSection;
     const tokens =
-      /<title>\s*\[([A-Za-z0-9_:.-]+)\][^<]*<\/title>|<varname>([A-Za-z][A-Za-z0-9_:@{}.-]*)=<\/varname>/gu;
+      /<title>([\s\S]*?)<\/title>|<varlistentry(?:\s[^>]*)?>([\s\S]*?)<\/varlistentry>/gu;
     for (const match of text.matchAll(tokens)) {
       if (match[1] !== undefined) {
-        section = match[1];
-      } else if (match[2] !== undefined) {
-        const tail = text.slice(match.index, match.index + 1400);
-        const inherited = inheritedSemantics(semantics, dialect, match[2]);
+        section = /^\s*\[([A-Za-z0-9_:.-]+)\]/u.exec(match[1])?.[1] ?? defaultSection;
+        continue;
+      }
+      const block = match[2];
+      if (block === undefined) continue;
+      const names = new Set();
+      for (const term of block.matchAll(/<term(?:\s[^>]*)?>([\s\S]*?)<\/term>/gu)) {
+        for (const declaration of (term[1] ?? "").matchAll(
+          /<varname>([A-Za-z][A-Za-z0-9_:@{}.-]*)=<\/varname>/gu,
+        )) {
+          if (declaration[1] !== undefined) names.add(declaration[1]);
+        }
+      }
+      const choiceMetadata = systemdChoices(block);
+      for (const name of names) {
+        if (name === undefined) continue;
+        const inherited = inheritedSemantics(semantics, dialect, name);
+        const resolvedSection = section === "*" ? (inherited?.section ?? section) : section;
         add({
           dialect,
-          section,
-          name: match[2],
+          section: resolvedSection,
+          name,
           assignmentMode: inherited?.assignmentMode,
           resetGroup: inherited?.resetGroup,
-          since: /xpointer="v(\d+)"/u.exec(tail)?.[1] ?? null,
+          since: /xpointer="v(\d+)"/u.exec(block)?.[1] ?? null,
+          choices: choiceMetadata.choices,
+          exclusiveChoices:
+            choiceMetadata.exclusive && isClosedSystemdChoice(dialect, resolvedSection, name),
           documentation:
             "https://www.freedesktop.org/software/systemd/man/latest/" +
             basename(file, ".xml") +
             ".html#" +
-            encodeURIComponent(match[2]) +
+            encodeURIComponent(name) +
             "=",
         });
       }
@@ -455,9 +523,61 @@ async function extractSystemd(source) {
   }
 }
 
-function rememberSemantics(semantics, dialect, name, assignmentMode, resetGroup) {
+function isClosedSystemdChoice(dialect, section, name) {
+  return (
+    (dialect === "systemd-unit" && section === "Service" && name === "Type") ||
+    (dialect === "systemd-network" && section === "Link" && name === "ActivationPolicy")
+  );
+}
+
+function manualDefaultSection(manual) {
+  if (manual === "systemd.unit.xml") return "Unit";
+  const unitType =
+    /^systemd\.(service|socket|timer|path|mount|automount|swap|slice|scope)\.xml$/u.exec(
+      manual,
+    )?.[1];
+  return unitType === undefined ? "*" : unitType.slice(0, 1).toUpperCase() + unitType.slice(1);
+}
+
+function systemdChoices(block) {
+  for (const match of block.matchAll(/<para(?:\s[^>]*)?>([\s\S]*?)<\/para>/gu)) {
+    const paragraph = match[1] ?? "";
+    const lead =
+      /\b(?:takes\s+|accepts\s+|must\s+be\s+|may\s+be\s+|should\s+be\s+)?one\s+of\b/iu.exec(
+        paragraph,
+      );
+    if (lead === null) continue;
+    const period = paragraph.indexOf(".", lead.index);
+    const colon = paragraph.indexOf(":", lead.index);
+    const end = period >= 0 ? period : colon >= 0 ? colon : paragraph.length;
+    const sentence = paragraph.slice(lead.index, end);
+    const choices = [...sentence.matchAll(/<(literal|option)>([\s\S]*?)<\/\1>/gu)]
+      .map((choice) =>
+        (choice[2] ?? "")
+          .replace(/<replaceable>[\s\S]*?<\/replaceable>/gu, "")
+          .replace(/<[^>]+>/gu, "")
+          .trim(),
+      )
+      .filter((choice) => /^[^\s<>&]+$/u.test(choice));
+    const unique = [...new Set(choices)];
+    if (unique.length >= 2 && unique.length <= 32) {
+      return {
+        choices: unique,
+        exclusive: !sentence.includes("<replaceable>") && !/\bany other\b/iu.test(sentence),
+      };
+    }
+  }
+  return { choices: [], exclusive: undefined };
+}
+
+function rememberSemantics(semantics, dialect, name, section, assignmentMode, resetGroup) {
   const key = dialect + "\0" + name;
-  const current = semantics.get(key) ?? { assignmentModes: new Set(), resetGroups: new Set() };
+  const current = semantics.get(key) ?? {
+    sections: new Set(),
+    assignmentModes: new Set(),
+    resetGroups: new Set(),
+  };
+  current.sections.add(section);
   current.assignmentModes.add(assignmentMode);
   if (resetGroup !== undefined) current.resetGroups.add(resetGroup);
   semantics.set(key, current);
@@ -465,12 +585,11 @@ function rememberSemantics(semantics, dialect, name, assignmentMode, resetGroup)
 
 function inheritedSemantics(semantics, dialect, name) {
   const value = semantics.get(dialect + "\0" + name);
-  if (value === undefined || value.assignmentModes.size !== 1 || value.resetGroups.size > 1) {
-    return undefined;
-  }
+  if (value === undefined) return undefined;
   return {
-    assignmentMode: [...value.assignmentModes][0],
-    resetGroup: [...value.resetGroups][0],
+    assignmentMode: value.assignmentModes.size === 1 ? [...value.assignmentModes][0] : undefined,
+    resetGroup: value.resetGroups.size === 1 ? [...value.resetGroups][0] : undefined,
+    section: value.sections.size === 1 ? [...value.sections][0] : undefined,
   };
 }
 
@@ -607,6 +726,7 @@ async function extractMkosi(source) {
         setting.summary ??
         (setting.help === undefined ? undefined : setting.help.replace(/\.$/u, "") + "."),
       choices: setting.choices,
+      exclusiveChoices: setting.choices.length > 0,
     });
   }
 }
