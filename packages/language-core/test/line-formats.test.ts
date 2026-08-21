@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lineSettingsFor, recordFormatFor } from "../src/index.js";
+import { lineSettingsFor, recordFormatFor, udevRuleKeys } from "../src/index.js";
 import type { DocumentKind } from "../src/index.js";
 
 describe("line-oriented language metadata", () => {
@@ -27,6 +27,18 @@ describe("line-oriented language metadata", () => {
     ).toBe(true);
     expect(recordFormatFor("systemd-dns-trust-anchor:positive")?.fields).toHaveLength(7);
     expect(recordFormatFor("systemd-dns-trust-anchor:negative")?.fields).toHaveLength(1);
+    expect(recordFormatFor("systemd-table:fstab")?.fields[3]?.choices).toEqual(
+      expect.arrayContaining(["_netdev", "x-systemd.automount", "x-systemd.device-timeout="]),
+    );
+    expect(recordFormatFor("systemd-table:crypttab")?.fields[3]?.choices).toEqual(
+      expect.arrayContaining(["luks", "fido2-device=", "tpm2-device=", "password-cache="]),
+    );
+    expect(recordFormatFor("systemd-table:veritytab")?.fields[4]?.choices).toEqual(
+      expect.arrayContaining(["ignore-corruption", "root-hash-signature=", "_netdev"]),
+    );
+    expect(recordFormatFor("systemd-table:integritytab")?.fields[3]?.choices).toEqual(
+      expect.arrayContaining(["allow-discards", "integrity-algorithm=", "mode=journal"]),
+    );
   });
 
   it("exposes source-backed boot and environment settings", () => {
@@ -38,6 +50,35 @@ describe("line-oriented language metadata", () => {
     );
     expect(lineSettingsFor("systemd-environment:os-release").map(({ name }) => name)).toEqual(
       expect.arrayContaining(["ID", "VERSION_ID", "SYSEXT_SCOPE", "RELEASE_TYPE"]),
+    );
+  });
+
+  it("models the complete udev match and assignment key surface", () => {
+    expect(udevRuleKeys.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([
+        "ACTION",
+        "ATTRS",
+        "CONST",
+        "ENV",
+        "IMPORT",
+        "OPTIONS",
+        "RUN",
+        "SECLABEL",
+        "SYSCTL",
+        "TAGS",
+      ]),
+    );
+    expect(udevRuleKeys.find(({ name }) => name === "ENV")).toMatchObject({
+      attribute: "required",
+      operators: ["==", "!=", "=", "+="],
+    });
+    expect(udevRuleKeys.find(({ name }) => name === "CONST")?.attributeChoices).toEqual([
+      "arch",
+      "virt",
+      "cvm",
+    ]);
+    expect(udevRuleKeys.find(({ name }) => name === "OPTIONS")?.valueChoices).toEqual(
+      expect.arrayContaining(["watch", "dump-json", "string_escape=replace"]),
     );
   });
 

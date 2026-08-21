@@ -4,6 +4,7 @@ import type {
   LineFormatDefinition,
   LineKeywordDefinition,
   LineSettingDefinition,
+  UdevRuleKeyDefinition,
 } from "./types.js";
 
 const systemdMan = "https://www.freedesktop.org/software/systemd/man/latest/";
@@ -137,11 +138,153 @@ const binfmt: LineFormatDefinition = {
   repeatLastField: false,
 };
 
+const mountOptions = [
+  "defaults",
+  "ro",
+  "rw",
+  "suid",
+  "nosuid",
+  "dev",
+  "nodev",
+  "exec",
+  "noexec",
+  "auto",
+  "noauto",
+  "nofail",
+  "_netdev",
+  "x-initrd.mount",
+  "x-systemd.requires=",
+  "x-systemd.wants=",
+  "x-systemd.before=",
+  "x-systemd.after=",
+  "x-systemd.wanted-by=",
+  "x-systemd.required-by=",
+  "x-systemd.wants-mounts-for=",
+  "x-systemd.requires-mounts-for=",
+  "x-systemd.graceful-option=",
+  "x-systemd.device-bound=",
+  "x-systemd.automount",
+  "x-systemd.idle-timeout=",
+  "x-systemd.device-timeout=",
+  "x-systemd.mount-timeout=",
+  "x-systemd.makefs",
+  "x-systemd.growfs",
+  "x-systemd.pcrfs",
+  "x-systemd.validatefs",
+  "x-systemd.rw-only",
+];
+
+const crypttabOptions = [
+  "bitlk",
+  "cipher=",
+  "discard",
+  "hash=",
+  "header=",
+  "header",
+  "headless=",
+  "key-slot=",
+  "keyfile-erase",
+  "keyfile-offset=",
+  "keyfile-size=",
+  "keyfile-timeout=",
+  "link-volume-key=",
+  "luks",
+  "no-read-workqueue",
+  "no-write-workqueue",
+  "noauto",
+  "nofail",
+  "offset=",
+  "password-cache=",
+  "password-echo=",
+  "pkcs11-uri=",
+  "plain",
+  "read-only",
+  "readonly",
+  "same-cpu-crypt",
+  "sector-size=",
+  "size=",
+  "skip=",
+  "submit-from-crypt-cpus",
+  "swap",
+  "tcrypt",
+  "tcrypt-hidden",
+  "tcrypt-keyfile=",
+  "tcrypt-system",
+  "tcrypt-veracrypt",
+  "timeout=",
+  "tmp",
+  "tmp=",
+  "token-timeout=",
+  "tpm2-device=",
+  "tpm2-measure-bank=",
+  "tpm2-measure-keyslot-nvpcr=",
+  "tpm2-measure-pcr=",
+  "tpm2-pcrlock=",
+  "tpm2-pcrs=",
+  "tpm2-pin=",
+  "tpm2-signature=",
+  "tries=",
+  "try-empty-password=",
+  "veracrypt-pim=",
+  "verify",
+  "x-initrd.attach",
+  "x-initrd.mount",
+  "x-systemd.device-timeout=",
+  "_netdev",
+  "fido2-device=",
+  "fido2-cid=",
+  "fido2-rp=",
+  "fido2-pin=",
+  "fido2-up=",
+  "fido2-uv=",
+  "fixate-volume-key=",
+];
+
+const veritytabOptions = [
+  "check-at-most-once",
+  "data-block-size=",
+  "data-blocks=",
+  "fec-device=",
+  "fec-offset=",
+  "fec-roots=",
+  "format=",
+  "hash-block-size=",
+  "hash-offset=",
+  "hash=",
+  "ignore-corruption",
+  "ignore-zero-blocks",
+  "noauto",
+  "nofail",
+  "panic-on-corruption",
+  "restart-on-corruption",
+  "root-hash-signature=",
+  "salt=",
+  "superblock=",
+  "tpm2-measure-nvpcr=",
+  "uuid=",
+  "x-initrd.attach",
+  "x-initrd.mount",
+  "_netdev",
+];
+
+const integritytabOptions = [
+  "allow-discards",
+  "integrity-algorithm=",
+  "journal-commit-time=",
+  "journal-watermark=",
+  "mode=journal",
+  "mode=bitmap",
+  "mode=direct",
+  "noauto",
+  "nofail",
+  "_netdev",
+];
+
 const fstab = tableFormat("fstab entry", "fstab", [
   required("Source", "Block device, filesystem label/UUID, or remote resource."),
   required("Mount point", "Filesystem mount point, 'none', or 'swap'."),
   required("Type", "Filesystem type or 'auto'."),
-  required("Options", "Comma-separated mount options."),
+  required("Options", "Comma-separated mount options.", mountOptions),
   optional("Dump", "dump(8) backup frequency, normally 0."),
   optional("Pass", "fsck ordering value, normally 0, 1, or 2."),
 ]);
@@ -150,7 +293,7 @@ const crypttab = tableFormat("crypttab entry", "crypttab", [
   required("Name", "Resulting encrypted volume name."),
   required("Device", "Encrypted block device specification."),
   optional("Key file", "Key path, socket, AF_UNIX source, or '-'."),
-  optional("Options", "Comma-separated cryptsetup options."),
+  optional("Options", "Comma-separated cryptsetup options.", crypttabOptions),
 ]);
 
 const veritytab = tableFormat("veritytab entry", "veritytab", [
@@ -158,14 +301,14 @@ const veritytab = tableFormat("veritytab entry", "veritytab", [
   required("Data device", "Block device containing protected data."),
   required("Hash device", "Block device containing the hash tree."),
   required("Root hash", "Hexadecimal root hash, path, or '-'."),
-  optional("Options", "Comma-separated verity options."),
+  optional("Options", "Comma-separated verity options.", veritytabOptions),
 ]);
 
 const integritytab = tableFormat("integritytab entry", "integritytab", [
   required("Name", "Resulting integrity volume name."),
   required("Device", "Underlying block device."),
   optional("Key file", "Integrity key file or '-'."),
-  optional("Options", "Comma-separated integrity options."),
+  optional("Options", "Comma-separated integrity options.", integritytabOptions),
 ]);
 
 const clonetab = tableFormat("clonetab entry", "clonetab", [
@@ -173,7 +316,7 @@ const clonetab = tableFormat("clonetab entry", "clonetab", [
   required("Source", "Read-only source block device."),
   required("Destination", "Writable destination block device."),
   required("Metadata", "Metadata block device."),
-  optional("Options", "Comma-separated dm-clone options."),
+  optional("Options", "Comma-separated dm-clone options.", ["region-size="]),
 ]);
 
 const positiveTrustAnchor: LineFormatDefinition = {
@@ -298,6 +441,136 @@ const udevRule: LineFormatDefinition = {
   keywords: [],
   repeatLastField: true,
 };
+
+const matchOperators = ["==", "!="];
+const matchAssignOperators = ["==", "!=", "=", "+="];
+const assignmentOperators = ["=", ":="];
+
+const udevKey = (
+  name: string,
+  summary: string,
+  operators: readonly string[],
+  options: Partial<
+    Pick<
+      UdevRuleKeyDefinition,
+      "attribute" | "attributeChoices" | "valueChoices" | "caseInsensitive"
+    >
+  > = {},
+): UdevRuleKeyDefinition => ({
+  name,
+  summary,
+  operators,
+  attribute: options.attribute ?? "forbidden",
+  attributeChoices: options.attributeChoices ?? [],
+  valueChoices: options.valueChoices ?? [],
+  caseInsensitive: options.caseInsensitive ?? operators.includes("=="),
+});
+
+export const udevRuleKeys: readonly UdevRuleKeyDefinition[] = [
+  udevKey("ACTION", "Match the device event action.", matchOperators, {
+    valueChoices: ["add", "remove", "change", "move", "online", "offline", "bind", "unbind"],
+  }),
+  udevKey("DEVPATH", "Match the event device path.", matchOperators),
+  udevKey("KERNEL", "Match the event device kernel name.", matchOperators),
+  udevKey("KERNELS", "Match a parent device kernel name.", matchOperators),
+  udevKey("NAME", "Match or assign a network-interface name.", ["==", "!=", "=", ":="]),
+  udevKey("SYMLINK", "Match or modify device-node symbolic links.", [
+    "==",
+    "!=",
+    "=",
+    "+=",
+    "-=",
+    ":=",
+  ]),
+  udevKey("SUBSYSTEM", "Match the event device subsystem.", matchOperators),
+  udevKey("SUBSYSTEMS", "Match a parent device subsystem.", matchOperators),
+  udevKey("DRIVER", "Match the event device driver.", matchOperators),
+  udevKey("DRIVERS", "Match a parent device driver.", matchOperators),
+  udevKey("ATTR", "Match or assign a sysfs attribute.", ["==", "!=", "="], {
+    attribute: "required",
+  }),
+  udevKey("ATTRS", "Match a sysfs attribute on a parent device.", matchOperators, {
+    attribute: "required",
+  }),
+  udevKey("SYSCTL", "Match or assign a kernel parameter.", ["==", "!=", "="], {
+    attribute: "required",
+  }),
+  udevKey("ENV", "Match or modify a device property.", matchAssignOperators, {
+    attribute: "required",
+  }),
+  udevKey("CONST", "Match a system-wide constant.", matchOperators, {
+    attribute: "required",
+    attributeChoices: ["arch", "virt", "cvm"],
+  }),
+  udevKey("TAG", "Match or modify a device tag.", [...matchAssignOperators, "-="]),
+  udevKey("TAGS", "Match a tag on a parent device.", matchOperators),
+  udevKey("TEST", "Match the existence of a file.", matchOperators, {
+    attribute: "optional",
+    caseInsensitive: false,
+  }),
+  udevKey(
+    "PROGRAM",
+    "Run a foreground program and match its exit status.",
+    ["==", "!=", "=", ":=", "+="],
+    {
+      caseInsensitive: false,
+    },
+  ),
+  udevKey("RESULT", "Match the output of the preceding PROGRAM expression.", matchOperators),
+  udevKey("OWNER", "Assign the device-node owner.", assignmentOperators, {
+    caseInsensitive: false,
+  }),
+  udevKey("GROUP", "Assign the device-node group.", assignmentOperators, {
+    caseInsensitive: false,
+  }),
+  udevKey("MODE", "Assign the device-node mode.", assignmentOperators, {
+    caseInsensitive: false,
+  }),
+  udevKey("SECLABEL", "Assign a Linux security-module label.", ["=", "+="], {
+    attribute: "required",
+    caseInsensitive: false,
+  }),
+  udevKey("RUN", "Queue a short program or builtin after rule processing.", ["=", ":=", "+="], {
+    attribute: "optional",
+    attributeChoices: ["program", "builtin"],
+    caseInsensitive: false,
+  }),
+  udevKey("LABEL", "Define a rule label.", ["="], { caseInsensitive: false }),
+  udevKey("GOTO", "Jump to the next matching LABEL.", ["="], { caseInsensitive: false }),
+  udevKey(
+    "IMPORT",
+    "Import device properties from an allowlisted source type.",
+    ["==", "!=", "=", ":=", "+="],
+    {
+      attribute: "required",
+      attributeChoices: ["file", "program", "builtin", "db", "cmdline", "parent"],
+      caseInsensitive: false,
+    },
+  ),
+  udevKey("OPTIONS", "Set a udev rule or device option.", assignmentOperators, {
+    valueChoices: [
+      "link_priority=",
+      "string_escape=none",
+      "string_escape=replace",
+      "static_node=",
+      "watch",
+      "nowatch",
+      "db_persist",
+      "log_level=emerg",
+      "log_level=alert",
+      "log_level=crit",
+      "log_level=err",
+      "log_level=warning",
+      "log_level=notice",
+      "log_level=info",
+      "log_level=debug",
+      "log_level=reset",
+      "dump",
+      "dump-json",
+    ],
+    caseInsensitive: false,
+  }),
+];
 
 const kernelInstallSettings = [
   setting(

@@ -27,6 +27,7 @@ import {
   resolveUnitConfigurations,
   renderEffectiveConfiguration,
   sectionsFor,
+  udevRuleKeys,
 } from "@systemd/language-core";
 import type {
   AssignmentNode,
@@ -52,6 +53,7 @@ import {
   DocumentHighlightKind,
   FoldingRangeKind,
   InlayHintKind,
+  InsertTextFormat,
   MarkupKind,
   SemanticTokensBuilder,
   SymbolKind,
@@ -1112,6 +1114,7 @@ function lineCompletions(
     }
     if (!linePrefix.includes("=")) return settings.map(lineSettingCompletion);
   }
+  if (tree.kind === "systemd-udev-rules:rules") return udevCompletions(linePrefix);
   if (format === undefined) return [];
 
   const recordNode = node?.kind === "record" ? node : undefined;
@@ -1139,6 +1142,110 @@ function lineCompletions(
       : (lineField(format, fieldIndex)?.choices ?? []);
   const fieldName = lineField(format, fieldIndex)?.name ?? format.name;
   return choices.map((value) => lineValueCompletion(value, fieldName));
+}
+
+function udevCompletions(linePrefix: string): CompletionItem[] {
+  const prefix = activeUdevExpressionPrefix(linePrefix).trimStart();
+  const operator = /(==|!=|:=|\+=|-=|=)/u.exec(prefix);
+  if (operator === null) {
+    const openAttribute = /^([A-Za-z0-9_.-]+)\{([^}]*)$/u.exec(prefix);
+    if (openAttribute !== null) {
+      const definition = udevRuleKeys.find(({ name }) => name === openAttribute[1]);
+      if (definition === undefined) return [];
+      return definition.attributeChoices.map((attribute) => ({
+        label: attribute,
+        kind: CompletionItemKind.EnumMember,
+        detail: definition.name + " attribute",
+        insertText: attribute + "}",
+      }));
+    }
+    const selected = /^([A-Za-z0-9_.-]+)(?:\{[^}]+\})?\s*$/u.exec(prefix)?.[1];
+    const definition = udevRuleKeys.find(({ name }) => name === selected);
+    if (definition !== undefined && prefix.trimEnd().endsWith(definition.name)) {
+      return definition.operators.map((candidate) => udevOperatorCompletion(candidate));
+    }
+    if (definition !== undefined && prefix.trimEnd().endsWith("}")) {
+      return definition.operators.map((candidate) => udevOperatorCompletion(candidate));
+    }
+    return udevRuleKeys.flatMap(udevKeyCompletions);
+  }
+
+  const keyPart = prefix.slice(0, operator.index).trimEnd();
+  const key = /^([A-Za-z0-9_.-]+)/u.exec(keyPart)?.[1];
+  const definition = udevRuleKeys.find(({ name }) => name === key);
+  if (!definition?.operators.includes(operator[1] ?? "")) return [];
+  const valuePrefix = prefix.slice(operator.index + operator[0].length).trimStart();
+  const alreadyQuoted = /^(?:e|i|ei|ie)?"/u.test(valuePrefix);
+  return definition.valueChoices.map((value): CompletionItem => ({
+    label: value,
+    kind: CompletionItemKind.Value,
+    detail: definition.name + " value",
+    insertText: alreadyQuoted ? value : '"' + value + '"',
+  }));
+}
+
+function activeUdevExpressionPrefix(linePrefix: string): string {
+  let quoted = false;
+  let escaped = false;
+  let start = 0;
+  for (let index = 0; index < linePrefix.length; index += 1) {
+    const character = linePrefix[index] ?? "";
+    if (quoted && character === "\\" && !escaped) {
+      escaped = true;
+      continue;
+    }
+    if (character === '"' && !escaped) quoted = !quoted;
+    if (character === "," && !quoted) start = index + 1;
+    escaped = false;
+  }
+  return linePrefix.slice(start);
+}
+
+function udevKeyCompletions(definition: (typeof udevRuleKeys)[number]): CompletionItem[] {
+  const variants =
+    definition.attribute === "forbidden"
+      ? [{ label: definition.name, insertText: definition.name, snippet: false }]
+      : definition.attributeChoices.length > 0
+        ? definition.attributeChoices.map((attribute) => ({
+            label: definition.name + "{" + attribute + "}",
+            insertText: definition.name + "{" + attribute + "}",
+            snippet: false,
+          }))
+        : [
+            ...(definition.attribute === "optional"
+              ? [{ label: definition.name, insertText: definition.name, snippet: false }]
+              : []),
+            {
+              label: definition.name + "{…}",
+              insertText: definition.name + "{${1}}",
+              snippet: true,
+            },
+          ];
+  return variants.map(({ label, insertText, snippet }): CompletionItem => ({
+    label,
+    kind: CompletionItemKind.Keyword,
+    detail: definition.summary,
+    insertText,
+    ...(snippet ? { insertTextFormat: InsertTextFormat.Snippet } : {}),
+    documentation: {
+      kind: MarkupKind.Markdown,
+      value: lineKeywordMarkdown(
+        definition.name,
+        definition.summary,
+        "https://www.freedesktop.org/software/systemd/man/latest/udev.html#Rules%20Files",
+      ),
+    },
+  }));
+}
+
+function udevOperatorCompletion(operator: string): CompletionItem {
+  return {
+    label: operator,
+    kind: CompletionItemKind.Operator,
+    detail: "udev rule operator",
+    insertText: operator + '"${1}"',
+    insertTextFormat: InsertTextFormat.Snippet,
+  };
 }
 
 function lineSettingCompletion(definition: LineSettingDefinition): CompletionItem {

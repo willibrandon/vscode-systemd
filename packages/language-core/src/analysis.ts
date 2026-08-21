@@ -1,6 +1,6 @@
 import { definitionFor, isDynamicDirective, sectionsFor } from "./registry.js";
 import { analyzeSystemdJson } from "./json-analysis.js";
-import { lineSettingsFor, recordFormatFor } from "./line-formats.js";
+import { lineSettingsFor, recordFormatFor, udevRuleKeys } from "./line-formats.js";
 import type {
   AssignmentNode,
   CoreDiagnostic,
@@ -332,9 +332,7 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
         break;
       case "systemd-udev-rules":
         for (let index = 0; index < node.fields.length; index += 1) {
-          if (!isUdevExpression(node.fields[index] ?? "")) {
-            fieldError(node, index, "Malformed udev match or assignment.", diagnostics);
-          }
+          validateUdevExpression(node, index, diagnostics);
         }
         break;
       case "systemd-dns-trust-anchor":
@@ -359,6 +357,9 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
       default:
         break;
     }
+  }
+  if (document.dialect === "systemd-udev-rules") {
+    validateUdevControlFlow(document, diagnostics);
   }
   validateSingleValueDocument(document, diagnostics);
 }
@@ -459,23 +460,212 @@ function isTmpfilesAction(action: string): boolean {
   return true;
 }
 
-function isUdevExpression(value: string): boolean {
+interface ParsedUdevExpression {
+  readonly key: string;
+  readonly attribute?: string;
+  readonly operator: string;
+  readonly value: string;
+  readonly escaped: boolean;
+  readonly caseInsensitive: boolean;
+}
+
+function parseUdevExpression(value: string): ParsedUdevExpression | undefined {
   let cursor = 0;
   while (isUdevKeyCharacter(value[cursor] ?? "")) cursor += 1;
-  if (cursor === 0) return false;
+  if (cursor === 0) return undefined;
+  const key = value.slice(0, cursor);
+  let attribute: string | undefined;
   if (value[cursor] === "{") {
     const closing = value.indexOf("}", cursor + 1);
-    if (closing <= cursor + 1) return false;
+    if (closing < 0) return undefined;
+    attribute = value.slice(cursor + 1, closing);
     cursor = closing + 1;
   }
   while (isHorizontalWhitespace(value[cursor] ?? "")) cursor += 1;
   const operator = ["==", "!=", ":=", "+=", "-=", "="].find((candidate) =>
     value.startsWith(candidate, cursor),
   );
-  if (operator === undefined) return false;
+  if (operator === undefined) return undefined;
   cursor += operator.length;
   while (isHorizontalWhitespace(value[cursor] ?? "")) cursor += 1;
-  return cursor < value.length;
+  let escaped = false;
+  let caseInsensitive = false;
+  for (let prefixIndex = 0; prefixIndex < 2; prefixIndex += 1) {
+    if (value[cursor] === "e" && !escaped) {
+      escaped = true;
+      cursor += 1;
+    } else if (value[cursor] === "i" && !caseInsensitive) {
+      caseInsensitive = true;
+      cursor += 1;
+    } else {
+      break;
+    }
+  }
+  if (value[cursor] !== '"') return undefined;
+  cursor += 1;
+  const valueStart = cursor;
+  let closing = -1;
+  while (cursor < value.length) {
+    if (value[cursor] === "\\" && (escaped || value[cursor + 1] === '"')) {
+      cursor += 2;
+      continue;
+    }
+    if (value[cursor] === '"') {
+      closing = cursor;
+      cursor += 1;
+      break;
+    }
+    cursor += 1;
+  }
+  if (closing < 0) return undefined;
+  while (isHorizontalWhitespace(value[cursor] ?? "")) cursor += 1;
+  if (cursor !== value.length) return undefined;
+  return {
+    key,
+    ...(attribute === undefined ? {} : { attribute }),
+    operator,
+    value: value.slice(valueStart, closing),
+    escaped,
+    caseInsensitive,
+  };
+}
+
+function validateUdevExpression(
+  node: RecordNode,
+  index: number,
+  diagnostics: CoreDiagnostic[],
+): void {
+  const expression = parseUdevExpression(node.fields[index] ?? "");
+  if (expression === undefined) {
+    fieldError(
+      node,
+      index,
+      "Malformed udev expression; values must be double quoted.",
+      diagnostics,
+    );
+    return;
+  }
+  const definition = udevRuleKeys.find(({ name }) => name === expression.key);
+  if (definition === undefined) {
+    fieldError(node, index, "Unknown udev rule key " + expression.key + ".", diagnostics);
+    return;
+  }
+  if (
+    (definition.attribute === "required" && expression.attribute === undefined) ||
+    (definition.attribute === "forbidden" && expression.attribute !== undefined) ||
+    expression.attribute === ""
+  ) {
+    fieldError(
+      node,
+      index,
+      definition.name +
+        (definition.attribute === "required"
+          ? " requires a non-empty {...} attribute."
+          : " does not accept a {...} attribute."),
+      diagnostics,
+    );
+  } else if (
+    expression.attribute !== undefined &&
+    definition.attributeChoices.length > 0 &&
+    !definition.attributeChoices.includes(expression.attribute)
+  ) {
+    fieldError(
+      node,
+      index,
+      definition.name +
+        " attribute must be one of: " +
+        definition.attributeChoices.join(", ") +
+        ".",
+      diagnostics,
+    );
+  }
+  if (!definition.operators.includes(expression.operator)) {
+    fieldError(
+      node,
+      index,
+      definition.name + " expects " + definition.operators.join(", ") + ".",
+      diagnostics,
+    );
+  }
+  if (expression.caseInsensitive && !definition.caseInsensitive) {
+    fieldError(node, index, definition.name + ' does not accept the i"..." prefix.', diagnostics);
+  }
+  if (expression.value.includes("\0") || escapedUdevNul(expression)) {
+    fieldError(node, index, "udev values cannot contain NUL.", diagnostics);
+  }
+  if (definition.name === "OPTIONS" && !isUdevOption(expression.value)) {
+    fieldError(node, index, "Unknown or invalid udev OPTIONS value.", diagnostics);
+  }
+  if (
+    definition.name === "TEST" &&
+    expression.attribute !== undefined &&
+    !/^[0-7]{3,4}$/u.test(expression.attribute)
+  ) {
+    fieldError(node, index, "TEST mode must be a three- or four-digit octal mode.", diagnostics);
+  }
+}
+
+function escapedUdevNul(expression: ParsedUdevExpression): boolean {
+  return (
+    expression.escaped &&
+    /\\(?:0(?:[^0-7]|$)|x00(?:[^0-9A-Fa-f]|$)|u0000(?:[^0-9A-Fa-f]|$)|U00000000(?:[^0-9A-Fa-f]|$))/u.test(
+      expression.value,
+    )
+  );
+}
+
+function isUdevOption(value: string): boolean {
+  if (
+    new Set([
+      "string_escape=none",
+      "string_escape=replace",
+      "watch",
+      "nowatch",
+      "db_persist",
+      "dump",
+      "dump-json",
+    ]).has(value)
+  ) {
+    return true;
+  }
+  if (/^link_priority=[+-]?\d+$/u.test(value)) return true;
+  if (/^static_node=.+$/u.test(value)) return true;
+  return /^log_level=(?:emerg|alert|crit|err|warning|notice|info|debug|reset)$/u.test(value);
+}
+
+function validateUdevControlFlow(document: ParsedDocument, diagnostics: CoreDiagnostic[]): void {
+  const expressions = document.nodes.flatMap((node) =>
+    node.kind === "record"
+      ? node.fields
+          .map((field, index) => ({ node, index, expression: parseUdevExpression(field) }))
+          .filter(
+            (
+              entry,
+            ): entry is typeof entry & {
+              readonly expression: ParsedUdevExpression;
+            } => entry.expression !== undefined,
+          )
+      : [],
+  );
+  const labels = expressions.filter(({ expression }) => expression.key === "LABEL");
+  for (const { node, index, expression } of expressions) {
+    if (expression.key !== "GOTO") continue;
+    if (
+      !labels.some(
+        (candidate) =>
+          candidate.node.span.start > node.span.start &&
+          candidate.expression.value === expression.value,
+      )
+    ) {
+      fieldError(
+        node,
+        index,
+        "GOTO target " + expression.value + " has no later LABEL in this file.",
+        diagnostics,
+        "warning",
+      );
+    }
+  }
 }
 
 function everyCharacter(
@@ -947,6 +1137,7 @@ function validateTable(
   switch (kind) {
     case "systemd-table:fstab":
       checkColumns(node, 4, 6, "fstab", diagnostics);
+      validateFstab(node, diagnostics);
       break;
     case "systemd-table:crypttab":
       checkColumns(node, 2, 4, "crypttab", diagnostics);
@@ -963,6 +1154,40 @@ function validateTable(
     default:
       checkColumns(node, 2, 6, "systemd table", diagnostics);
       break;
+  }
+}
+
+function validateFstab(node: RecordNode, diagnostics: CoreDiagnostic[]): void {
+  const mountPoint = node.fields[1] ?? "";
+  if (
+    mountPoint !== "" &&
+    mountPoint !== "none" &&
+    mountPoint !== "swap" &&
+    !mountPoint.startsWith("/")
+  ) {
+    fieldError(node, 1, "fstab mount point must be absolute, none, or swap.", diagnostics);
+  }
+  for (const index of [4, 5]) {
+    const value = node.fields[index];
+    if (value !== undefined && !/^\d+$/u.test(value)) {
+      fieldError(
+        node,
+        index,
+        index === 4 ? "fstab dump frequency must be unsigned." : "fstab pass must be unsigned.",
+        diagnostics,
+      );
+    }
+  }
+  const catalog = recordFormatFor("systemd-table:fstab")?.fields[3]?.choices ?? [];
+  for (const option of (node.fields[3] ?? "").split(",")) {
+    if (
+      option.startsWith("x-systemd.") &&
+      !catalog.some((candidate) =>
+        candidate.endsWith("=") ? option.startsWith(candidate) : option === candidate,
+      )
+    ) {
+      fieldError(node, 3, "Unknown systemd fstab option " + option + ".", diagnostics, "warning");
+    }
   }
 }
 

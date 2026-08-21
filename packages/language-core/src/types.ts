@@ -229,6 +229,16 @@ export interface LineSettingDefinition {
   readonly choices: readonly string[];
 }
 
+export interface UdevRuleKeyDefinition {
+  readonly name: string;
+  readonly summary: string;
+  readonly attribute: "forbidden" | "optional" | "required";
+  readonly attributeChoices: readonly string[];
+  readonly operators: readonly string[];
+  readonly valueChoices: readonly string[];
+  readonly caseInsensitive: boolean;
+}
+
 export interface InvalidNode extends BaseNode {
   readonly kind: "invalid";
   readonly message: string;

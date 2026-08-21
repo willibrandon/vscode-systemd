@@ -4,6 +4,7 @@ export { classifyDocument } from "./document-kind.js";
 export { applyTextEdits, format } from "./formatter.js";
 export { detectDialect, parse } from "./parser.js";
 export { lineSettingsFor, recordFormatFor } from "./line-formats.js";
+export { udevRuleKeys } from "./line-formats.js";
 export {
   definitionFor,
   definitionsFor,
@@ -77,6 +78,7 @@ export type {
   SyntaxNode,
   TextEdit,
   TextSpan,
+  UdevRuleKeyDefinition,
   TargetVersions,
   UnitDocumentType,
   ValueKind,

@@ -108,5 +108,9 @@ All notable changes to this project will be documented here. The format follows
 - Deterministic property tests now exercise arbitrary and adversarial input across all 18 dialects,
   including exact CRLF continuation round trips, and a packaged-LSP gate enforces p95 latency for
   warm edits and completions over a large indexed project.
+- udev rules now use the pinned parser's complete key, attribute, operator, quoting, option, and
+  case-prefix model, understand lossless continued rules and forward labels, and offer contextual
+  key/operator/value completion. Table intelligence now completes documented mount, crypttab,
+  veritytab, integritytab, and clonetab options and validates systemd-specific fstab fields.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

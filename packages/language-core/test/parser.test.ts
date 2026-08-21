@@ -128,6 +128,35 @@ describe("lossless parsers", () => {
     });
   });
 
+  it("parses udev continuations exactly while ignoring continued comment lines", () => {
+    const source =
+      'ACTION=="add", \\\r\n  # ignored by udev while continuing\r\n  ENV{ID_MODEL}=="demo"\r\n';
+    const document = parse(source, "systemd-udev-rules", "file:///etc/udev/rules.d/demo.rules");
+    expect(document.diagnostics).toEqual([]);
+    expect(document.nodes).toHaveLength(2);
+    expect(document.nodes[0]).toMatchObject({
+      kind: "record",
+      raw: 'ACTION=="add", \\\r\n  # ignored by udev while continuing\r\n  ENV{ID_MODEL}=="demo"',
+      fields: ['ACTION=="add"', 'ENV{ID_MODEL}=="demo"'],
+    });
+    expect(document.nodes[1]).toMatchObject({ kind: "blank" });
+    const rule = document.nodes[0];
+    if (rule?.kind !== "record") throw new Error("Expected a continued udev record.");
+    expect(rule.fieldSpans[1]).toEqual({
+      start: source.indexOf("ENV{ID_MODEL}"),
+      end: source.indexOf("ENV{ID_MODEL}") + 'ENV{ID_MODEL}=="demo"'.length,
+    });
+  });
+
+  it("reports an unterminated udev continuation instead of accepting a partial rule", () => {
+    const document = parse('ACTION=="add", \\', "systemd-udev-rules");
+    expect(document.nodes[0]).toMatchObject({
+      kind: "invalid",
+      message: "Unexpected EOF after udev line continuation.",
+    });
+    expect(document.diagnostics.map(({ code }) => code)).toContain("systemd-syntax");
+  });
+
   it("parses tmpfiles' seventh field as the complete argument", () => {
     const document = parse(
       "f~ /root/.ssh/authorized_keys 0600 root root - SSH key with spaces\n",

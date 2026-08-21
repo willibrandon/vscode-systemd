@@ -321,14 +321,42 @@ describe("record and JSON semantic analysis", () => {
     expect(codes("L? /tmp/app - - - - /missing/target\n", "systemd-tmpfiles")).not.toContain(
       "invalid-record-field",
     );
-    for (const operator of ["==", "!=", ":=", "+=", "-=", "="]) {
+    for (const operator of ["==", "!=", "+=", "="]) {
       expect(codes("ENV{ID_MODEL} " + operator + ' "demo"\n', "systemd-udev-rules")).not.toContain(
         "invalid-record-field",
       );
     }
-    for (const expression of ["ENV{}=demo", "ENV", "ENV="]) {
+    for (const expression of [
+      'ENV{}="demo"',
+      "ENV",
+      "ENV=",
+      "ENV{ID_MODEL}=demo",
+      'ENV{ID_MODEL}-="demo"',
+      'ACTION="add"',
+      'UNKNOWN="demo"',
+      'TEST{invalid}=="/dev/null"',
+      'OPTIONS="unknown"',
+      'RUN{invalid}+="tool"',
+      'CONST{unknown}=="value"',
+      'PROGRAM==i"tool"',
+    ]) {
       expect(codes(expression + "\n", "systemd-udev-rules")).toContain("invalid-record-field");
     }
+    for (const expression of [
+      'ACTION==i"add"',
+      'OPTIONS="string_escape=replace"',
+      'OPTIONS="link_priority=-10"',
+      'OPTIONS="log_level=reset"',
+      'IMPORT{builtin}+="path_id"',
+      'RUN{program}+="/usr/bin/true"',
+      'TEST{0600}=="/dev/null"',
+    ]) {
+      expect(codes(expression + "\n", "systemd-udev-rules")).not.toContain("invalid-record-field");
+    }
+    expect(codes('GOTO="missing"\n', "systemd-udev-rules")).toContain("invalid-record-field");
+    expect(codes('GOTO="found"\nLABEL="found"\n', "systemd-udev-rules")).not.toContain(
+      "invalid-record-field",
+    );
     expect(codes("usb:v0001*\n ID_MODEL=Demo\n", "systemd-hwdb")).not.toContain(
       "invalid-record-field",
     );
@@ -364,6 +392,23 @@ describe("record and JSON semantic analysis", () => {
     ["file:///etc/clonetab", "clone /dev/source /dev/dest /dev/meta region-size=8K\n"],
   ] as const)("accepts the documented columns for %s", (uri, source) => {
     expect(codes(source, "systemd-table", uri)).not.toContain("invalid-column-count");
+  });
+
+  it("validates fstab systemd options and numeric columns conservatively", () => {
+    expect(
+      codes(
+        "UUID=abc /srv ext4 defaults,x-systemd.automount,x-systemd.device-timeout=30s 0 2\n",
+        "systemd-table",
+        "file:///etc/fstab",
+      ),
+    ).not.toContain("invalid-record-field");
+    expect(
+      codes(
+        "UUID=abc relative ext4 x-systemd.not-real 0x 2nd\n",
+        "systemd-table",
+        "file:///etc/fstab",
+      ),
+    ).toEqual(expect.arrayContaining(["invalid-record-field"]));
   });
 
   it("rejects table records using another table format's column count", () => {

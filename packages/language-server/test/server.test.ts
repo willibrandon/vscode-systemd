@@ -858,6 +858,115 @@ describe("language server JSON-RPC contract", () => {
     });
   });
 
+  it("completes source-backed udev keys, attributes, operators, and values", async () => {
+    const rulesUri = "file:///workspace/90-demo.rules";
+    const text = [
+      "",
+      "ACTION",
+      "ACTION==",
+      "CONST{",
+      "OPTIONS=",
+      "ENV{ID_MODEL}",
+      'ACTION=="',
+      "UNKNOWN=",
+      "UNKNOWN{",
+      "",
+    ].join("\n");
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: rulesUri,
+        languageId: "systemd-udev-rules",
+        version: 1,
+        text,
+      },
+    });
+
+    const keys = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: rulesUri },
+      position: { line: 0, character: 0 },
+    });
+    expect(keys.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["ACTION", "ENV{…}", "IMPORT{builtin}", "RUN{program}"]),
+    );
+    const operators = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: rulesUri },
+      position: { line: 1, character: "ACTION".length },
+    });
+    expect(operators.map(({ label }) => label)).toEqual(["==", "!="]);
+    const actions = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: rulesUri },
+      position: { line: 2, character: "ACTION==".length },
+    });
+    expect(actions.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["add", "remove", "change", "bind", "unbind"]),
+    );
+    const constants = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: rulesUri },
+      position: { line: 3, character: "CONST{".length },
+    });
+    expect(constants.map(({ label }) => label)).toEqual(["arch", "virt", "cvm"]);
+    const options = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: rulesUri },
+      position: { line: 4, character: "OPTIONS=".length },
+    });
+    expect(options.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["watch", "string_escape=replace", "dump-json", "log_level=debug"]),
+    );
+    const environmentOperators = await request<CompletionItem[]>(
+      client,
+      "textDocument/completion",
+      {
+        textDocument: { uri: rulesUri },
+        position: { line: 5, character: "ENV{ID_MODEL}".length },
+      },
+    );
+    expect(environmentOperators.map(({ label }) => label)).toEqual(["==", "!=", "=", "+="]);
+    const quotedActions = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: rulesUri },
+      position: { line: 6, character: 'ACTION=="'.length },
+    });
+    expect(quotedActions.find(({ label }) => label === "add")?.insertText).toBe("add");
+    for (const [line, character] of [
+      [7, "UNKNOWN=".length],
+      [8, "UNKNOWN{".length],
+    ] as const) {
+      await expect(
+        request<CompletionItem[]>(client, "textDocument/completion", {
+          textDocument: { uri: rulesUri },
+          position: { line, character },
+        }),
+      ).resolves.toEqual([]);
+    }
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: rulesUri } });
+  });
+
+  it("completes documented mount options inside a table option field", async () => {
+    const tableUri = "file:///workspace/fstab";
+    const text = "UUID=demo /srv ext4 defaults,\n";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: tableUri,
+        languageId: "systemd-table",
+        version: 1,
+        text,
+      },
+    });
+    const options = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: tableUri },
+      position: { line: 0, character: text.trimEnd().length },
+    });
+    expect(options.map(({ label }) => label)).toEqual(
+      expect.arrayContaining([
+        "_netdev",
+        "nofail",
+        "x-systemd.automount",
+        "x-systemd.device-timeout=",
+        "x-systemd.requires=",
+      ]),
+    );
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: tableUri } });
+  });
+
   it("keeps navigation total when an indexed provider returns a malformed URI escape", async () => {
     await client.sendNotification("systemd/index/documents", {
       replace: false,

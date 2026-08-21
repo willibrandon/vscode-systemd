@@ -26,6 +26,9 @@ interface PhysicalLine {
   readonly fullEnd: number;
   readonly text: string;
   readonly ending: "" | "\n" | "\r\n";
+  readonly raw?: string;
+  readonly sourceOffsets?: readonly number[];
+  readonly error?: string;
 }
 
 export function parse(
@@ -41,7 +44,12 @@ export function parse(
   const nodes =
     iniDialects.has(dialect) && kind !== "mkosi:version"
       ? parseIni(physical, dialect, kind, diagnostics)
-      : parseRecords(physical, dialect, kind, diagnostics);
+      : parseRecords(
+          dialect === "systemd-udev-rules" ? udevLogicalLines(physical) : physical,
+          dialect,
+          kind,
+          diagnostics,
+        );
   return { uri, source, dialect, kind, nodes, diagnostics, lineStarts };
 }
 
@@ -282,9 +290,14 @@ function parseRecords(
   const nodes: SyntaxNode[] = [];
   for (const line of physical) {
     const span = { start: line.start, end: line.end };
+    const raw = line.raw ?? line.text;
+    if (line.error !== undefined) {
+      invalid(nodes, diagnostics, line, span, raw, line.error);
+      continue;
+    }
     const trimmed = line.text.replace(/^\uFEFF/u, "").trim();
     if (trimmed === "") {
-      nodes.push({ kind: "blank", span, line: line.line, raw: line.text });
+      nodes.push({ kind: "blank", span, line: line.line, raw });
       continue;
     }
     if (isRecordComment(trimmed, dialect)) {
@@ -292,29 +305,29 @@ function parseRecords(
         kind: "comment",
         span,
         line: line.line,
-        raw: line.text,
+        raw,
         text: trimmed.slice(1),
       });
       continue;
     }
     if (isTemplateLine(trimmed)) {
-      nodes.push(record(line, span, line.text, [trimmed], [span]));
+      nodes.push(record(line, span, raw, [trimmed], [span]));
       continue;
     }
     if (dialect === "systemd-hwdb") {
       const property = /^\s+([A-Za-z0-9_.{}-]+)\s*=(.*)$/u.exec(line.text);
       if (/^\s/u.test(line.text) && property === null) {
-        invalid(nodes, diagnostics, line, span, line.text, "Malformed hwdb property.");
+        invalid(nodes, diagnostics, line, span, raw, "Malformed hwdb property.");
         continue;
       }
       const fields =
         property === null ? [trimmed] : [property[1] ?? "", (property[2] ?? "").trim()];
-      nodes.push(record(line, span, line.text, fields, fieldSpans(line, fields)));
+      nodes.push(record(line, span, raw, fields, fieldSpans(line, fields)));
       continue;
     }
     if (dialect === "systemd-udev-rules") {
       const fields = splitQuoted(trimmed, ",");
-      nodes.push(record(line, span, line.text, fields, fieldSpans(line, fields)));
+      nodes.push(record(line, span, raw, fields, fieldSpans(line, fields)));
       continue;
     }
     if (dialect === "systemd-environment" && documentKind !== "systemd-environment:hostname") {
@@ -343,17 +356,17 @@ function parseRecords(
       documentKind === "systemd-boot:entry-token"
     ) {
       const token = wholeLineToken(line);
-      nodes.push(record(line, span, line.text, [token.text], [token.span]));
+      nodes.push(record(line, span, raw, [token.text], [token.span]));
       continue;
     }
     if (documentKind === "systemd-boot:loader" || documentKind === "systemd-boot:entry") {
       const tokens = splitWhitespace(line, 2);
-      nodes.push(record(line, span, line.text, tokens.fields, tokens.spans));
+      nodes.push(record(line, span, raw, tokens.fields, tokens.spans));
       continue;
     }
     if (dialect === "systemd-tmpfiles") {
       const tokens = splitWhitespace(line, 7);
-      nodes.push(record(line, span, line.text, tokens.fields, tokens.spans));
+      nodes.push(record(line, span, raw, tokens.fields, tokens.spans));
       continue;
     }
     if (
@@ -365,7 +378,7 @@ function parseRecords(
       documentKind === "systemd-boot:kernel-command-line"
     ) {
       const tokens = splitWhitespace(line);
-      nodes.push(record(line, span, line.text, tokens.fields, tokens.spans));
+      nodes.push(record(line, span, raw, tokens.fields, tokens.spans));
       continue;
     }
     if (dialect === "systemd-boot") {
@@ -378,7 +391,7 @@ function parseRecords(
           kind: "assignment",
           span,
           line: line.line,
-          raw: line.text,
+          raw,
           section: null,
           name,
           nameSpan: { start: nameStart, end: nameStart + name.length },
@@ -396,7 +409,7 @@ function parseRecords(
       dialect === "systemd-binfmt" && trimmed.startsWith(":")
         ? splitBinfmt(trimmed)
         : splitQuoted(trimmed, " ");
-    nodes.push(record(line, span, line.text, fields, fieldSpans(line, fields)));
+    nodes.push(record(line, span, raw, fields, fieldSpans(line, fields)));
   }
   return nodes;
 }
@@ -584,8 +597,68 @@ function fieldSpans(line: PhysicalLine, fields: readonly string[]): TextSpan[] {
     const found = line.text.indexOf(field, cursor);
     const offset = found < 0 ? cursor : found;
     cursor = offset + field.length;
-    return { start: line.start + offset, end: line.start + offset + field.length };
+    const mapped = line.sourceOffsets;
+    if (mapped === undefined || field.length === 0) {
+      return { start: line.start + offset, end: line.start + offset + field.length };
+    }
+    const start = mapped[offset] ?? line.start;
+    const end = (mapped[offset + field.length - 1] ?? start - 1) + 1;
+    return { start, end };
   });
+}
+
+function udevLogicalLines(physical: readonly PhysicalLine[]): PhysicalLine[] {
+  const result: PhysicalLine[] = [];
+  let pending: PhysicalLine[] = [];
+  let text = "";
+  let sourceOffsets: number[] = [];
+  const append = (line: PhysicalLine, continuation: boolean): void => {
+    let start = 0;
+    while (line.text[start] === " " || line.text[start] === "\t") start += 1;
+    const end = line.text.length - (continuation ? 1 : 0);
+    text += line.text.slice(start, end);
+    for (let index = start; index < end; index += 1) sourceOffsets.push(line.start + index);
+  };
+  const flush = (error?: string): void => {
+    const first = pending[0];
+    const last = pending.at(-1);
+    if (first === undefined || last === undefined) return;
+    result.push({
+      line: first.line,
+      start: first.start,
+      end: last.end,
+      fullEnd: last.fullEnd,
+      text,
+      ending: last.ending,
+      raw: pending
+        .map((line, index) => (index + 1 < pending.length ? line.text + line.ending : line.text))
+        .join(""),
+      sourceOffsets,
+      ...(error === undefined ? {} : { error }),
+    });
+    pending = [];
+    text = "";
+    sourceOffsets = [];
+  };
+
+  for (const line of physical) {
+    const semantic = line.text.trimStart();
+    if (semantic.startsWith("#")) {
+      if (pending.length > 0) pending.push(line);
+      else result.push(line);
+      continue;
+    }
+    const continuation = line.text.endsWith("\\");
+    if (pending.length === 0 && !continuation) {
+      result.push(line);
+      continue;
+    }
+    pending.push(line);
+    append(line, continuation);
+    if (!continuation) flush();
+  }
+  if (pending.length > 0) flush("Unexpected EOF after udev line continuation.");
+  return result;
 }
 
 function splitQuoted(value: string, separator: "," | " "): string[] {
