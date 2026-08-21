@@ -1,0 +1,5 @@
+[Unit]
+Description=Referenced fixture
+
+[Service]
+ExecStart=/bin/true

@@ -1,0 +1,7 @@
+[Unit]
+Description=Integration fixture
+Wants=other.service
+
+[Service]
+ExecStart = /bin/true
+Restar=yes

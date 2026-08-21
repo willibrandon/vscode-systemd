@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
+  "name": "vscode-systemd",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mounts": [
+    {
+      "source": "vscode-systemd-node-modules",
+      "target": "${containerWorkspaceFolder}/node_modules",
+      "type": "volume"
+    },
+    {
+      "source": "vscode-systemd-dist",
+      "target": "${containerWorkspaceFolder}/dist",
+      "type": "volume"
+    },
+    {
+      "source": "vscode-systemd-coverage",
+      "target": "${containerWorkspaceFolder}/coverage",
+      "type": "volume"
+    },
+    {
+      "source": "vscode-systemd-npm-cache",
+      "target": "/home/vscode/.npm",
+      "type": "volume"
+    }
+  ],
+  "postCreateCommand": ["bash", ".devcontainer/post-create.sh"],
+  "waitFor": "postCreateCommand",
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "init": true,
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb",
+    "storage": "8gb"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  }
+}

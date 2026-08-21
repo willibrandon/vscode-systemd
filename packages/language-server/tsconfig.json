@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib",
+    "tsBuildInfoFile": "../../node_modules/.cache/language-server.tsbuildinfo"
+  },
+  "include": ["src/server.ts", "src/protocol.ts"],
+  "references": [
+    {
+      "path": "../language-core"
+    }
+  ]
+}

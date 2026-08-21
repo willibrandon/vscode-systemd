@@ -1,0 +1,29 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/language-core"
+    },
+    {
+      "path": "./packages/language-server"
+    },
+    {
+      "path": "./packages/language-server/tsconfig.node.json"
+    },
+    {
+      "path": "./packages/language-server/tsconfig.browser.json"
+    },
+    {
+      "path": "./packages/vscode-client"
+    },
+    {
+      "path": "./packages/vscode-client/tsconfig.desktop.json"
+    },
+    {
+      "path": "./packages/vscode-client/tsconfig.browser.json"
+    },
+    {
+      "path": "./tsconfig.tests.json"
+    }
+  ]
+}

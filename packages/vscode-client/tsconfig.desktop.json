@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib/desktop",
+    "tsBuildInfoFile": "../../node_modules/.cache/vscode-client-desktop.tsbuildinfo",
+    "types": ["node", "vscode"]
+  },
+  "include": ["src/desktop.ts", "src/external-validator.ts"],
+  "references": [
+    {
+      "path": "."
+    },
+    {
+      "path": "../language-server"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Podman Quadlet",
+  "scopeName": "source.podman.quadlet",
+  "patterns": [{ "include": "source.systemd" }]
+}

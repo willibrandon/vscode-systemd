@@ -1,0 +1,65 @@
+name: Development container
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devcontainer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build, verify, and scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and verify the development container
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
+        with:
+          imageName: vscode-systemd-devcontainer
+          imageTag: ci
+          push: never
+          inheritEnv: false
+          runCmd: bash .devcontainer/verify.sh
+      - name: Export the development container image
+        run: |
+          docker save vscode-systemd-devcontainer:ci \
+            --output "${{ runner.temp }}/devcontainer.tar"
+      - name: Scan the development container image
+        uses: willibrandon/picket@4c9f7d28260bfe0a7334865c84db093519f6f57f # v0.2.12
+        with:
+          docker-archive: ${{ runner.temp }}/devcontainer.tar
+          ignore-path: .picketignore
+          cache: "false"
+          report-directory: ${{ runner.temp }}/devcontainer-picket
+          fail-on: findings
+          summary: "false"
+          upload-sarif: "false"
+          annotations: "false"
+          redact: "100"
+          max-target-megabytes: "64"
+          max-archive-depth: "2"
+          max-archive-entries: "100000"
+          max-archive-megabytes: "4096"
+          max-archive-ratio: "1000"
+          timeout: "900"
+      - name: Upload Picket report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: devcontainer-picket
+          path: ${{ runner.temp }}/devcontainer-picket/picket.sarif
+          if-no-files-found: warn
+          retention-days: 7

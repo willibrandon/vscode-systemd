@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "systemd udev rules",
+  "scopeName": "source.systemd.udev",
+  "patterns": [
+    { "name": "comment.line.number-sign.systemd", "match": "^\\s*#.*$" },
+    {
+      "name": "meta.rule.udev",
+      "match": "([A-Z0-9_]+(?:\\{[^}]+\\})?)(\\s*)(==|!=|:=|\\+=|-=|=)(\\s*)(\"(?:[^\"\\\\]|\\\\.)*\")",
+      "captures": {
+        "1": { "name": "support.type.property-name.udev" },
+        "3": { "name": "keyword.operator.udev" },
+        "5": { "name": "string.quoted.double.udev" }
+      }
+    },
+    { "name": "punctuation.separator.sequence.udev", "match": "," }
+  ]
+}

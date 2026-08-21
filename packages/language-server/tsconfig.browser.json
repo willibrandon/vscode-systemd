@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2025", "WebWorker"],
+    "outDir": "lib/browser",
+    "tsBuildInfoFile": "../../node_modules/.cache/language-server-browser.tsbuildinfo"
+  },
+  "include": ["src/browser.ts"],
+  "references": [
+    {
+      "path": "../language-core"
+    },
+    {
+      "path": "."
+    }
+  ]
+}

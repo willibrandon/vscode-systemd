@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib",
+    "tsBuildInfoFile": "../../node_modules/.cache/language-core.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts", "src/**/*.json"]
+}

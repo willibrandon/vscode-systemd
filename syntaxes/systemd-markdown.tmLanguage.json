@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "systemd Markdown fences",
+  "scopeName": "source.systemd.markdown",
+  "injectionSelector": "L:text.html.markdown",
+  "patterns": [{
+    "name": "markup.fenced_code.block.markdown",
+    "begin": "(^|\\G)(\\s*)((?:\\x60){3,}|~{3,})\\s*(?:systemd|systemd-unit|systemd-network|quadlet|mkosi)\\s*$",
+    "end": "(^|\\G)(\\2|\\s{0,3})(\\3)\\s*$",
+    "contentName": "source.systemd",
+    "patterns": [{ "include": "source.systemd" }]
+  }]
+}

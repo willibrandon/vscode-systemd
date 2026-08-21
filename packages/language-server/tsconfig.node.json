@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib/node",
+    "tsBuildInfoFile": "../../node_modules/.cache/language-server-node.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["src/node.ts"],
+  "references": [
+    {
+      "path": "../language-core"
+    },
+    {
+      "path": "."
+    }
+  ]
+}

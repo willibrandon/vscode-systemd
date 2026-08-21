@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out protected tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - run: npm ci
+      - name: Verify release source
+        run: npm run verify
+      - name: Check tag, changelog, tree, and publisher identity
+        run: node ./scripts/check-release.mjs
+      - name: Verify publishing credentials
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          test -n "$VSCE_PAT" || { echo "VSCE_PAT is required" >&2; exit 1; }
+          test -n "$OVSX_PAT" || { echo "OVSX_PAT is required" >&2; exit 1; }
+          npx vsce verify-pat willibrandon
+          npx ovsx verify-pat willibrandon --pat "$OVSX_PAT"
+      - name: Build release artifacts once
+        run: npm run package
+      - name: Record immutable artifact paths
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "VSIX_PATH=dist/systemd-$VERSION.vsix" >> "$GITHUB_ENV"
+          echo "CHECKSUM_PATH=dist/systemd-$VERSION.sha256" >> "$GITHUB_ENV"
+          echo "SBOM_PATH=dist/systemd-$VERSION.cdx.json" >> "$GITHUB_ENV"
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ env.VSIX_PATH }}
+      - name: Attest CycloneDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ env.VSIX_PATH }}
+          sbom-path: ${{ env.SBOM_PATH }}
+      - name: Publish exact VSIX to Visual Studio Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --packagePath "$VSIX_PATH" --no-dependencies --skip-duplicate
+      - name: Publish exact VSIX to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx ovsx publish "$VSIX_PATH" --pat "$OVSX_PAT" --skip-duplicate
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" "$VSIX_PATH" "$CHECKSUM_PATH" "$SBOM_PATH"
+          --verify-tag --title "systemd Unit Files $VERSION" --notes-from-tag

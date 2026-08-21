@@ -1,0 +1,16 @@
+{
+  "mkosi image": {
+    "prefix": "mkosi-image",
+    "body": [
+      "[Distribution]",
+      "Distribution=$1",
+      "Release=$2",
+      "",
+      "[Output]",
+      "Format=$3",
+      "",
+      "[Content]",
+      "Packages=$4"
+    ]
+  }
+}

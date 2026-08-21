@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "systemd hardware database",
+  "scopeName": "source.systemd.hwdb",
+  "patterns": [
+    { "name": "comment.line.number-sign.systemd", "match": "^\\s*#.*$" },
+    {
+      "name": "meta.assignment.hwdb",
+      "match": "^(\\s+)([A-Za-z0-9_.{}-]+)(=)(.*)$",
+      "captures": {
+        "2": { "name": "support.type.property-name.hwdb" },
+        "3": { "name": "keyword.operator.assignment.hwdb" },
+        "4": { "name": "string.unquoted.hwdb" }
+      }
+    },
+    { "name": "entity.name.tag.hwdb", "match": "^\\S.*$" }
+  ]
+}

@@ -1,0 +1,744 @@
+{
+  "name": "systemd",
+  "displayName": "systemd Unit Files",
+  "description": "Complete language support for systemd, Podman Quadlet, and mkosi configuration",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publisher": "willibrandon",
+  "author": {
+    "name": "Brandon Williams"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/willibrandon/vscode-systemd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/willibrandon/vscode-systemd/issues"
+  },
+  "homepage": "https://github.com/willibrandon/vscode-systemd#readme",
+  "icon": "media/icon.png",
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "keywords": [
+    "systemd",
+    "unit file",
+    "quadlet",
+    "podman",
+    "mkosi",
+    "networkd",
+    "udev",
+    "linux"
+  ],
+  "packageManager": "npm@12.0.2",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24 <25",
+    "vscode": "^1.102.0"
+  },
+  "main": "./dist/extension.cjs",
+  "browser": "./dist/browser.js",
+  "extensionKind": [
+    "workspace",
+    "ui"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": true,
+      "description": "Language features are available; installed validators and host indexing are disabled."
+    },
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Internal language features remain available; executable validation and extra-path indexing are disabled.",
+      "restrictedConfigurations": [
+        "systemd.externalValidation.mode",
+        "systemd.externalValidation.systemdAnalyzePath",
+        "systemd.externalValidation.quadletGeneratorPath",
+        "systemd.externalValidation.mkosiPath",
+        "systemd.index.extraPaths"
+      ]
+    }
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "systemd-unit",
+        "aliases": [
+          "systemd Unit",
+          "systemd-unit"
+        ],
+        "extensions": [
+          ".service",
+          ".socket",
+          ".timer",
+          ".path",
+          ".mount",
+          ".automount",
+          ".swap",
+          ".target",
+          ".device",
+          ".slice",
+          ".scope"
+        ],
+        "filenamePatterns": [
+          "**/*.{service,socket,timer,path,mount,automount,swap,target,device,slice,scope}.{ignore,backup,in,erb,j2,jinja,tmpl,template}",
+          "**/*.{service,socket,timer,path,mount,automount,swap,target,device,slice,scope}.d/*.conf",
+          "**/*.{service,socket,timer,path,mount,automount,swap,target,device,slice,scope}.d/*.conf.ignore"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-network",
+        "aliases": [
+          "systemd Network",
+          "systemd-network"
+        ],
+        "extensions": [
+          ".network",
+          ".netdev",
+          ".link",
+          ".dnssd",
+          ".dns-delegate"
+        ],
+        "filenamePatterns": [
+          "**/*.{network,netdev,link,dnssd,dns-delegate}.d/*.conf",
+          "**/*.{network,netdev,link,dnssd,dns-delegate}.{ignore,backup,in,erb,j2,jinja,tmpl,template}"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-config",
+        "aliases": [
+          "systemd Configuration",
+          "systemd-config"
+        ],
+        "extensions": [
+          ".nspawn"
+        ],
+        "filenames": [
+          "system.conf",
+          "user.conf",
+          "journald.conf",
+          "logind.conf",
+          "resolved.conf",
+          "timesyncd.conf",
+          "networkd.conf",
+          "coredump.conf",
+          "oomd.conf",
+          "homed.conf",
+          "pstore.conf",
+          "sleep.conf",
+          "systemd-sleep.conf",
+          "iocost.conf",
+          "journal-remote.conf",
+          "journal-upload.conf",
+          "udev.conf",
+          "sysext.conf",
+          "confext.conf",
+          "ukify.conf",
+          "uki.conf",
+          "install.conf"
+        ],
+        "filenamePatterns": [
+          "**/{system,user,journald,logind,resolved,timesyncd,networkd,coredump,oomd,homed,pstore,sleep,systemd-sleep,iocost,journal-remote,journal-upload,udev,sysext,confext,ukify,uki,install}.conf.d/*.conf",
+          "**/repart.d/*.conf",
+          "**/sysupdate.d/*.conf",
+          "**/portable/profile/**/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-tmpfiles",
+        "aliases": [
+          "systemd Tmpfiles",
+          "systemd-tmpfiles"
+        ],
+        "filenamePatterns": [
+          "**/tmpfiles.d/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-sysusers",
+        "aliases": [
+          "systemd Sysusers",
+          "systemd-sysusers"
+        ],
+        "filenamePatterns": [
+          "**/sysusers.d/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-udev-rules",
+        "aliases": [
+          "systemd udev Rules",
+          "systemd-udev-rules"
+        ],
+        "extensions": [
+          ".rules"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-hwdb",
+        "aliases": [
+          "systemd Hardware Database",
+          "systemd-hwdb"
+        ],
+        "extensions": [
+          ".hwdb"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-environment",
+        "aliases": [
+          "systemd Environment",
+          "systemd-environment"
+        ],
+        "filenames": [
+          "os-release",
+          "initrd-release",
+          "machine-info",
+          "locale.conf",
+          "vconsole.conf"
+        ],
+        "filenamePatterns": [
+          "**/environment.d/*.conf",
+          "**/extension-release.d/extension-release.*"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-sysctl",
+        "aliases": [
+          "systemd Sysctl",
+          "systemd-sysctl"
+        ],
+        "filenamePatterns": [
+          "**/sysctl.d/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-modules-load",
+        "aliases": [
+          "systemd Modules Load",
+          "systemd-modules-load"
+        ],
+        "filenamePatterns": [
+          "**/modules-load.d/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-binfmt",
+        "aliases": [
+          "systemd Binary Formats",
+          "systemd-binfmt"
+        ],
+        "filenamePatterns": [
+          "**/binfmt.d/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-preset",
+        "aliases": [
+          "systemd Preset",
+          "systemd-preset"
+        ],
+        "extensions": [
+          ".preset"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-table",
+        "aliases": [
+          "systemd Table",
+          "systemd-table"
+        ],
+        "filenames": [
+          "fstab",
+          "crypttab",
+          "veritytab",
+          "integritytab",
+          "clonetab"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-boot",
+        "aliases": [
+          "systemd Boot Configuration",
+          "systemd-boot"
+        ],
+        "filenames": [
+          "loader.conf",
+          "cmdline",
+          "entry-token"
+        ],
+        "filenamePatterns": [
+          "**/loader/entries/*.conf",
+          "**/kernel/install.conf.d/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-dns-trust-anchor",
+        "aliases": [
+          "systemd DNSSEC Trust Anchor",
+          "systemd-dns-trust-anchor"
+        ],
+        "extensions": [
+          ".positive",
+          ".negative"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemd-json",
+        "aliases": [
+          "systemd JSON",
+          "systemd-json"
+        ],
+        "extensions": [
+          ".pcrlock",
+          ".rr"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "podman-quadlet",
+        "aliases": [
+          "Podman Quadlet",
+          "quadlet"
+        ],
+        "extensions": [
+          ".artifact",
+          ".build",
+          ".container",
+          ".image",
+          ".kube",
+          ".pod",
+          ".volume"
+        ],
+        "filenamePatterns": [
+          "**/{containers,quadlet,quadlets}/systemd/*.network",
+          "**/containers/systemd/**/*.network",
+          "**/*.{artifact,build,container,image,kube,network,pod,volume}.d/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "mkosi",
+        "aliases": [
+          "mkosi",
+          "mkosi Configuration"
+        ],
+        "filenames": [
+          "mkosi.conf",
+          "mkosi.local.conf",
+          "mkosi.tools.conf",
+          "mkosi.version"
+        ],
+        "filenamePatterns": [
+          "**/mkosi.conf.d/**/*.conf",
+          "**/mkosi.profiles/**/*.conf",
+          "**/mkosi.images/**/*.conf",
+          "**/mkosi.local/**/*.conf",
+          "**/mkosi.uki-profiles/*.conf"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "systemd-unit",
+        "scopeName": "source.systemd",
+        "path": "./syntaxes/systemd.tmLanguage.json"
+      },
+      {
+        "language": "systemd-network",
+        "scopeName": "source.systemd.network",
+        "path": "./syntaxes/systemd-network.tmLanguage.json"
+      },
+      {
+        "language": "systemd-config",
+        "scopeName": "source.systemd.config",
+        "path": "./syntaxes/systemd-config.tmLanguage.json"
+      },
+      {
+        "language": "podman-quadlet",
+        "scopeName": "source.podman.quadlet",
+        "path": "./syntaxes/quadlet.tmLanguage.json"
+      },
+      {
+        "language": "mkosi",
+        "scopeName": "source.mkosi",
+        "path": "./syntaxes/mkosi.tmLanguage.json"
+      },
+      {
+        "language": "systemd-udev-rules",
+        "scopeName": "source.systemd.udev",
+        "path": "./syntaxes/udev-rules.tmLanguage.json"
+      },
+      {
+        "language": "systemd-hwdb",
+        "scopeName": "source.systemd.hwdb",
+        "path": "./syntaxes/hwdb.tmLanguage.json"
+      },
+      {
+        "language": "systemd-json",
+        "scopeName": "source.systemd.json",
+        "path": "./syntaxes/systemd-json.tmLanguage.json"
+      },
+      {
+        "language": "systemd-tmpfiles",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-sysusers",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-environment",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-sysctl",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-modules-load",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-binfmt",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-preset",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-table",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-boot",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "language": "systemd-dns-trust-anchor",
+        "scopeName": "source.systemd.records",
+        "path": "./syntaxes/systemd-records.tmLanguage.json"
+      },
+      {
+        "scopeName": "source.systemd.markdown",
+        "path": "./syntaxes/systemd-markdown.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      }
+    ],
+    "snippets": [
+      {
+        "language": "systemd-unit",
+        "path": "./snippets/systemd.json"
+      },
+      {
+        "language": "podman-quadlet",
+        "path": "./snippets/quadlet.json"
+      },
+      {
+        "language": "mkosi",
+        "path": "./snippets/mkosi.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "systemd.validateWithInstalledTools",
+        "title": "Validate with Installed Tool",
+        "category": "systemd"
+      },
+      {
+        "command": "systemd.showEffectiveConfiguration",
+        "title": "Show Effective Configuration",
+        "category": "systemd"
+      },
+      {
+        "command": "systemd.showDependencyGraph",
+        "title": "Show Dependency Graph",
+        "category": "systemd"
+      },
+      {
+        "command": "systemd.createDropIn",
+        "title": "Create Drop-in",
+        "category": "systemd"
+      },
+      {
+        "command": "systemd.selectDialect",
+        "title": "Select Configuration Dialect",
+        "category": "systemd"
+      },
+      {
+        "command": "systemd.openDocumentation",
+        "title": "Open Official Documentation",
+        "category": "systemd"
+      },
+      {
+        "command": "systemd.refreshIndex",
+        "title": "Refresh Configuration Index",
+        "category": "systemd"
+      },
+      {
+        "command": "systemd.restartLanguageServer",
+        "title": "Restart Language Server",
+        "category": "systemd"
+      },
+      {
+        "command": "systemd.showLanguageServerOutput",
+        "title": "Show Language Server Output",
+        "category": "systemd"
+      }
+    ],
+    "configuration": {
+      "title": "systemd",
+      "properties": {
+        "systemd.validation.enable": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Enable internal diagnostics."
+        },
+        "systemd.validation.maxProblems": {
+          "type": "integer",
+          "default": 200,
+          "minimum": 1,
+          "maximum": 2000,
+          "scope": "resource",
+          "description": "Maximum diagnostics per document."
+        },
+        "systemd.target.systemdVersion": {
+          "type": "string",
+          "default": "latest",
+          "scope": "resource",
+          "description": "Target systemd version: latest, auto, or an explicit release."
+        },
+        "systemd.target.podmanVersion": {
+          "type": "string",
+          "default": "latest",
+          "scope": "resource",
+          "description": "Target Podman version for Quadlet files."
+        },
+        "systemd.target.mkosiVersion": {
+          "type": "string",
+          "default": "latest",
+          "scope": "resource",
+          "description": "Target mkosi version."
+        },
+        "systemd.dataChannel": {
+          "type": "string",
+          "default": "stable",
+          "enum": [
+            "stable",
+            "preview"
+          ],
+          "scope": "window",
+          "description": "Bundled upstream metadata channel."
+        },
+        "systemd.index.scope": {
+          "type": "string",
+          "default": "workspaceAndHost",
+          "enum": [
+            "workspace",
+            "workspaceAndHost"
+          ],
+          "scope": "window",
+          "description": "Files included in cross-file indexing."
+        },
+        "systemd.index.extraPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "machine-overridable",
+          "description": "Additional trusted configuration search paths."
+        },
+        "systemd.dialectAssociations": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "scope": "resource",
+          "description": "Glob-to-dialect overrides for ambiguous files."
+        },
+        "systemd.templateSuffixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".in",
+            ".erb",
+            ".j2",
+            ".jinja",
+            ".tmpl",
+            ".template",
+            ".backup",
+            ".ignore"
+          ],
+          "scope": "resource",
+          "description": "Compound suffixes recognized after a systemd filename."
+        },
+        "systemd.externalValidation.mode": {
+          "type": "string",
+          "default": "off",
+          "enum": [
+            "off",
+            "onSave"
+          ],
+          "scope": "resource",
+          "description": "When to run optional installed validators."
+        },
+        "systemd.externalValidation.systemdAnalyzePath": {
+          "type": "string",
+          "default": "systemd-analyze",
+          "scope": "machine-overridable",
+          "description": "Installed systemd-analyze executable."
+        },
+        "systemd.externalValidation.quadletGeneratorPath": {
+          "type": "string",
+          "default": "/usr/libexec/podman/quadlet",
+          "scope": "machine-overridable",
+          "description": "Installed Podman Quadlet generator executable used with -dryrun."
+        },
+        "systemd.externalValidation.mkosiPath": {
+          "type": "string",
+          "default": "mkosi",
+          "scope": "machine-overridable",
+          "description": "Installed mkosi executable."
+        },
+        "systemd.trace.server": {
+          "type": "string",
+          "default": "off",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "scope": "window",
+          "description": "Language server protocol tracing."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "node ./scripts/clean.mjs",
+    "generate": "node ./scripts/generate-language-data.mjs",
+    "check:generated": "node ./scripts/generate-language-data.mjs --check",
+    "check:coverage": "node ./scripts/check-language-coverage.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --build",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:core": "vitest run packages/language-core/test",
+    "test:client": "vitest run packages/vscode-client/test",
+    "test:integration": "npm run build && node ./scripts/run-integration-tests.mjs",
+    "test:grammar": "vitest run test/grammar",
+    "test:package": "vitest run test/package",
+    "build": "node ./esbuild.mjs",
+    "check:bundles": "node ./scripts/check-bundles.mjs",
+    "check:licenses": "node ./scripts/check-licenses.mjs",
+    "check:package": "node ./scripts/check-package.mjs",
+    "check:upstream": "node ./scripts/check-upstream-drift.mjs",
+    "audit": "npm audit --audit-level=moderate",
+    "audit:signatures": "npm audit signatures",
+    "vscode:prepublish": "npm run check:bundles",
+    "package": "npm run build && npm run check:bundles && npm run check:licenses && npm run check:package && node ./scripts/build-release-artifacts.mjs",
+    "package:list": "vsce ls --no-dependencies",
+    "verify": "npm run check:generated && npm run check:coverage && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run check:bundles && npm run check:licenses && npm run check:package && npm run test:package && npm run audit && npm run audit:signatures"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/mocha": "10.0.10",
+    "@types/node": "24.13.3",
+    "@types/vscode": "1.102.0",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "@vitest/coverage-v8": "4.1.10",
+    "@vscode/test-cli": "0.0.15",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/test-web": "0.0.81",
+    "@vscode/vsce": "3.9.2",
+    "esbuild": "0.28.2",
+    "eslint": "10.8.1",
+    "fast-check": "4.9.0",
+    "glob": "13.0.6",
+    "ovsx": "1.1.1",
+    "playwright": "1.62.1",
+    "prettier": "3.9.6",
+    "prettier-plugin-astro": "0.14.1",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.10",
+    "vscode-jsonrpc": "9.0.1",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2",
+    "yaml": "2.9.0",
+    "yauzl": "3.4.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.0",
+    "vscode-languageserver": "10.1.0",
+    "vscode-languageserver-textdocument": "1.0.12"
+  },
+  "overrides": {
+    "cheerio": "1.0.0-rc.12",
+    "diff": "8.0.3",
+    "glob": "13.0.6",
+    "keytar": "npm:@github/keytar@7.10.6",
+    "serialize-javascript": "7.1.0"
+  },
+  "files": [
+    "dist/extension.cjs",
+    "dist/browser.js",
+    "dist/nodeServer.cjs",
+    "dist/browserServer.js",
+    "syntaxes/",
+    "snippets/",
+    "media/icon.png",
+    "language-configuration.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "allowScripts": {
+    "@playwright/browser-chromium@1.62.1": true,
+    "@vscode/vsce-sign@2.0.9": true,
+    "esbuild@0.28.2": true,
+    "@github/keytar@7.10.6": true
+  }
+}

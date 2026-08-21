@@ -1,0 +1,19 @@
+{
+  "Quadlet container": {
+    "prefix": "quadlet-container",
+    "body": [
+      "[Unit]",
+      "Description=$1",
+      "",
+      "[Container]",
+      "Image=$2",
+      "Exec=$3",
+      "",
+      "[Service]",
+      "Restart=always",
+      "",
+      "[Install]",
+      "WantedBy=default.target"
+    ]
+  }
+}

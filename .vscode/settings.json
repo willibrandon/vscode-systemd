@@ -1,0 +1,8 @@
+{
+  "files.exclude": {
+    "**/.vscode-test-web": true
+  },
+  "files.watcherExclude": {
+    "**/.vscode-test-web/**": true
+  }
+}

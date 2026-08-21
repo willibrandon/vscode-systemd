@@ -1,0 +1,38 @@
+{
+  "Service unit": {
+    "prefix": "service-unit",
+    "description": "Create a systemd service unit",
+    "body": [
+      "[Unit]",
+      "Description=$1",
+      "After=network-online.target",
+      "Wants=network-online.target",
+      "",
+      "[Service]",
+      "Type=$2",
+      "ExecStart=$3",
+      "Restart=on-failure",
+      "",
+      "[Install]",
+      "WantedBy=multi-user.target"
+    ]
+  },
+  "Timer unit": {
+    "prefix": "timer-unit",
+    "body": [
+      "[Unit]",
+      "Description=$1",
+      "",
+      "[Timer]",
+      "OnCalendar=$2",
+      "Persistent=true",
+      "",
+      "[Install]",
+      "WantedBy=timers.target"
+    ]
+  },
+  "Unit drop-in": {
+    "prefix": "drop-in",
+    "body": ["[$1]", "$2"]
+  }
+}
