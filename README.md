@@ -21,6 +21,9 @@ into the desktop and browser extension.
 - Document and workspace symbols, folding, selection ranges, semantic tokens, and formatting.
 - Unknown-section, unknown-directive, value-type, required-section, version, and deprecation
   diagnostics.
+- Valid file-skeleton snippets for every author-configurable unit type, all eight Quadlet types, and
+  common mkosi image formats.
+- Required-setting diagnostics for the inputs Podman's Quadlet converter needs to generate a unit.
 - Quick fixes for likely directive misspellings.
 - Go to definition, references, highlights, and safe textual rename for unit and resource
   references.

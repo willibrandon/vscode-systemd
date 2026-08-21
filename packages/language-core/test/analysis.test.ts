@@ -165,6 +165,40 @@ describe("INI semantic analysis", () => {
     ).not.toContain("missing-required-section");
   });
 
+  it.each([
+    ["demo.artifact", "[Artifact]\n", 1],
+    ["demo.build", "[Build]\n", 2],
+    ["demo.container", "[Container]\n", 1],
+    ["demo.image", "[Image]\n", 1],
+    ["demo.kube", "[Kube]\n", 1],
+  ])("reports missing converter inputs for %s", (filename, source, expected) => {
+    const diagnostics = analyze(
+      parse(source, "podman-quadlet", "file:///workspace/" + filename),
+    ).filter(({ code }) => code === "missing-required-setting");
+    expect(diagnostics).toHaveLength(expected);
+  });
+
+  it.each([
+    ["demo.artifact", "[Artifact]\nArtifact=quay.io/example/artifact:latest\n"],
+    ["demo.build", "[Build]\nImageTag=localhost/example:latest\nFile=/workspace/Containerfile\n"],
+    ["demo.build", "[Build]\nImageTag=localhost/example:latest\nSetWorkingDirectory=/workspace\n"],
+    [
+      "demo.build",
+      "[Build]\nImageTag=localhost/example:latest\n\n[Service]\nWorkingDirectory=/workspace\n",
+    ],
+    ["demo.container", "[Container]\nImage=quay.io/podman/hello:latest\n"],
+    ["demo.container", "[Container]\nRootfs=/srv/container-root\n"],
+    ["demo.image", "[Image]\nImage=quay.io/podman/hello:latest\n"],
+    ["demo.kube", "[Kube]\nYaml=/workspace/workload.yaml\n"],
+    ["demo.network", "[Network]\n"],
+    ["demo.pod", "[Pod]\n"],
+    ["demo.volume", "[Volume]\n"],
+  ])("accepts complete converter inputs for %s", (filename, source) => {
+    expect(codes(source, "podman-quadlet", "file:///workspace/" + filename)).not.toContain(
+      "missing-required-setting",
+    );
+  });
+
   it("honors the diagnostic limit", () => {
     const document = parse("[Service]\nOne=x\nTwo=x\nThree=x\n", "systemd-unit");
     expect(analyze(document, { maxProblems: 2 })).toHaveLength(2);

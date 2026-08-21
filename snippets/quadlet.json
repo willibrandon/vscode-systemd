@@ -1,19 +1,126 @@
 {
-  "Quadlet container": {
-    "prefix": "quadlet-container",
+  "Quadlet artifact": {
+    "prefix": "quadlet-artifact",
+    "description": "Pull an OCI artifact with Podman Quadlet",
     "body": [
       "[Unit]",
-      "Description=$1",
+      "Description=${1:OCI artifact}",
       "",
-      "[Container]",
-      "Image=$2",
-      "Exec=$3",
-      "",
-      "[Service]",
-      "Restart=always",
+      "[Artifact]",
+      "Artifact=${2:quay.io/example/artifact:latest}",
       "",
       "[Install]",
-      "WantedBy=default.target"
+      "WantedBy=${3|default.target,multi-user.target|}",
+      "$0"
+    ]
+  },
+  "Quadlet build": {
+    "prefix": "quadlet-build",
+    "description": "Build a container image with Podman Quadlet",
+    "body": [
+      "[Unit]",
+      "Description=${1:Container image build}",
+      "",
+      "[Build]",
+      "File=${2:/absolute/path/to/Containerfile}",
+      "ImageTag=${3:localhost/example:latest}",
+      "",
+      "[Install]",
+      "WantedBy=${4|default.target,multi-user.target|}",
+      "$0"
+    ]
+  },
+  "Quadlet container": {
+    "prefix": "quadlet-container",
+    "description": "Run a container with Podman Quadlet",
+    "body": [
+      "[Unit]",
+      "Description=${1:Container service}",
+      "",
+      "[Container]",
+      "Image=${2:quay.io/podman/hello:latest}",
+      "",
+      "[Service]",
+      "Restart=${3:on-failure}",
+      "",
+      "[Install]",
+      "WantedBy=${4|default.target,multi-user.target|}",
+      "$0"
+    ]
+  },
+  "Quadlet image": {
+    "prefix": "quadlet-image",
+    "description": "Pull a container image with Podman Quadlet",
+    "body": [
+      "[Unit]",
+      "Description=${1:Container image}",
+      "",
+      "[Image]",
+      "Image=${2:quay.io/podman/hello:latest}",
+      "",
+      "[Install]",
+      "WantedBy=${3|default.target,multi-user.target|}",
+      "$0"
+    ]
+  },
+  "Quadlet kube": {
+    "prefix": "quadlet-kube",
+    "description": "Run Kubernetes YAML with Podman Quadlet",
+    "body": [
+      "[Unit]",
+      "Description=${1:Kubernetes workload}",
+      "",
+      "[Kube]",
+      "Yaml=${2:/absolute/path/to/workload.yaml}",
+      "",
+      "[Install]",
+      "WantedBy=${3|default.target,multi-user.target|}",
+      "$0"
+    ]
+  },
+  "Quadlet network": {
+    "prefix": "quadlet-network",
+    "description": "Create a Podman network with Quadlet",
+    "body": [
+      "[Unit]",
+      "Description=${1:Container network}",
+      "",
+      "[Network]",
+      "Driver=${2:bridge}",
+      "",
+      "[Install]",
+      "WantedBy=${3|default.target,multi-user.target|}",
+      "$0"
+    ]
+  },
+  "Quadlet pod": {
+    "prefix": "quadlet-pod",
+    "description": "Create a Podman pod with Quadlet",
+    "body": [
+      "[Unit]",
+      "Description=${1:Container pod}",
+      "",
+      "[Pod]",
+      "PodName=${2:example}",
+      "",
+      "[Install]",
+      "WantedBy=${3|default.target,multi-user.target|}",
+      "$0"
+    ]
+  },
+  "Quadlet volume": {
+    "prefix": "quadlet-volume",
+    "description": "Create a Podman volume with Quadlet",
+    "body": [
+      "[Unit]",
+      "Description=${1:Container volume}",
+      "",
+      "[Volume]",
+      "Driver=${2:local}",
+      "",
+      "[Install]",
+      "WantedBy=${3|default.target,multi-user.target|}",
+      "$0"
     ]
   }
 }

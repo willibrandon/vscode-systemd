@@ -17,12 +17,26 @@ than text-only guesses.
 The bundled registry is generated from pinned systemd, Podman, and mkosi source revisions. Normal
 language help does not require a network request or a host executable.
 
+## File skeletons
+
+At the start of an empty file, type a snippet prefix such as `service-unit`, `quadlet-container`, or
+`mkosi-image`. The extension includes complete starting points for every unit type that systemd
+allows developers to configure in a file, every current Quadlet type, and common mkosi outputs.
+Placeholder choices cover details such as service type, user or system installation target, image
+format, and bootloader.
+
+There is intentionally no `.scope` file skeleton: systemd creates scope units programmatically and
+does not load them from unit configuration files. Existing scope units remain recognized for
+navigation and inspection.
+
 ## Diagnostics and quick fixes
 
 Built-in diagnostics cover unknown and misplaced sections or directives, malformed values, missing
-required sections, version availability, deprecations, and unit ordering cycles. Related locations
-connect a cycle or cross-file reference to the other indexed configuration involved. Close directive
-misspellings offer conservative quick fixes.
+required sections and settings, version availability, deprecations, and unit ordering cycles. For
+Quadlet, this includes the inputs required by Podman's converter, such as `Image=`, `Yaml=`,
+`Artifact=`, and build tags and contexts. Related locations connect a cycle or cross-file reference
+to the other indexed configuration involved. Close directive misspellings offer conservative quick
+fixes.
 
 ![An unknown systemd directive diagnostic with quick-fix actions](../../assets/diagnostic.png)
 

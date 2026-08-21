@@ -4,35 +4,155 @@
     "description": "Create a systemd service unit",
     "body": [
       "[Unit]",
-      "Description=$1",
-      "After=network-online.target",
-      "Wants=network-online.target",
+      "Description=${1:Service description}",
       "",
       "[Service]",
-      "Type=$2",
-      "ExecStart=$3",
-      "Restart=on-failure",
+      "Type=${2|exec,notify,oneshot,simple,forking|}",
+      "ExecStart=${3:/usr/bin/example}",
+      "Restart=${4:on-failure}",
       "",
       "[Install]",
-      "WantedBy=multi-user.target"
+      "WantedBy=${5:multi-user.target}",
+      "$0"
+    ]
+  },
+  "Socket unit": {
+    "prefix": "socket-unit",
+    "description": "Create a socket-activated systemd unit",
+    "body": [
+      "[Unit]",
+      "Description=${1:Socket description}",
+      "",
+      "[Socket]",
+      "ListenStream=${2:8080}",
+      "Accept=${3|no,yes|}",
+      "",
+      "[Install]",
+      "WantedBy=sockets.target",
+      "$0"
     ]
   },
   "Timer unit": {
     "prefix": "timer-unit",
+    "description": "Create a calendar-based systemd timer",
     "body": [
       "[Unit]",
-      "Description=$1",
+      "Description=${1:Timer description}",
       "",
       "[Timer]",
-      "OnCalendar=$2",
-      "Persistent=true",
+      "OnCalendar=${2:daily}",
+      "Persistent=${3|true,false|}",
       "",
       "[Install]",
-      "WantedBy=timers.target"
+      "WantedBy=timers.target",
+      "$0"
+    ]
+  },
+  "Path unit": {
+    "prefix": "path-unit",
+    "description": "Create a path-activated systemd unit",
+    "body": [
+      "[Unit]",
+      "Description=${1:Path watcher description}",
+      "",
+      "[Path]",
+      "PathChanged=${2:/path/to/watch}",
+      "Unit=${3:example.service}",
+      "",
+      "[Install]",
+      "WantedBy=paths.target",
+      "$0"
+    ]
+  },
+  "Mount unit": {
+    "prefix": "mount-unit",
+    "description": "Create a systemd mount unit",
+    "body": [
+      "[Unit]",
+      "Description=${1:Mount description}",
+      "",
+      "[Mount]",
+      "What=${2:/dev/disk/by-uuid/example}",
+      "Where=${3:/mnt/example}",
+      "Type=${4:auto}",
+      "Options=${5:defaults}",
+      "",
+      "[Install]",
+      "WantedBy=local-fs.target",
+      "$0"
+    ]
+  },
+  "Automount unit": {
+    "prefix": "automount-unit",
+    "description": "Create an on-demand systemd automount unit",
+    "body": [
+      "[Unit]",
+      "Description=${1:Automount description}",
+      "",
+      "[Automount]",
+      "Where=${2:/mnt/example}",
+      "TimeoutIdleSec=${3:5min}",
+      "",
+      "[Install]",
+      "WantedBy=local-fs.target",
+      "$0"
+    ]
+  },
+  "Swap unit": {
+    "prefix": "swap-unit",
+    "description": "Create a systemd swap unit",
+    "body": [
+      "[Unit]",
+      "Description=${1:Swap description}",
+      "",
+      "[Swap]",
+      "What=${2:/dev/disk/by-uuid/example}",
+      "Options=${3:defaults}",
+      "",
+      "[Install]",
+      "WantedBy=swap.target",
+      "$0"
+    ]
+  },
+  "Target unit": {
+    "prefix": "target-unit",
+    "description": "Create a systemd synchronization target",
+    "body": [
+      "[Unit]",
+      "Description=${1:Target description}",
+      "Wants=${2:example.service}",
+      "After=${2:example.service}",
+      "",
+      "[Install]",
+      "WantedBy=${3:multi-user.target}",
+      "$0"
+    ]
+  },
+  "Device unit": {
+    "prefix": "device-unit",
+    "description": "Configure dependencies for a systemd device unit",
+    "body": [
+      "[Unit]",
+      "Description=${1:Device description}",
+      "Wants=${2:example.service}",
+      "$0"
+    ]
+  },
+  "Slice unit": {
+    "prefix": "slice-unit",
+    "description": "Create a resource-controlled systemd slice",
+    "body": [
+      "[Unit]",
+      "Description=${1:Slice description}",
+      "",
+      "[Slice]",
+      "MemoryMax=${2:1G}",
+      "$0"
     ]
   },
   "Unit drop-in": {
-    "prefix": "drop-in",
-    "body": ["[$1]", "$2"]
+    "prefix": "unit-drop-in",
+    "description": "Create a systemd unit drop-in override",
+    "body": ["[${1:Service}]", "${2:Restart=on-failure}", "$0"]
   }
 }

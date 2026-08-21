@@ -1,16 +1,71 @@
 {
   "mkosi image": {
     "prefix": "mkosi-image",
+    "description": "Create a general-purpose mkosi image configuration",
     "body": [
       "[Distribution]",
-      "Distribution=$1",
-      "Release=$2",
+      "Distribution=${1|fedora,debian,ubuntu,arch|}",
+      "Release=${2:rawhide}",
       "",
       "[Output]",
-      "Format=$3",
+      "Format=${3|disk,directory,tar,oci|}",
       "",
       "[Content]",
-      "Packages=$4"
+      "Packages=${4:systemd}",
+      "$0"
+    ]
+  },
+  "mkosi bootable disk": {
+    "prefix": "mkosi-bootable-disk",
+    "description": "Create a bootable GPT disk image with mkosi",
+    "body": [
+      "[Distribution]",
+      "Distribution=${1|fedora,debian,ubuntu,arch|}",
+      "Release=${2:rawhide}",
+      "",
+      "[Output]",
+      "Format=disk",
+      "",
+      "[Content]",
+      "Bootable=${3|auto,yes,no|}",
+      "Bootloader=${4|systemd-boot,uki,grub|}",
+      "Packages=${5:systemd}",
+      "$0"
+    ]
+  },
+  "mkosi unified kernel image": {
+    "prefix": "mkosi-uki",
+    "description": "Create a unified kernel image with mkosi",
+    "body": [
+      "[Distribution]",
+      "Distribution=${1|fedora,debian,ubuntu,arch|}",
+      "Release=${2:rawhide}",
+      "",
+      "[Output]",
+      "Format=uki",
+      "",
+      "[Content]",
+      "Bootable=yes",
+      "Bootloader=uki",
+      "Packages=${3:systemd}",
+      "$0"
+    ]
+  },
+  "mkosi directory image": {
+    "prefix": "mkosi-directory",
+    "description": "Create an unpacked directory image with mkosi",
+    "body": [
+      "[Distribution]",
+      "Distribution=${1|fedora,debian,ubuntu,arch|}",
+      "Release=${2:rawhide}",
+      "",
+      "[Output]",
+      "Format=directory",
+      "OutputDirectory=${3:mkosi.output}",
+      "",
+      "[Content]",
+      "Packages=${4:systemd}",
+      "$0"
     ]
   }
 }

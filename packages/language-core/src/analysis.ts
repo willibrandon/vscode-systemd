@@ -160,7 +160,7 @@ function analyzeIni(
     }
     validateValue(node, definition.valueKind, definition.choices, diagnostics);
   }
-  validateRequiredSections(document, diagnostics);
+  validateRequiredStructure(document, diagnostics);
 }
 
 function validateValue(
@@ -218,7 +218,7 @@ function validateValue(
   }
 }
 
-function validateRequiredSections(document: ParsedDocument, diagnostics: CoreDiagnostic[]): void {
+function validateRequiredStructure(document: ParsedDocument, diagnostics: CoreDiagnostic[]): void {
   const present = new Set(
     document.nodes.filter((node) => node.kind === "section").map((node) => node.name),
   );
@@ -235,6 +235,49 @@ function validateRequiredSections(document: ParsedDocument, diagnostics: CoreDia
       message: "This file requires a [" + required + "] section.",
       severity: "error",
       span: { start: 0, end: Math.min(document.source.length, 1) },
+    });
+    return;
+  }
+  if (document.dialect === "podman-quadlet" && required !== undefined) {
+    validateRequiredQuadletSettings(document, required, diagnostics);
+  }
+}
+
+function validateRequiredQuadletSettings(
+  document: ParsedDocument,
+  section: string,
+  diagnostics: CoreDiagnostic[],
+): void {
+  const assignments = document.nodes.filter(
+    (node): node is AssignmentNode => node.kind === "assignment" && node.value !== "",
+  );
+  const has = (name: string, settingSection = section): boolean =>
+    assignments.some((node) => node.section === settingSection && node.name === name);
+  const sectionNode = document.nodes.find(
+    (node) => node.kind === "section" && node.name === section,
+  );
+  const span = sectionNode?.span ?? { start: 0, end: Math.min(document.source.length, 1) };
+  const missing: string[] = [];
+
+  if (section === "Artifact" && !has("Artifact")) missing.push("Artifact=");
+  if (section === "Container" && !has("Image") && !has("Rootfs")) {
+    missing.push("Image= or Rootfs=");
+  }
+  if (section === "Image" && !has("Image")) missing.push("Image=");
+  if (section === "Kube" && !has("Yaml")) missing.push("Yaml=");
+  if (section === "Build") {
+    if (!has("ImageTag")) missing.push("ImageTag=");
+    if (!has("File") && !has("SetWorkingDirectory") && !has("WorkingDirectory", "Service")) {
+      missing.push("File=, SetWorkingDirectory=, or [Service] WorkingDirectory=");
+    }
+  }
+
+  for (const setting of missing) {
+    diagnostics.push({
+      code: "missing-required-setting",
+      message: "[" + section + "] requires " + setting + ".",
+      severity: "error",
+      span,
     });
   }
 }

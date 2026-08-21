@@ -19,9 +19,9 @@ Studio Code, then open a recognized configuration file.
 
 ## Explore the editor support
 
-Create `example.service` using the example on the home page. Trigger suggestions under `[Unit]` or
-`[Service]`, hover over `ExecStart`, and introduce a close misspelling such as `Restar=` to see a
-diagnostic and quick fix.
+Create `example.service` and enter `service-unit` to insert a complete service skeleton, or use the
+example on the home page. Trigger suggestions under `[Unit]` or `[Service]`, hover over `ExecStart`,
+and introduce a close misspelling such as `Restar=` to see a diagnostic and quick fix.
 
 Use **Format Document** to normalize spacing without reordering directives. Open the Systemd
 Explorer to inspect the unit and its references. The editor title and status bar show `systemd Unit`

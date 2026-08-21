@@ -28,6 +28,8 @@ All notable changes to this project will be documented here. The format follows
   extension.
 - Capability-probed installed validation against bounded temporary configuration copies with an
   isolated environment and private path remapping.
+- Semantically validated file-skeleton snippets for every author-configurable unit type, all current
+  Quadlet types, and common mkosi image formats.
 
 ### Fixed
 
@@ -45,5 +47,7 @@ All notable changes to this project will be documented here. The format follows
   compact generated delta and reparse open and indexed files immediately when switched.
 - Indexed unit symlinks now retain their canonical targets so aliases use the canonical fragment,
   combine canonical and alias drop-ins, and preserve `/dev/null` mask behavior.
+- Incomplete Quadlet files now report the required converter inputs for artifact, build, container,
+  image, and Kubernetes units before installed-tool validation runs.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main
