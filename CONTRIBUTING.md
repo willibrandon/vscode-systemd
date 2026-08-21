@@ -34,4 +34,11 @@ Run the narrowest tests while iterating, then `npm run verify`. Do not commit ge
 VSIX files, coverage output, downloaded VS Code builds, local upstream trees, credentials, or
 `plan.md`.
 
+## Maintainer documentation
+
+- [Architecture](docs/architecture.md)
+- [Upstream data](docs/upstream-data.md)
+- [Testing](docs/testing.md)
+- [Releasing](docs/releasing.md)
+
 Contributions are licensed under the repository's MIT License.
