@@ -140,13 +140,15 @@
           "sysext.conf",
           "confext.conf",
           "ukify.conf",
-          "uki.conf",
-          "install.conf"
+          "uki.conf"
         ],
         "filenamePatterns": [
-          "**/{system,user,journald,logind,resolved,timesyncd,networkd,coredump,oomd,homed,pstore,sleep,systemd-sleep,iocost,journal-remote,journal-upload,udev,sysext,confext,ukify,uki,install}.conf.d/*.conf",
+          "**/{system,user,journald,logind,resolved,timesyncd,networkd,coredump,oomd,homed,pstore,sleep,systemd-sleep,iocost,journal-remote,journal-upload,udev,sysext,confext,ukify,uki}.conf.d/*.conf",
+          "**/journald@*.conf",
+          "**/journald@*.conf.d/*.conf",
           "**/repart.d/*.conf",
           "**/sysupdate.d/*.conf",
+          "**/mkosi.repart/**/*.conf",
           "**/portable/profile/**/*.conf"
         ],
         "configuration": "./language-configuration.json"
@@ -204,6 +206,7 @@
         "filenames": [
           "os-release",
           "initrd-release",
+          "hostname",
           "machine-info",
           "locale.conf",
           "vconsole.conf"
@@ -281,6 +284,7 @@
         ],
         "filenames": [
           "loader.conf",
+          "install.conf",
           "cmdline",
           "entry-token"
         ],
@@ -350,9 +354,12 @@
         ],
         "filenamePatterns": [
           "**/mkosi.conf.d/**/*.conf",
+          "**/mkosi.profiles/*",
           "**/mkosi.profiles/**/*.conf",
+          "**/mkosi.images/*",
           "**/mkosi.images/**/*.conf",
           "**/mkosi.local/**/*.conf",
+          "**/mkosi.tools.conf/**/*.conf",
           "**/mkosi.uki-profiles/*.conf"
         ],
         "configuration": "./language-configuration.json"

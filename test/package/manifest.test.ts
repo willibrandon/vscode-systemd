@@ -13,6 +13,11 @@ interface Manifest {
   readonly activationEvents?: readonly string[];
   readonly contributes: {
     readonly commands: readonly { readonly command: string }[];
+    readonly languages: readonly {
+      readonly id: string;
+      readonly filenames?: readonly string[];
+      readonly filenamePatterns?: readonly string[];
+    }[];
     readonly views: {
       readonly explorer: readonly { readonly id: string; readonly name: string }[];
     };
@@ -72,6 +77,24 @@ describe("extension manifest", () => {
         $schema: "https://json-schema.org/draft/2020-12/schema",
       });
     }
+  });
+
+  it("declaratively recognizes namespaced journal, kernel-install, hostname, and mkosi files", () => {
+    const language = (id: string) =>
+      manifest.contributes.languages.find((candidate) => candidate.id === id);
+    expect(language("systemd-config")?.filenamePatterns).toEqual(
+      expect.arrayContaining(["**/journald@*.conf", "**/journald@*.conf.d/*.conf"]),
+    );
+    expect(language("systemd-environment")?.filenames).toContain("hostname");
+    expect(language("systemd-boot")?.filenames).toContain("install.conf");
+    expect(language("systemd-config")?.filenames).not.toContain("install.conf");
+    expect(language("mkosi")?.filenamePatterns).toEqual(
+      expect.arrayContaining([
+        "**/mkosi.profiles/*",
+        "**/mkosi.images/*",
+        "**/mkosi.tools.conf/**/*.conf",
+      ]),
+    );
   });
 
   it("contributes the Systemd Explorer in the standard Explorer container", () => {

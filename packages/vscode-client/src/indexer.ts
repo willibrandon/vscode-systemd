@@ -7,6 +7,7 @@ import {
   indexedDocumentsNotification,
 } from "@systemd/language-server/protocol";
 import type { IndexedDocument } from "@systemd/language-server/protocol";
+import { configurationWorkspaceGlobs } from "./index-patterns.js";
 
 const maximumFiles = 20_000;
 const maximumFileBytes = 2 * 1024 * 1024;
@@ -122,7 +123,7 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
 
   public workspaceGlobs(): readonly string[] {
     return [
-      ...systemdWorkspaceGlobs(configuredSuffixes()),
+      ...configurationWorkspaceGlobs(configuredSuffixes()),
       ...configuredAssociationPatterns(this.languageIds),
     ];
   }
@@ -456,28 +457,6 @@ function potentialConfiguration(path: string, suffixes: readonly string[]): bool
   return /^(?:fstab|crypttab|veritytab|integritytab|clonetab|loader\.conf|install\.conf|os-release|initrd-release|machine-info|locale\.conf|vconsole\.conf|mkosi\.version|cmdline|entry-token)$/u.test(
     name,
   );
-}
-
-function systemdWorkspaceGlobs(suffixes: readonly string[]): readonly string[] {
-  const suffixNames = suffixes.map((suffix) => suffix.slice(1)).join(",");
-  const base =
-    "**/{*.service,*.socket,*.timer,*.path,*.mount,*.automount,*.swap,*.target," +
-    "*.device,*.slice,*.scope,*.network,*.netdev,*.link,*.nspawn,*.dnssd," +
-    "*.dns-delegate,*.container,*.volume,*.pod,*.kube,*.image,*.build,*.artifact," +
-    "*.rules,*.hwdb,*.preset,*.pcrlock,*.rr,mkosi.conf,mkosi.conf.d/*.conf," +
-    "mkosi.default.d/*.conf,mkosi.extra.d/*.conf,*.positive,*.negative," +
-    "fstab,crypttab,veritytab,integritytab,clonetab,loader.conf,install.conf," +
-    "os-release,initrd-release,machine-info,locale.conf,vconsole.conf}";
-  if (suffixNames === "") return [base];
-  const types =
-    "service,socket,timer,path,mount,automount,swap,target,device,slice,scope," +
-    "network,netdev,link,dnssd,dns-delegate,nspawn,container,volume,pod,kube,image,build,artifact";
-  return [
-    base,
-    `**/*.{${types}}.{${suffixNames}}`,
-    `**/*.{${types}}.d/*.conf.{${suffixNames}}`,
-    `**/{mkosi.conf,mkosi.conf.d/*.conf}.{${suffixNames}}`,
-  ];
 }
 
 function safeMessage(error: unknown): string {

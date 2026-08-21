@@ -80,7 +80,9 @@ export function detectDialect(
   if (effective.endsWith(".hwdb")) return "systemd-hwdb";
   if (
     normalized.includes("/environment.d/") ||
-    /^(?:os-release|initrd-release|machine-info|locale\.conf|vconsole\.conf)$/u.test(effective) ||
+    /^(?:hostname|os-release|initrd-release|machine-info|locale\.conf|vconsole\.conf)$/u.test(
+      effective,
+    ) ||
     normalized.includes("/extension-release.d/")
   ) {
     return "systemd-environment";
@@ -93,7 +95,7 @@ export function detectDialect(
     return "systemd-table";
   }
   if (
-    /^(?:loader\.conf|cmdline|entry-token)$/u.test(effective) ||
+    /^(?:loader\.conf|install\.conf|cmdline|entry-token)$/u.test(effective) ||
     /\/loader\/entries\/[^/]+\.conf$/u.test(normalized) ||
     normalized.includes("/kernel/install.conf.d/")
   ) {
@@ -513,16 +515,17 @@ function isQuadletPath(normalized: string, effective: string, source: string): b
 function isMkosiPath(normalized: string, effective: string): boolean {
   return (
     /^mkosi\.(?:conf|local\.conf|tools\.conf|version)$/u.test(effective) ||
-    /\/mkosi\.(?:conf\.d|profiles|images|local|uki-profiles)\//u.test(normalized)
+    /\/mkosi\.(?:conf\.d|profiles|images|local|tools\.conf|uki-profiles)\//u.test(normalized)
   );
 }
 
 function isSystemdIniName(effective: string, normalized: string): boolean {
   return (
-    /^(?:system|user|journald|logind|resolved|timesyncd|networkd|coredump|oomd|homed|pstore|sleep|systemd-sleep|iocost|journal-remote|journal-upload|udev|sysext|confext|ukify|uki|install)\.conf$/u.test(
+    /^(?:system|user|journald(?:@[^/]+)?|logind|resolved|timesyncd|networkd|coredump|oomd|homed|pstore|sleep|systemd-sleep|iocost|journal-remote|journal-upload|udev|sysext|confext|ukify|uki)\.conf$/u.test(
       effective,
     ) ||
     /\/(?:repart|sysupdate)\.d\/[^/]+\.conf$/u.test(normalized) ||
+    /\/mkosi\.repart\/(?:.+\/)?[^/]+\.conf$/u.test(normalized) ||
     /\/portable\/profile\/.+\.conf$/u.test(normalized)
   );
 }

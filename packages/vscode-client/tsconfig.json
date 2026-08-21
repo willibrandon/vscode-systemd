@@ -12,6 +12,7 @@
     "src/dialect-associations.ts",
     "src/explorer-model.ts",
     "src/explorer.ts",
+    "src/index-patterns.ts",
     "src/indexer.ts",
     "src/virtual-documents.ts"
   ],

@@ -63,5 +63,8 @@ All notable changes to this project will be documented here. The format follows
   masking, candidate, drop-in, and reference details in configuration hover text.
 - mkosi indented multiline values, inline comments, and conditional Match, TriggerMatch, Assert, and
   TriggerAssert sections now parse and validate according to mkosi's own configuration parser.
+- Workspace indexing now discovers unit and resource drop-ins, directory-based systemd formats,
+  namespaced journal configuration, kernel-install configuration, and nested mkosi profiles,
+  subimages, local overrides, tools trees, UKI profiles, and repart definitions.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

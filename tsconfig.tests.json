@@ -12,6 +12,7 @@
     "packages/vscode-client/src/dialect-associations.ts",
     "packages/vscode-client/src/explorer-model.ts",
     "packages/vscode-client/src/external-validator.ts",
+    "packages/vscode-client/src/index-patterns.ts",
     "packages/vscode-client/src/target-versions.ts",
     "scripts/test/**/*.ts",
     "test/**/*.ts",
