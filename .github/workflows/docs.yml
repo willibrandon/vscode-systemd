@@ -57,7 +57,7 @@ jobs:
           node-version: 24.19.0
           package-manager: npm@12.0.2
 
-      - name: Verify image popup at laptop viewports
+      - name: Verify image popups across viewports
         run: node ./scripts/test-docs-popup.mjs
 
   deploy:
