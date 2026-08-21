@@ -9,6 +9,7 @@ const common = {
   bundle: true,
   legalComments: "none",
   logLevel: "info",
+  mainFields: ["module", "main"],
   metafile: true,
   minify: production,
   sourcemap: production ? false : "external",
