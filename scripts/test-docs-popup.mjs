@@ -42,16 +42,26 @@ if (address === null || typeof address === "string") throw new Error("Docs serve
 const browser = await chromium.launch({ headless: true });
 try {
   const viewports = [
+    { width: 3840, height: 2160, label: "4K Windows monitor" },
+    { width: 2560, height: 1440, label: "large Windows monitor" },
+    { width: 1920, height: 1080, label: "full HD Windows monitor" },
+    {
+      width: 1536,
+      height: 864,
+      deviceScaleFactor: 1.25,
+      label: "scaled Windows monitor",
+    },
     { width: 1512, height: 720, label: "14-inch MacBook Pro browser window" },
-    { width: 1280, height: 650, label: "compact laptop" },
     { width: 1024, height: 600, label: "small laptop window" },
-    { width: 900, height: 520, label: "short split-screen window" },
+    { width: 390, height: 844, label: "phone portrait" },
+    { width: 844, height: 390, label: "phone landscape" },
   ];
   const routes = ["/", "/editing/", "/effective-configuration/"];
 
   for (const viewport of viewports) {
     for (const route of routes) {
       const page = await browser.newPage({
+        deviceScaleFactor: viewport.deviceScaleFactor ?? 1,
         viewport: { width: viewport.width, height: viewport.height },
       });
       await page.goto(`http://127.0.0.1:${address.port}${base}${route}`);
@@ -86,6 +96,9 @@ try {
           return {
             documentOverflow:
               element.ownerDocument.defaultView?.getComputedStyle(root).overflow ?? "",
+            rootFontSize: Number.parseFloat(
+              element.ownerDocument.defaultView?.getComputedStyle(root).fontSize ?? "16",
+            ),
             zoomScrollLock: root.hasAttribute("data-image-zoom-open"),
             dialog: {
               top: dialogBounds.top,
@@ -101,12 +114,33 @@ try {
               right: imageBounds.right,
               bottom: imageBounds.bottom,
               left: imageBounds.left,
+              height: imageBounds.height,
+              width: imageBounds.width,
+              naturalHeight: image.naturalHeight,
+              naturalWidth: image.naturalWidth,
+              sizes: image.sizes,
             },
             captionBottom: captionBounds?.bottom ?? 0,
           };
         });
 
         const context = `${viewport.label} ${route} image ${imageIndex + 1}`;
+        const maximumImageWidth = Math.min(
+          measurements.image.naturalWidth,
+          viewport.width - 4 * measurements.rootFontSize,
+          80 * measurements.rootFontSize,
+        );
+        const maximumImageHeight = Math.min(
+          measurements.image.naturalHeight,
+          viewport.height - 9 * measurements.rootFontSize,
+        );
+        const imageScale = Math.min(
+          1,
+          maximumImageWidth / measurements.image.naturalWidth,
+          maximumImageHeight / measurements.image.naturalHeight,
+        );
+        const expectedImageWidth = measurements.image.naturalWidth * imageScale;
+        const expectedImageHeight = measurements.image.naturalHeight * imageScale;
         assert(measurements.dialog.top >= 0, context + " dialog starts above the viewport");
         assert(
           measurements.dialog.left >= 16 && measurements.dialog.top >= 16,
@@ -126,13 +160,15 @@ try {
           context + " dialog lacks comfortable viewport margins",
         );
         assert(
-          measurements.dialog.right - measurements.dialog.left <= 576 + 1,
-          context + " dialog is wider than the documented maximum",
+          Math.abs(measurements.image.width - expectedImageWidth) <= 2 &&
+            Math.abs(measurements.image.height - expectedImageHeight) <= 2,
+          context +
+            " does not use the largest natural image size that fits the viewport: " +
+            JSON.stringify(measurements),
         );
         assert(
-          measurements.dialog.bottom - measurements.dialog.top <=
-            Math.min(viewport.height * 0.5, 384) + 1,
-          context + " dialog is taller than the documented maximum",
+          measurements.image.sizes === "(max-width: 84rem) calc(100vw - 4rem), 80rem",
+          context + " does not request an appropriately sized responsive image",
         );
         assert(
           measurements.dialog.scrollHeight <= measurements.dialog.clientHeight + 1,
@@ -171,7 +207,7 @@ try {
     }
   }
   console.log(
-    "Documentation examples use the exact packaged grammars, and every image popup fits laptop viewports without scrolling.",
+    "Documentation examples use the exact packaged grammars, and every image popup uses the largest natural size that fits desktop, laptop, and mobile viewports without scrolling.",
   );
 } finally {
   await browser.close();

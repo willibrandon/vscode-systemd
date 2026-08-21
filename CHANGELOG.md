@@ -4,6 +4,11 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Made documentation image popups use the largest natural image size that fits the current viewport
+  instead of a fixed laptop-sized cap.
+
 ## [0.4.0] - 2026-08-21
 
 ### Added
