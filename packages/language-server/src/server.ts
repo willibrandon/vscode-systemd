@@ -7,6 +7,7 @@ import {
   format,
   mergeConfigurations,
   parse,
+  resolveConfigurationDocuments,
   renderEffectiveConfiguration,
   sectionsFor,
 } from "@systemd/language-core";
@@ -466,13 +467,16 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     ({ uri, source }): DialectId | null => detectDialect(uri, source) ?? null,
   );
   connection.onRequest(effectiveConfigurationRequest, ({ uri }): string => {
-    const candidates = allParsed().filter((tree) => relatedConfiguration(uri, tree.uri));
-    return renderEffectiveConfiguration(mergeConfigurations(candidates));
+    const resolution = resolveConfigurationDocuments(uri, allParsed());
+    const rendered = renderEffectiveConfiguration(mergeConfigurations(resolution.documents));
+    return resolution.masked
+      ? "# Unit is masked by " + (resolution.baseUri ?? "an empty unit file") + "\n" + rendered
+      : rendered;
   });
   connection.onRequest(dependencyGraphRequest, ({ uri }) => {
-    const selected = allParsed().filter(
-      (tree) => uri === undefined || tree.uri === uri || relatedConfiguration(uri, tree.uri),
-    );
+    const available = allParsed();
+    const selected =
+      uri === undefined ? available : resolveConfigurationDocuments(uri, available).documents;
     const nodes = new Set(selected.map((tree) => basename(tree.uri)));
     const edges: { source: string; target: string; kind: string }[] = [];
     for (const tree of selected) {
@@ -822,16 +826,6 @@ function wordAt(document: TextDocument, position: Position): string {
 function basename(uri: string): string {
   const normalized = decodeURIComponent(uri).replaceAll("\\", "/");
   return normalized.slice(normalized.lastIndexOf("/") + 1);
-}
-
-function relatedConfiguration(left: string, right: string): boolean {
-  const leftName = basename(left).replace(/\.d$/u, "");
-  const rightName = basename(right).replace(/\.conf$/u, "");
-  return (
-    left === right ||
-    right.includes("/" + leftName + ".d/") ||
-    left.includes("/" + rightName + ".d/")
-  );
 }
 
 function safeMessage(error: unknown): string {

@@ -12,10 +12,14 @@ export {
   sectionsFor,
 } from "./registry.js";
 export {
+  configurationIdentity,
   extractReferences,
   mergeConfigurations,
+  relatedConfiguration,
   renderEffectiveConfiguration,
+  resolveConfigurationDocuments,
 } from "./workspace.js";
+export type { ConfigurationResolution } from "./workspace.js";
 export type {
   AssignmentNode,
   CoreDiagnostic,
