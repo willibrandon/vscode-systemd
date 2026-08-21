@@ -1,4 +1,4 @@
-import { definitionFor, isDynamicDirective, sectionsFor } from "./registry.js";
+import { definitionFor, hwdbPropertyFor, isDynamicDirective, sectionsFor } from "./registry.js";
 import { analyzeSystemdJson } from "./json-analysis.js";
 import { lineSettingsFor, recordFormatFor, udevRuleKeys } from "./line-formats.js";
 import type {
@@ -335,6 +335,9 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
           validateUdevExpression(node, index, diagnostics);
         }
         break;
+      case "systemd-hwdb":
+        if (node.fields.length === 2) validateHwdbProperty(node, diagnostics);
+        break;
       case "systemd-dns-trust-anchor":
         validateTrustAnchor(document, node, diagnostics);
         break;
@@ -361,7 +364,184 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
   if (document.dialect === "systemd-udev-rules") {
     validateUdevControlFlow(document, diagnostics);
   }
+  if (document.dialect === "systemd-hwdb") validateHwdbStructure(document, diagnostics);
   validateSingleValueDocument(document, diagnostics);
+}
+
+function validateHwdbStructure(document: ParsedDocument, diagnostics: CoreDiagnostic[]): void {
+  let state: "none" | "match" | "data" = "none";
+  let lastMatch: RecordNode | undefined;
+  let properties = new Map<string, RecordNode>();
+  let matches = new Set<string>();
+  const reset = (): void => {
+    state = "none";
+    lastMatch = undefined;
+    properties = new Map();
+    matches = new Set();
+  };
+  const missingProperty = (): void => {
+    if (lastMatch === undefined) return;
+    diagnostics.push({
+      code: "invalid-record-field",
+      message: "An hwdb record requires at least one indented property.",
+      severity: "error",
+      span: lastMatch.fieldSpans[0] ?? lastMatch.span,
+    });
+  };
+
+  for (const node of document.nodes) {
+    if (node.kind === "comment") continue;
+    if (node.kind === "blank") {
+      if (state === "match") missingProperty();
+      if (state === "data") validateHwdbPropertyDependencies(properties, diagnostics);
+      reset();
+      continue;
+    }
+    if (node.kind === "invalid") {
+      if (node.raw.startsWith(" ") && state === "match") state = "data";
+      continue;
+    }
+    if (node.kind !== "record") continue;
+    if (node.fields.length === 1) {
+      if (state === "data") {
+        validateHwdbPropertyDependencies(properties, diagnostics);
+        fieldError(node, 0, "A blank line is required between hwdb records.", diagnostics);
+        reset();
+        continue;
+      }
+      const match = node.fields[0] ?? "";
+      validateHwdbMatch(node, diagnostics);
+      if (matches.has(match) && !containsTemplate(match)) {
+        fieldError(node, 0, "Duplicate match pattern in this hwdb record.", diagnostics, "warning");
+      }
+      matches.add(match);
+      lastMatch = node;
+      state = "match";
+      continue;
+    }
+    const key = node.fields[0] ?? "";
+    if (state === "none") {
+      fieldError(node, 0, "An hwdb property requires a preceding match line.", diagnostics);
+      continue;
+    }
+    if (properties.has(key)) {
+      fieldError(node, 0, "Duplicate " + key + " property in this hwdb record.", diagnostics);
+    }
+    properties.set(key, node);
+    state = "data";
+  }
+  if (state === "match") missingProperty();
+  if (state === "data") validateHwdbPropertyDependencies(properties, diagnostics);
+}
+
+function validateHwdbMatch(node: RecordNode, diagnostics: CoreDiagnostic[]): void {
+  const match = node.fields[0] ?? "";
+  if (containsTemplate(match)) return;
+  const separator = match.indexOf(":");
+  if (separator < 0) return;
+  const prefix = match.slice(0, separator);
+  const pattern = match.slice(separator + 1);
+  const valid =
+    prefix === "usb" || prefix === "bluetooth"
+      ? /^v(?:\*|[0-9A-F]{4})(?:p(?:\*|[0-9A-F]{4}))?.*\*$/u.test(pattern)
+      : prefix === "pci"
+        ? /^v(?:\*|[0-9A-F]{8})(?:d(?:\*|[0-9A-F]{8}))?.*\*$/u.test(pattern)
+        : true;
+  if (!valid) {
+    fieldError(
+      node,
+      0,
+      prefix + " hwdb patterns require the complete uppercase hexadecimal vendor/device form.",
+      diagnostics,
+    );
+  }
+}
+
+function validateHwdbPropertyDependencies(
+  properties: ReadonlyMap<string, RecordNode>,
+  diagnostics: CoreDiagnostic[],
+): void {
+  for (const [dependent, required] of [
+    ["MOUSE_WHEEL_CLICK_COUNT_HORIZONTAL", "MOUSE_WHEEL_CLICK_COUNT"],
+    ["MOUSE_WHEEL_CLICK_ANGLE_HORIZONTAL", "MOUSE_WHEEL_CLICK_ANGLE"],
+    ["MOUSE_WHEEL_CLICK_COUNT_HORIZONTAL", "MOUSE_WHEEL_CLICK_ANGLE_HORIZONTAL"],
+    ["MOUSE_WHEEL_CLICK_COUNT", "MOUSE_WHEEL_CLICK_ANGLE"],
+  ] as const) {
+    const node = properties.get(dependent);
+    if (node !== undefined && !properties.has(required)) {
+      fieldError(node, 0, dependent + " requires " + required + ".", diagnostics);
+    }
+  }
+}
+
+function validateHwdbProperty(node: RecordNode, diagnostics: CoreDiagnostic[]): void {
+  const name = node.fields[0] ?? "";
+  const value = (node.fields[1] ?? "").trim();
+  if (!/^[A-Z][A-Za-z0-9_]*$/u.test(name) && !containsTemplate(name)) {
+    fieldError(
+      node,
+      0,
+      "An hwdb property name must start with an uppercase letter and contain only letters, digits, and underscores.",
+      diagnostics,
+    );
+    return;
+  }
+  if (containsTemplate(value)) return;
+  const definition = hwdbPropertyFor(name);
+  if (definition === undefined) return;
+  let valid = true;
+  switch (definition.valueKind) {
+    case "string":
+      valid = value !== "";
+      break;
+    case "boolean":
+    case "input-flag":
+    case "enum":
+      valid = definition.choices.includes(value);
+      break;
+    case "integer":
+      valid = /^\d+$/u.test(value);
+      break;
+    case "xkb":
+      valid = value === "" || /^[A-Za-z0-9+\-/@._]+$/u.test(value);
+      break;
+    case "dpi": {
+      const settings = value.split(/\s+/u).filter(Boolean);
+      valid =
+        settings.length > 0 &&
+        settings.every((setting) => /^\*?\d+(?:@\d+)?$/u.test(setting)) &&
+        settings.filter((setting) => setting.startsWith("*")).length <= 1;
+      break;
+    }
+    case "mount-matrix": {
+      const real = "[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)";
+      const row = real + "\\s*,\\s*" + real + "\\s*,\\s*" + real;
+      valid = new RegExp("^" + row + "\\s*;\\s*" + row + "\\s*;\\s*" + row + "$", "u").test(value);
+      if (valid) {
+        valid = value
+          .split(";")
+          .every((matrixRow) => matrixRow.split(",").some((number) => Number(number) !== 0));
+      }
+      break;
+    }
+    case "keycode":
+      valid = /^(?:!|!?[A-Za-z0-9_]+)$/u.test(value);
+      break;
+    case "evdev-axis":
+      valid = /^[-0-9:]+$/u.test(value);
+      break;
+    default:
+      break;
+  }
+  if (!valid) {
+    const expectation =
+      definition.choices.length > 0
+        ? " Expected " +
+          definition.choices.map((choice) => (choice === "" ? "empty" : choice)).join(", ") +
+          "."
+        : " Expected a valid " + definition.valueKind.replaceAll("-", " ") + " value.";
+    fieldError(node, 1, name + " has an invalid value." + expectation, diagnostics);
+  }
 }
 
 function isInteger(value: string): boolean {

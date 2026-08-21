@@ -295,6 +295,10 @@ function parseRecords(
       invalid(nodes, diagnostics, line, span, raw, line.error);
       continue;
     }
+    if (dialect === "systemd-hwdb") {
+      parseHwdbLine(nodes, diagnostics, line, span, raw);
+      continue;
+    }
     const trimmed = line.text.replace(/^\uFEFF/u, "").trim();
     if (trimmed === "") {
       nodes.push({ kind: "blank", span, line: line.line, raw });
@@ -312,17 +316,6 @@ function parseRecords(
     }
     if (isTemplateLine(trimmed)) {
       nodes.push(record(line, span, raw, [trimmed], [span]));
-      continue;
-    }
-    if (dialect === "systemd-hwdb") {
-      const property = /^\s+([A-Za-z0-9_.{}-]+)\s*=(.*)$/u.exec(line.text);
-      if (/^\s/u.test(line.text) && property === null) {
-        invalid(nodes, diagnostics, line, span, raw, "Malformed hwdb property.");
-        continue;
-      }
-      const fields =
-        property === null ? [trimmed] : [property[1] ?? "", (property[2] ?? "").trim()];
-      nodes.push(record(line, span, raw, fields, fieldSpans(line, fields)));
       continue;
     }
     if (dialect === "systemd-udev-rules") {
@@ -412,6 +405,68 @@ function parseRecords(
     nodes.push(record(line, span, raw, fields, fieldSpans(line, fields)));
   }
   return nodes;
+}
+
+function parseHwdbLine(
+  nodes: SyntaxNode[],
+  diagnostics: CoreDiagnostic[],
+  line: PhysicalLine,
+  span: TextSpan,
+  raw: string,
+): void {
+  if (line.text.startsWith("#")) {
+    nodes.push({ kind: "comment", span, line: line.line, raw, text: line.text.slice(1) });
+    return;
+  }
+  const comment = line.text.indexOf("#");
+  const semantic = (comment < 0 ? line.text : line.text.slice(0, comment)).trimEnd();
+  if (semantic === "") {
+    nodes.push({ kind: "blank", span, line: line.line, raw });
+    return;
+  }
+  if (semantic.startsWith("\t") && semantic.includes("=")) {
+    invalid(
+      nodes,
+      diagnostics,
+      line,
+      span,
+      raw,
+      "An hwdb property must start with a literal space, not a tab.",
+    );
+    return;
+  }
+  if (!semantic.startsWith(" ")) {
+    const match = semantic.replace(/^\uFEFF/u, "");
+    nodes.push(
+      record(line, span, raw, [match], [{ start: line.start, end: line.start + semantic.length }]),
+    );
+    return;
+  }
+  const equals = semantic.indexOf("=");
+  if (equals < 0) {
+    invalid(nodes, diagnostics, line, span, raw, "Malformed hwdb property: expected KEY=VALUE.");
+    return;
+  }
+  const keyPart = semantic.slice(1, equals);
+  const key = keyPart.trim();
+  if (key === "") {
+    invalid(nodes, diagnostics, line, span, raw, "Malformed hwdb property: the key is empty.");
+    return;
+  }
+  const value = semantic.slice(equals + 1);
+  const keyOffset = semantic.indexOf(key, 1);
+  nodes.push(
+    record(
+      line,
+      span,
+      raw,
+      [key, value],
+      [
+        { start: line.start + keyOffset, end: line.start + keyOffset + key.length },
+        { start: line.start + equals + 1, end: line.start + semantic.length },
+      ],
+    ),
+  );
 }
 
 function isRecordComment(trimmed: string, dialect: DialectId): boolean {

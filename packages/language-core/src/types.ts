@@ -239,6 +239,25 @@ export interface UdevRuleKeyDefinition {
   readonly caseInsensitive: boolean;
 }
 
+export type HwdbValueKind =
+  | "string"
+  | "boolean"
+  | "integer"
+  | "input-flag"
+  | "enum"
+  | "xkb"
+  | "dpi"
+  | "mount-matrix"
+  | "keycode"
+  | "evdev-axis";
+
+export interface HwdbPropertyDefinition {
+  readonly name: string;
+  readonly pattern?: string;
+  readonly valueKind: HwdbValueKind;
+  readonly choices: readonly string[];
+}
+
 export interface InvalidNode extends BaseNode {
   readonly kind: "invalid";
   readonly message: string;

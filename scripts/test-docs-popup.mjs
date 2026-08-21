@@ -61,9 +61,11 @@ try {
           const dialogBounds = element.getBoundingClientRect();
           const imageBounds = image.getBoundingClientRect();
           const captionBounds = caption?.getBoundingClientRect();
+          const root = element.ownerDocument.documentElement;
           return {
-            documentOverflow: getComputedStyle(document.documentElement).overflow,
-            zoomScrollLock: document.documentElement.hasAttribute("data-image-zoom-open"),
+            documentOverflow:
+              element.ownerDocument.defaultView?.getComputedStyle(root).overflow ?? "",
+            zoomScrollLock: root.hasAttribute("data-image-zoom-open"),
             dialog: {
               top: dialogBounds.top,
               right: dialogBounds.right,

@@ -112,6 +112,9 @@ All notable changes to this project will be documented here. The format follows
   case-prefix model, understand lossless continued rules and forward labels, and offer contextual
   key/operator/value completion. Table intelligence now completes documented mount, crypttab,
   veritytab, integritytab, and clonetab options and validates systemd-specific fstab fields.
+- Hardware database files now follow systemd's match/property record state machine, comment and
+  separator behavior, typed shipped-property grammar, mouse-wheel dependencies, and exact TextMate
+  scopes, with match and property intelligence generated from the pinned systemd source.
 - Documentation image popups now fit every included screenshot within compact laptop and
   split-screen viewports without internal or background-page scrolling.
 

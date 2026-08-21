@@ -384,6 +384,83 @@ describe("record and JSON semantic analysis", () => {
     ]);
   });
 
+  it("validates the complete hwdb record structure", () => {
+    expect(codes(" ID_MODEL=orphan\n", "systemd-hwdb")).toContain("invalid-record-field");
+    expect(codes("usb:v0001*\n\n", "systemd-hwdb")).toContain("invalid-record-field");
+    expect(codes("usb:v0001*\n", "systemd-hwdb")).toContain("invalid-record-field");
+    expect(
+      codes("usb:v0001*\n ID_MODEL=one\nusb:v0002*\n ID_MODEL=two\n", "systemd-hwdb"),
+    ).toContain("invalid-record-field");
+    expect(codes("usb:v0001*\n ID_MODEL=one\n ID_MODEL=two\n", "systemd-hwdb")).toContain(
+      "invalid-record-field",
+    );
+    expect(codes("usb:v0001*\nusb:v0001*\n ID_MODEL=one\n", "systemd-hwdb")).toContain(
+      "invalid-record-field",
+    );
+    expect(
+      codes("usb:v0001*\n ID_MODEL=one\n\nusb:v0001*\n ID_MODEL=two\n", "systemd-hwdb"),
+    ).toEqual([]);
+    expect(
+      codes("usb:v0001*\n ID_MODEL=one\n\nusb:v0002*\n ID_MODEL=two\n", "systemd-hwdb"),
+    ).toEqual([]);
+    expect(codes("usb:v001*\n ID_MODEL=one\n", "systemd-hwdb")).toContain("invalid-record-field");
+    expect(codes("pci:v12345678dABCDEF00*\n ID_MODEL=one\n", "systemd-hwdb")).toEqual([]);
+  });
+
+  it("validates source-generated hwdb property values while permitting custom properties", () => {
+    for (const property of [
+      "ID_AUTOSUSPEND=1",
+      "ID_AUTOSUSPEND_DELAY_MS=100",
+      "ID_INPUT_TOUCHPAD=",
+      "ACCEL_LOCATION=display",
+      "MOUSE_DPI=*1000@125 2000@125",
+      "ACCEL_MOUNT_MATRIX=1,0,0;0,1,0;0,0,1",
+      "KEYBOARD_KEY_a1=!reserved",
+      "EVDEV_ABS_00=-1:1:10:0:0",
+      "XKB_FIXED_LAYOUT=us",
+      "CUSTOM_VENDOR_PROPERTY=anything",
+    ]) {
+      expect(codes("usb:v0001*\n " + property + "\n", "systemd-hwdb")).toEqual([]);
+    }
+    for (const property of [
+      "ID_AUTOSUSPEND=yes",
+      "ID_MODEL_FROM_DATABASE=",
+      "ID_AUTOSUSPEND_DELAY_MS=-1",
+      "ID_INPUT_TOUCHPAD=maybe",
+      "ACCEL_LOCATION=side",
+      "MOUSE_DPI=*1000 *2000",
+      "ACCEL_MOUNT_MATRIX=1,0;0,1",
+      "ACCEL_MOUNT_MATRIX=0,0,0;0,1,0;0,0,1",
+      "KEYBOARD_KEY_a1=?bad",
+      "EVDEV_ABS_00=bad",
+      "XKB_FIXED_LAYOUT=bad value",
+      "bad-name=value",
+    ]) {
+      expect(codes("usb:v0001*\n " + property + "\n", "systemd-hwdb")).toContain(
+        "invalid-record-field",
+      );
+    }
+  });
+
+  it("validates the hwdb mouse-wheel property dependencies", () => {
+    expect(
+      codes("mouse:usb:*\n MOUSE_WHEEL_CLICK_COUNT_HORIZONTAL=24\n", "systemd-hwdb"),
+    ).toContain("invalid-record-field");
+    expect(
+      codes(
+        [
+          "mouse:usb:*",
+          " MOUSE_WHEEL_CLICK_ANGLE=15",
+          " MOUSE_WHEEL_CLICK_ANGLE_HORIZONTAL=26",
+          " MOUSE_WHEEL_CLICK_COUNT=24",
+          " MOUSE_WHEEL_CLICK_COUNT_HORIZONTAL=14",
+          "",
+        ].join("\n"),
+        "systemd-hwdb",
+      ),
+    ).toEqual([]);
+  });
+
   it.each([
     ["file:///etc/fstab", "UUID=abc / ext4 defaults 0 1\n"],
     ["file:///etc/crypttab", "home UUID=abc - luks\n"],

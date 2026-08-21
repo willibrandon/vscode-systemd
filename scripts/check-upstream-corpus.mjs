@@ -1,8 +1,8 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { analyze, parse } from "../packages/language-core/lib/index.js";
+import { analyze, configureRegistryChannel, parse } from "../packages/language-core/lib/index.js";
 
 const root = resolve(import.meta.dirname, "..");
 const sources = {
@@ -10,6 +10,7 @@ const sources = {
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
   mkosi: resolve(root, process.env.MKOSI_SOURCE ?? "../mkosi"),
 };
+configureRegistryChannel("preview");
 
 const corpus = [
   ...[
@@ -31,6 +32,10 @@ const corpus = [
     "test/fuzz/fuzz-netdev-parser/vlan.netdev",
     "test/fuzz/fuzz-netdev-parser/wireguard.netdev",
   ].map((path) => ({ source: "systemd", dialect: "systemd-network", path })),
+  ...(await readdir(resolve(sources.systemd, "hwdb.d")))
+    .filter((path) => path.endsWith(".hwdb"))
+    .sort()
+    .map((path) => ({ source: "systemd", dialect: "systemd-hwdb", path: "hwdb.d/" + path })),
   ...[
     "basic.artifact",
     "basic.build",
@@ -59,6 +64,7 @@ const corpus = [
 
 const failures = [];
 let assignments = 0;
+let records = 0;
 for (const fixture of corpus) {
   const path = resolve(sources[fixture.source], fixture.path);
   let source;
@@ -70,6 +76,7 @@ for (const fixture of corpus) {
   }
   const document = parse(source, fixture.dialect, pathToFileURL(path).href);
   assignments += document.nodes.filter((node) => node.kind === "assignment").length;
+  records += document.nodes.filter((node) => node.kind === "record").length;
   for (const diagnostic of analyze(document, { maxProblems: 10_000 })) {
     const line = lineAt(document.lineStarts, diagnostic.span.start);
     failures.push(
@@ -95,7 +102,9 @@ console.log(
     corpus.length +
     " pinned upstream fixtures (" +
     assignments +
-    " assignments) without diagnostics.",
+    " assignments and " +
+    records +
+    " line records) without diagnostics.",
 );
 
 function lineAt(lineStarts, offset) {

@@ -3,6 +3,9 @@ import {
   configureRegistryChannel,
   definitionFor,
   definitionsFor,
+  hwdbMatchPrefixes,
+  hwdbProperties,
+  hwdbPropertyFor,
   isDynamicDirective,
   registryDialect,
   sectionsFor,
@@ -58,6 +61,20 @@ describe("registry queries", () => {
     expect(isDynamicDirective("ID_NET_NAME_ALLOW_ENP5S0")).toBe(true);
     expect(isDynamicDirective("ID_NET_NAME_ALLOW_")).toBe(false);
     expect(isDynamicDirective("UnknownSetting")).toBe(false);
+  });
+
+  it("exposes source-generated hwdb properties and match prefixes", () => {
+    expect(hwdbProperties.length).toBeGreaterThan(80);
+    expect(hwdbMatchPrefixes).toEqual(
+      expect.arrayContaining(["usb:", "mouse:usb:", "evdev:atkbd:", "sensor:modalias:"]),
+    );
+    expect(hwdbPropertyFor("ID_AUTOSUSPEND")).toMatchObject({
+      valueKind: "boolean",
+      choices: ["0", "1"],
+    });
+    expect(hwdbPropertyFor("KEYBOARD_KEY_a1")?.valueKind).toBe("keycode");
+    expect(hwdbPropertyFor("EVDEV_ABS_00")?.valueKind).toBe("evdev-axis");
+    expect(hwdbPropertyFor("CUSTOM_VENDOR_PROPERTY")).toBeUndefined();
   });
 
   it("filters sections and settings by concrete file kind", () => {
@@ -219,11 +236,13 @@ describe("registry queries", () => {
     configureRegistryChannel("stable");
     const stableRevision = registryMetadata.upstream.mkosi;
     expect(definitionFor("mkosi", "Build", "ForeignUIDRange")).toBeUndefined();
+    expect(hwdbPropertyFor("SOUND_FORM_FACTOR")?.choices).not.toContain("controller");
 
     configureRegistryChannel("preview");
     try {
       expect(definitionFor("mkosi", "Build", "ForeignUIDRange")?.since).toBe("preview");
       expect(registryMetadata.upstream.mkosi).not.toBe(stableRevision);
+      expect(hwdbPropertyFor("SOUND_FORM_FACTOR")?.choices).toContain("controller");
     } finally {
       configureRegistryChannel("stable");
     }

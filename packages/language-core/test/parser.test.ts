@@ -246,7 +246,7 @@ describe("lossless parsers", () => {
   it("parses hwdb properties, simple assignments, templates, and records", () => {
     const hwdb = parse("usb:v0001*\n ID_BAD\n ID_MODEL = Demo\n", "systemd-hwdb");
     expect(hwdb.diagnostics).toHaveLength(1);
-    expect(hwdb.nodes[2]).toMatchObject({ kind: "record", fields: ["ID_MODEL", "Demo"] });
+    expect(hwdb.nodes[2]).toMatchObject({ kind: "record", fields: ["ID_MODEL", " Demo"] });
 
     for (const dialect of ["systemd-environment", "systemd-sysctl", "systemd-boot"] as const) {
       expect(parse(" KEY = value \nword only\n", dialect).nodes).toEqual(
@@ -257,6 +257,42 @@ describe("lossless parsers", () => {
       );
     }
     expect(parse("{% if enabled %}\n", "systemd-tmpfiles").nodes[0]?.kind).toBe("record");
+  });
+
+  it("parses hwdb compiler lines without discarding source text", () => {
+    const source = [
+      "# hardware properties",
+      "usb:v0001* # lookup comment",
+      "usb:v0002*",
+      " ID_MODEL=Demo device # value comment",
+      "",
+      "\tID_INPUT=1",
+      " ID_BROKEN",
+      " =empty",
+      "",
+    ].join("\r\n");
+    const document = parse(source, "systemd-hwdb", "file:///etc/udev/hwdb.d/90-demo.hwdb");
+
+    expect(document.nodes.map(({ raw }) => raw).join("\r\n")).toBe(source);
+    expect(document.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "record", fields: ["usb:v0001*"] }),
+        expect.objectContaining({ kind: "record", fields: ["ID_MODEL", "Demo device"] }),
+        expect.objectContaining({
+          kind: "invalid",
+          message: "An hwdb property must start with a literal space, not a tab.",
+        }),
+        expect.objectContaining({
+          kind: "invalid",
+          message: "Malformed hwdb property: expected KEY=VALUE.",
+        }),
+        expect.objectContaining({
+          kind: "invalid",
+          message: "Malformed hwdb property: the key is empty.",
+        }),
+      ]),
+    );
+    expect(document.diagnostics).toHaveLength(3);
   });
 
   it.each(["systemd-tmpfiles", "systemd-sysusers", "systemd-modules-load"] as DialectId[])(

@@ -77,8 +77,14 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
     failures.push(name + " does not have a pinned 40-character Git revision");
   }
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 8) {
-  failures.push("upstream lock must use schema version 1 and adapter version 8");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 9) {
+  failures.push("upstream lock must use schema version 1 and adapter version 9");
+}
+if ((registry.hwdbProperties?.length ?? 0) < 80) {
+  failures.push("generated hwdb property coverage is incomplete");
+}
+if ((registry.hwdbMatchPrefixes?.length ?? 0) < 40) {
+  failures.push("generated hwdb match-prefix coverage is incomplete");
 }
 for (const name of ["systemd", "podman", "mkosi"]) {
   const source = upstreamLock.sources?.[name];
@@ -106,7 +112,10 @@ for (const name of ["systemd", "podman", "mkosi"]) {
 if (
   stableDelta.schemaVersion !== 1 ||
   !Array.isArray(stableDelta.remove) ||
-  !Array.isArray(stableDelta.directives)
+  !Array.isArray(stableDelta.directives) ||
+  !Array.isArray(stableDelta.hwdbPropertyRemove) ||
+  !Array.isArray(stableDelta.hwdbProperties) ||
+  (stableDelta.hwdbMatchPrefixes !== undefined && !Array.isArray(stableDelta.hwdbMatchPrefixes))
 ) {
   failures.push("stable registry delta is missing or invalid");
 }

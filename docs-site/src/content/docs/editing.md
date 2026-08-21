@@ -22,6 +22,12 @@ language help does not require a network request or a host executable. Its parse
 checked against successful fixtures from those same pinned upstream trees, including mkosi's
 indented multiline values and conditional sections.
 
+udev rules receive key, attribute, operator, and value completion. Hardware database files receive
+match-prefix and property completion, including typed values for systemd's shipped properties and
+dynamic keyboard and evdev property families. Their record separators, comments, duplicate fields,
+and required property relationships are validated against the pinned upstream parsers while custom
+vendor properties remain supported.
+
 ## File skeletons
 
 At the start of an empty file, type a snippet prefix such as `service-unit`, `network-static`,

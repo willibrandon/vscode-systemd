@@ -6,6 +6,22 @@
     "podman": "3070f607ac34891ead088fc3589f767af3574ca6",
     "mkosi": "ebd488899176524f08c3767cdea3224db0016c34"
   },
+  "hwdbPropertyRemove": [],
+  "hwdbProperties": [
+    [
+      "SOUND_FORM_FACTOR",
+      "enum",
+      [
+        "internal",
+        "webcam",
+        "speaker",
+        "headphone",
+        "headset",
+        "handset",
+        "microphone"
+      ]
+    ]
+  ],
   "remove": [
     "mkosi\u0000Assert\u0000Bootloader",
     "mkosi\u0000Build\u0000ForeignUIDRange",

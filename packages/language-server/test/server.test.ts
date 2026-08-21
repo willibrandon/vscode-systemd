@@ -967,6 +967,109 @@ describe("language server JSON-RPC contract", () => {
     await client.sendNotification("textDocument/didClose", { textDocument: { uri: tableUri } });
   });
 
+  it("completes and explains source-generated hwdb matches and properties", async () => {
+    const hwdbUri = "file:///workspace/90-demo.hwdb";
+    const text = [
+      "",
+      " ",
+      " ID_AUTOSUSPEND=",
+      " MOUSE_DPI=",
+      " ACCEL_MOUNT_MATRIX=",
+      " ID_AUTOSUSPEND_DELAY_MS=",
+      " KEYBOARD_KEY_a1=",
+      " EVDEV_ABS_00=",
+      " XKB_FIXED_LAYOUT=",
+      " CUSTOM_VENDOR_PROPERTY=",
+      "usb:# comment",
+      "usb:v0001*",
+      " ID_AUTOSUSPEND=1",
+      "",
+    ].join("\n");
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: hwdbUri,
+        languageId: "systemd-hwdb",
+        version: 1,
+        text,
+      },
+    });
+
+    const matches = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: hwdbUri },
+      position: { line: 0, character: 0 },
+    });
+    expect(matches.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["usb:", "mouse:usb:", "evdev:atkbd:", "sensor:modalias:"]),
+    );
+    const properties = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: hwdbUri },
+      position: { line: 1, character: 1 },
+    });
+    expect(properties.map(({ label }) => label)).toEqual(
+      expect.arrayContaining([
+        "ID_AUTOSUSPEND",
+        "MOUSE_DPI",
+        "KEYBOARD_KEY_<scan code>",
+        "EVDEV_ABS_<axis>",
+      ]),
+    );
+    const booleans = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: hwdbUri },
+      position: { line: 2, character: " ID_AUTOSUSPEND=".length },
+    });
+    expect(booleans.map(({ label }) => label)).toEqual(["0", "1"]);
+    const dpi = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: hwdbUri },
+      position: { line: 3, character: " MOUSE_DPI=".length },
+    });
+    expect(dpi).toContainEqual(
+      expect.objectContaining({ label: "DPI setting", insertText: "*${1:1000}@${2:125}" }),
+    );
+    for (const [line, prefix, expected] of [
+      [4, " ACCEL_MOUNT_MATRIX=", "identity mount matrix"],
+      [5, " ID_AUTOSUSPEND_DELAY_MS=", "integer"],
+      [6, " KEYBOARD_KEY_a1=", "keycode"],
+      [7, " EVDEV_ABS_00=", "axis calibration"],
+    ] as const) {
+      const values = await request<CompletionItem[]>(client, "textDocument/completion", {
+        textDocument: { uri: hwdbUri },
+        position: { line, character: prefix.length },
+      });
+      expect(values.map(({ label }) => label)).toContain(expected);
+    }
+    for (const [line, prefix] of [
+      [8, " XKB_FIXED_LAYOUT="],
+      [9, " CUSTOM_VENDOR_PROPERTY="],
+      [10, "usb:# comment"],
+    ] as const) {
+      await expect(
+        request<CompletionItem[]>(client, "textDocument/completion", {
+          textDocument: { uri: hwdbUri },
+          position: { line, character: prefix.length },
+        }),
+      ).resolves.toEqual([]);
+    }
+
+    const hover = await request<Hover>(client, "textDocument/hover", {
+      textDocument: { uri: hwdbUri },
+      position: { line: 12, character: 3 },
+    });
+    expect(JSON.stringify(hover.contents)).toContain("systemd hwdb boolean property");
+    expect(JSON.stringify(hover.contents)).toContain("Values");
+    const matchHover = await request<Hover>(client, "textDocument/hover", {
+      textDocument: { uri: hwdbUri },
+      position: { line: 11, character: 3 },
+    });
+    expect(JSON.stringify(matchHover.contents)).toContain("Hardware database match");
+    const signature = await request<SignatureHelp>(client, "textDocument/signatureHelp", {
+      textDocument: { uri: hwdbUri },
+      position: { line: 12, character: " ID_AUTOSUSPEND=".length },
+    });
+    expect(signature.signatures[0]?.label).toBe("ID_AUTOSUSPEND=<boolean>");
+
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: hwdbUri } });
+  });
+
   it("keeps navigation total when an indexed provider returns a malformed URI escape", async () => {
     await client.sendNotification("systemd/index/documents", {
       replace: false,

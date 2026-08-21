@@ -5,23 +5,43 @@ import type {
   DialectId,
   DirectiveDefinition,
   DocumentKind,
+  HwdbPropertyDefinition,
+  HwdbValueKind,
   RegistryChannel,
   RegistryDialect,
   RegistryMetadata,
 } from "./types.js";
 
+type RawHwdbProperty = readonly [
+  name: string,
+  valueKind: HwdbValueKind,
+  choices: readonly string[],
+  pattern?: string,
+];
+
+interface RawRegistryFile extends RegistryMetadata {
+  readonly hwdbProperties: readonly RawHwdbProperty[];
+  readonly hwdbMatchPrefixes: readonly string[];
+  readonly directives: readonly DirectiveDefinition[];
+}
+
 interface RawRegistry extends RegistryMetadata {
+  readonly hwdbProperties: readonly HwdbPropertyDefinition[];
+  readonly hwdbMatchPrefixes: readonly string[];
   readonly directives: readonly DirectiveDefinition[];
 }
 
 interface RawRegistryDelta {
   readonly upstream: RegistryMetadata["upstream"];
+  readonly hwdbPropertyRemove: readonly string[];
+  readonly hwdbProperties: readonly RawHwdbProperty[];
+  readonly hwdbMatchPrefixes?: readonly string[];
   readonly remove: readonly string[];
   readonly directives: readonly DirectiveDefinition[];
 }
 
-const previewRegistry = rawRegistry as RawRegistry;
-const stableRegistry = applyDelta(previewRegistry, rawStableDelta as RawRegistryDelta);
+const previewRegistry = hydrateRegistry(rawRegistry as unknown as RawRegistryFile);
+const stableRegistry = applyDelta(previewRegistry, rawStableDelta as unknown as RawRegistryDelta);
 const registries: Readonly<Record<RegistryChannel, RawRegistry>> = {
   stable: stableRegistry,
   preview: previewRegistry,
@@ -29,6 +49,8 @@ const registries: Readonly<Record<RegistryChannel, RawRegistry>> = {
 let activeChannel: RegistryChannel = "stable";
 let exact = new Map<string, DirectiveDefinition>();
 let byDialect = new Map<RegistryDialect, readonly DirectiveDefinition[]>();
+let exactHwdbProperties = new Map<string, HwdbPropertyDefinition>();
+let dynamicHwdbProperties: readonly (readonly [RegExp, HwdbPropertyDefinition])[] = [];
 const networkSectionCache = new Map<DocumentKind, ReadonlySet<string>>();
 const networkManualByKind: Readonly<Partial<Record<DocumentKind, string>>> = {
   "systemd-network:network": "systemd.network",
@@ -70,6 +92,8 @@ const dynamicPatterns = previewRegistry.dynamicDirectivePatterns.map(
 
 export let registryMetadata: RegistryMetadata;
 export let directiveDefinitions: readonly DirectiveDefinition[];
+export let hwdbProperties: readonly HwdbPropertyDefinition[];
+export let hwdbMatchPrefixes: readonly string[];
 
 configureRegistryChannel("stable");
 
@@ -78,6 +102,17 @@ export function configureRegistryChannel(channel: RegistryChannel): void {
   const registry = registries[activeChannel];
   exact = new Map();
   byDialect = new Map();
+  exactHwdbProperties = new Map(
+    registry.hwdbProperties
+      .filter((definition) => definition.pattern === undefined)
+      .map((definition) => [definition.name, definition]),
+  );
+  dynamicHwdbProperties = registry.hwdbProperties
+    .filter(
+      (definition): definition is HwdbPropertyDefinition & { readonly pattern: string } =>
+        definition.pattern !== undefined,
+    )
+    .map((definition) => [new RegExp(definition.pattern, "u"), definition] as const);
   networkSectionCache.clear();
   for (const definition of registry.directives) {
     exact.set(key(definition.dialect, definition.section, definition.name), definition);
@@ -102,6 +137,15 @@ export function configureRegistryChannel(channel: RegistryChannel): void {
     dynamicDirectivePatterns: registry.dynamicDirectivePatterns,
   };
   directiveDefinitions = registry.directives;
+  hwdbProperties = registry.hwdbProperties;
+  hwdbMatchPrefixes = registry.hwdbMatchPrefixes;
+}
+
+export function hwdbPropertyFor(name: string): HwdbPropertyDefinition | undefined {
+  return (
+    exactHwdbProperties.get(name) ??
+    dynamicHwdbProperties.find(([pattern]) => pattern.test(name))?.[1]
+  );
 }
 
 export function registryDialect(dialect: DialectId): RegistryDialect | undefined {
@@ -202,6 +246,23 @@ export function isDynamicDirective(name: string): boolean {
   return dynamicPatterns.some((pattern) => pattern.test(name));
 }
 
+function hydrateRegistry(registry: RawRegistryFile): RawRegistry {
+  return {
+    ...registry,
+    hwdbProperties: registry.hwdbProperties.map(hydrateHwdbProperty),
+  };
+}
+
+function hydrateHwdbProperty(raw: RawHwdbProperty): HwdbPropertyDefinition {
+  const [name, valueKind, choices, pattern] = raw;
+  return {
+    name,
+    valueKind,
+    choices,
+    ...(pattern === undefined ? {} : { pattern }),
+  };
+}
+
 function inheritedSystemdDefinition(
   dialect: RegistryDialect,
   section: string,
@@ -293,9 +354,21 @@ function applyDelta(preview: RawRegistry, delta: RawRegistryDelta): RawRegistry 
   for (const definition of delta.directives) {
     directives.set(key(definition.dialect, definition.section, definition.name), definition);
   }
+  const hwdbProperties = new Map(
+    preview.hwdbProperties.map((definition) => [definition.name, definition]),
+  );
+  for (const removed of delta.hwdbPropertyRemove) hwdbProperties.delete(removed);
+  for (const raw of delta.hwdbProperties) {
+    const definition = hydrateHwdbProperty(raw);
+    hwdbProperties.set(definition.name, definition);
+  }
   return {
     ...preview,
     upstream: delta.upstream,
+    hwdbProperties: [...hwdbProperties.values()].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    ),
+    hwdbMatchPrefixes: delta.hwdbMatchPrefixes ?? preview.hwdbMatchPrefixes,
     directives: [...directives.values()].sort((left, right) =>
       key(left.dialect, left.section, left.name).localeCompare(
         key(right.dialect, right.section, right.name),

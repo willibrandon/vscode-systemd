@@ -71,3 +71,25 @@ describe("systemd TextMate grammar regressions", () => {
     expect(performance.now() - started).toBeLessThan(500);
   });
 });
+
+describe("hwdb TextMate grammar regressions", () => {
+  it("scopes compiler matches, properties, values, and trailing comments exactly", async () => {
+    const grammar = await loadGrammar("source.systemd.hwdb");
+    const match = "usb:v0001* # match comment";
+    const property = " ID_MODEL=Demo device # value comment";
+    const source = [match, property, "\tID_INPUT=1"].join("\n");
+
+    expect(tokenAt(grammar, source, 0, 0).scopes).toContain("entity.name.tag.hwdb");
+    expect(tokenAt(grammar, source, 0, match.indexOf("#")).scopes).toContain(
+      "comment.line.number-sign.systemd",
+    );
+    expect(tokenAt(grammar, source, 1, 1).scopes).toContain("support.type.property-name.hwdb");
+    expect(tokenAt(grammar, source, 1, property.indexOf("Demo")).scopes).toContain(
+      "string.unquoted.hwdb",
+    );
+    expect(tokenAt(grammar, source, 1, property.lastIndexOf("#")).scopes).toContain(
+      "comment.line.number-sign.systemd",
+    );
+    expect(tokenAt(grammar, source, 2, 1).scopes).not.toContain("meta.assignment.hwdb");
+  });
+});

@@ -10,7 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 8;
+const adapterVersion = 9;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -98,6 +98,9 @@ if (unavailable.length > 0) {
   if (!Array.isArray(bundled.directives) || bundled.directives.length < 100) {
     throw new Error("Bundled registry is missing or incomplete.");
   }
+  if (!Array.isArray(bundled.hwdbProperties) || !Array.isArray(bundled.hwdbMatchPrefixes)) {
+    throw new Error("Bundled hwdb language data is missing or incomplete.");
+  }
   validateLock(lock, bundled.upstream, stableDelta.upstream);
   console.log(
     "Validated bundled registry with " +
@@ -117,11 +120,14 @@ const stableTags = {
 };
 const stableSources = await extractStableSources(sources, stableTags);
 let stableDirectives;
+let stableHwdbLanguage;
 try {
   stableDirectives = await generateDirectives(stableSources.sources);
+  stableHwdbLanguage = await extractHwdbLanguage(stableSources.sources.systemd);
 } finally {
   await rm(stableSources.temporaryDirectory, { recursive: true, force: true });
 }
+const hwdbLanguage = await extractHwdbLanguage(sources.systemd);
 const registry = {
   schemaVersion: 1,
   generatedAt: "1970-01-01T00:00:00.000Z",
@@ -146,6 +152,8 @@ const registry = {
     "^ID_NET_NAME_PATH_.+$",
     "^ID_NET_NAME_ONBOARD_.+$",
   ],
+  hwdbProperties: hwdbLanguage.properties.map(serializeHwdbProperty),
+  hwdbMatchPrefixes: hwdbLanguage.matchPrefixes,
   directives,
 };
 const serialized = JSON.stringify(registry, null, 2) + "\n";
@@ -154,7 +162,12 @@ const stableUpstream = {
   podman: revision(sources.podman, stableTags.podman),
   mkosi: revision(sources.mkosi, stableTags.mkosi),
 };
-const stableDelta = createRegistryDelta(directives, stableDirectives, stableUpstream);
+const stableDelta = createRegistryDelta(
+  directives,
+  stableDirectives,
+  stableUpstream,
+  stableHwdbLanguage,
+);
 const serializedStableDelta = JSON.stringify(stableDelta, null, 2) + "\n";
 const upstreamLock = {
   schemaVersion: 1,
@@ -319,7 +332,11 @@ async function extractStableSources(sourceTrees, tags) {
   };
   try {
     await Promise.all(Object.values(extracted).map((directory) => mkdir(directory)));
-    extractSourceArchive(sourceTrees.systemd, tags.systemd, extracted.systemd, ["src", "man"]);
+    extractSourceArchive(sourceTrees.systemd, tags.systemd, extracted.systemd, [
+      "src",
+      "man",
+      "hwdb.d/parse_hwdb.py",
+    ]);
     extractSourceArchive(sourceTrees.podman, tags.podman, extracted.podman, [
       "pkg/systemd/quadlet/quadlet.go",
     ]);
@@ -341,20 +358,187 @@ function extractSourceArchive(source, ref, destination, paths) {
   });
 }
 
-function createRegistryDelta(previewDirectives, stableDirectives, upstream) {
+function createRegistryDelta(previewDirectives, stableDirectives, upstream, stableHwdbLanguage) {
   const preview = new Map(
     previewDirectives.map((directive) => [directiveKey(directive), directive]),
   );
   const stable = new Map(stableDirectives.map((directive) => [directiveKey(directive), directive]));
+  const previewHwdb = new Map(hwdbLanguage.properties.map((property) => [property.name, property]));
+  const stableHwdb = new Map(
+    stableHwdbLanguage.properties.map((property) => [property.name, property]),
+  );
+  const hwdbMatchPrefixesChanged =
+    JSON.stringify(hwdbLanguage.matchPrefixes) !== JSON.stringify(stableHwdbLanguage.matchPrefixes);
   return {
     schemaVersion: 1,
     generatedAt: "1970-01-01T00:00:00.000Z",
     upstream,
+    hwdbPropertyRemove: [...previewHwdb.keys()].filter((name) => !stableHwdb.has(name)).sort(),
+    hwdbProperties: [...stableHwdb.entries()]
+      .filter(
+        ([name, property]) => JSON.stringify(previewHwdb.get(name)) !== JSON.stringify(property),
+      )
+      .map(([, property]) => serializeHwdbProperty(property)),
+    ...(hwdbMatchPrefixesChanged ? { hwdbMatchPrefixes: stableHwdbLanguage.matchPrefixes } : {}),
     remove: [...preview.keys()].filter((key) => !stable.has(key)).sort(),
     directives: [...stable.entries()]
       .filter(([key, directive]) => JSON.stringify(preview.get(key)) !== JSON.stringify(directive))
       .map(([, directive]) => directive),
   };
+}
+
+function serializeHwdbProperty(property) {
+  return [
+    property.name,
+    property.valueKind,
+    property.choices,
+    ...(property.pattern === undefined ? [] : [property.pattern]),
+  ];
+}
+
+async function extractHwdbLanguage(source) {
+  const text = await readFile(resolve(source, "hwdb.d/parse_hwdb.py"), "utf8");
+  const propertiesStart = text.indexOf("    props = (");
+  const propertiesEnd = text.indexOf("    fixed_props =", propertiesStart);
+  if (propertiesStart < 0 || propertiesEnd < 0) {
+    throw new Error("Unable to locate the systemd hwdb property grammar.");
+  }
+  const assignment = text.slice(propertiesStart, propertiesEnd);
+  const tupleStart = assignment.indexOf("(", assignment.indexOf("props ="));
+  const tuple = pythonDelimited(assignment, tupleStart, "(", ")");
+  const properties = pythonTopLevel(tuple.slice(1, -1))
+    .map((entry) => hwdbProperty(entry))
+    .filter((entry) => entry !== undefined);
+
+  if (/Regex\(r'KEYBOARD_KEY_\[0-9a-f\]\+'\)/u.test(text)) {
+    properties.push({
+      name: "KEYBOARD_KEY_<scan code>",
+      pattern: "^KEYBOARD_KEY_[0-9a-f]+$",
+      valueKind: "keycode",
+      choices: [],
+    });
+  }
+  if (/Regex\(r'EVDEV_ABS_\[0-9a-f\]\{2\}'\)/u.test(text)) {
+    properties.push({
+      name: "EVDEV_ABS_<axis>",
+      pattern: "^EVDEV_ABS_[0-9a-f]{2}$",
+      valueKind: "evdev-axis",
+      choices: [],
+    });
+  }
+
+  const matchPrefixes = extractHwdbMatchPrefixes(text);
+  if (properties.length < 50 || matchPrefixes.length < 20) {
+    throw new Error("Extracted systemd hwdb language data is unexpectedly incomplete.");
+  }
+  return {
+    properties: properties.sort((left, right) => left.name.localeCompare(right.name)),
+    matchPrefixes,
+  };
+}
+
+function hwdbProperty(entry) {
+  const trimmed = entry.trim();
+  if (!trimmed.startsWith("(") || !trimmed.endsWith(")")) return undefined;
+  const parts = pythonTopLevel(trimmed.slice(1, -1));
+  if (parts.length !== 2) return undefined;
+  const name = /^'([A-Z][A-Z0-9_]*)'$/u.exec(parts[0]?.trim() ?? "")?.[1];
+  if (name === undefined) return undefined;
+  const expression = parts[1]?.trim() ?? "";
+  let valueKind = "string";
+  let choices = [];
+  if (expression === "zero_one") {
+    valueKind = "boolean";
+    choices = ["0", "1"];
+  } else if (expression === "id_input_setting") {
+    valueKind = "input-flag";
+    choices = ["", "0", "1"];
+  } else if (expression === "INTEGER") {
+    valueKind = "integer";
+  } else if (expression === "xkb_setting") {
+    valueKind = "xkb";
+  } else if (expression.includes("dpi_setting")) {
+    valueKind = "dpi";
+  } else if (expression === "mount_matrix") {
+    valueKind = "mount-matrix";
+  } else if (expression.startsWith("Or(") || expression.startsWith("Literal(")) {
+    valueKind = "enum";
+    choices = [...expression.matchAll(/'([^']*)'/gu)].map((match) => match[1] ?? "");
+  }
+  return { name, valueKind, choices: [...new Set(choices)] };
+}
+
+function extractHwdbMatchPrefixes(text) {
+  const typesStart = text.indexOf("TYPES = {");
+  const typesEnd = text.indexOf("\n}\n", typesStart);
+  const generalStart = text.indexOf("GENERAL_MATCHES = {");
+  const generalEnd = text.indexOf("\n}\n", generalStart);
+  if (typesStart < 0 || typesEnd < 0 || generalStart < 0 || generalEnd < 0) return [];
+  const prefixes = [];
+  const types = text.slice(typesStart, typesEnd);
+  for (const entry of types.matchAll(/'([^']+)'\s*:\s*(\([\s\S]*?\)|'[^']+')\s*,/gu)) {
+    const category = entry[1] ?? "";
+    for (const connection of (entry[2] ?? "").matchAll(/'([^']+)'/gu)) {
+      prefixes.push(category + ":" + (connection[1] ?? "") + ":");
+    }
+  }
+  const general = text.slice(generalStart, generalEnd);
+  for (const entry of general.matchAll(/'([^']+)'/gu)) prefixes.push((entry[1] ?? "") + ":");
+  return [...new Set(prefixes)].sort();
+}
+
+function pythonDelimited(text, start, open, close) {
+  let depth = 0;
+  let quote;
+  let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const character = text[index] ?? "";
+    if (quote !== undefined) {
+      if (character === quote && !escaped) quote = undefined;
+      escaped = character === "\\" && !escaped;
+      if (character !== "\\") escaped = false;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      continue;
+    }
+    if (character === open) depth += 1;
+    if (character === close) {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, index + 1);
+    }
+  }
+  throw new Error("Unterminated Python delimiter while extracting hwdb metadata.");
+}
+
+function pythonTopLevel(text) {
+  const result = [];
+  let start = 0;
+  let depth = 0;
+  let quote;
+  let escaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index] ?? "";
+    if (quote !== undefined) {
+      if (character === quote && !escaped) quote = undefined;
+      escaped = character === "\\" && !escaped;
+      if (character !== "\\") escaped = false;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      continue;
+    }
+    if ("([{\u007b".includes(character)) depth += 1;
+    if (")]\u007d".includes(character)) depth -= 1;
+    if (character === "," && depth === 0) {
+      if (text.slice(start, index).trim() !== "") result.push(text.slice(start, index));
+      start = index + 1;
+    }
+  }
+  if (text.slice(start).trim() !== "") result.push(text.slice(start));
+  return result;
 }
 
 function directiveKey(directive) {

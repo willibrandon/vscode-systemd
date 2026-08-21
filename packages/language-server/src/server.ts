@@ -10,6 +10,9 @@ import {
   extractReferences,
   findOrderingDependencyCycles,
   format,
+  hwdbMatchPrefixes,
+  hwdbProperties,
+  hwdbPropertyFor,
   isDefinitionAvailable,
   lineSettingsFor,
   mergeConfigurations,
@@ -34,6 +37,7 @@ import type {
   CoreDiagnostic,
   DialectId,
   DirectiveDefinition,
+  HwdbValueKind,
   LineFieldDefinition,
   LineFormatDefinition,
   LineSettingDefinition,
@@ -1103,10 +1107,11 @@ function lineCompletions(
 ): CompletionItem[] | undefined {
   const settings = lineSettingsFor(tree.kind);
   const format = recordFormatFor(tree.kind);
-  if (settings.length === 0 && format === undefined) return undefined;
-
   const node = nodeAt(tree, offset);
   if (node?.kind === "comment") return [];
+  if (tree.kind === "systemd-hwdb:hwdb") return hwdbCompletions(linePrefix);
+  if (settings.length === 0 && format === undefined) return undefined;
+
   if (settings.length > 0) {
     if (node?.kind === "assignment" && offset >= node.valueSpan.start) {
       const setting = settings.find(({ name }) => name === node.name);
@@ -1142,6 +1147,89 @@ function lineCompletions(
       : (lineField(format, fieldIndex)?.choices ?? []);
   const fieldName = lineField(format, fieldIndex)?.name ?? format.name;
   return choices.map((value) => lineValueCompletion(value, fieldName));
+}
+
+function hwdbCompletions(linePrefix: string): CompletionItem[] {
+  const comment = linePrefix.indexOf("#");
+  if (comment >= 0) return [];
+  if (!linePrefix.startsWith(" ")) {
+    return hwdbMatchPrefixes.map((prefix): CompletionItem => ({
+      label: prefix,
+      kind: CompletionItemKind.Keyword,
+      detail: "hwdb match prefix",
+      insertText: prefix + "${1:*}",
+      insertTextFormat: InsertTextFormat.Snippet,
+      documentation: {
+        kind: MarkupKind.Markdown,
+        value:
+          "**" +
+          prefix +
+          "** — Source-backed systemd hwdb match prefix.\n\n[Upstream documentation](https://www.freedesktop.org/software/systemd/man/latest/hwdb.html#Hardware%20Database%20Files)",
+      },
+    }));
+  }
+
+  const equals = linePrefix.indexOf("=");
+  if (equals >= 0) {
+    const name = linePrefix.slice(1, equals).trim();
+    const definition = hwdbPropertyFor(name);
+    if (definition === undefined) return [];
+    if (definition.choices.length > 0) {
+      return definition.choices.map((choice) => lineValueCompletion(choice, name));
+    }
+    const snippet = hwdbValueSnippet(definition.valueKind);
+    return snippet === undefined
+      ? []
+      : [
+          {
+            label: snippet.label,
+            kind: CompletionItemKind.Value,
+            detail: name + " " + definition.valueKind + " value",
+            insertText: snippet.insertText,
+            insertTextFormat: InsertTextFormat.Snippet,
+          },
+        ];
+  }
+
+  return hwdbProperties.map((definition): CompletionItem => {
+    const dynamic = definition.pattern !== undefined;
+    const insertText =
+      definition.valueKind === "keycode"
+        ? "KEYBOARD_KEY_${1:scan code}=${2:keycode}"
+        : definition.valueKind === "evdev-axis"
+          ? "EVDEV_ABS_${1:axis}=${2:min:max:resolution:fuzz:flat}"
+          : definition.name + "=";
+    return {
+      label: definition.name,
+      kind: CompletionItemKind.Property,
+      detail: "systemd hwdb " + definition.valueKind + " property",
+      insertText,
+      ...(dynamic ? { insertTextFormat: InsertTextFormat.Snippet } : {}),
+      documentation: {
+        kind: MarkupKind.Markdown,
+        value: hwdbPropertyMarkdown(definition.name, definition.valueKind, definition.choices),
+      },
+    };
+  });
+}
+
+function hwdbValueSnippet(
+  valueKind: HwdbValueKind,
+): { readonly label: string; readonly insertText: string } | undefined {
+  switch (valueKind) {
+    case "dpi":
+      return { label: "DPI setting", insertText: "*${1:1000}@${2:125}" };
+    case "mount-matrix":
+      return { label: "identity mount matrix", insertText: "1,0,0;0,1,0;0,0,1" };
+    case "integer":
+      return { label: "integer", insertText: "${1:0}" };
+    case "keycode":
+      return { label: "keycode", insertText: "${1:reserved}" };
+    case "evdev-axis":
+      return { label: "axis calibration", insertText: "${1:min:max:resolution:fuzz:flat}" };
+    default:
+      return undefined;
+  }
 }
 
 function udevCompletions(linePrefix: string): CompletionItem[] {
@@ -1294,6 +1382,9 @@ function recordHover(
   node: RecordNode,
   position: Position,
 ): Hover | null {
+  if (tree.kind === "systemd-hwdb:hwdb") {
+    return hwdbRecordHover(document, node, position);
+  }
   const format = recordFormatFor(tree.kind);
   if (format === undefined) return null;
   const offset = document.offsetAt(position);
@@ -1313,12 +1404,60 @@ function recordHover(
   };
 }
 
+function hwdbRecordHover(
+  document: TextDocument,
+  node: RecordNode,
+  position: Position,
+): Hover | null {
+  const offset = document.offsetAt(position);
+  const index = node.fieldSpans.findIndex(({ start, end }) => start <= offset && offset <= end);
+  if (index < 0) return null;
+  if (node.fields.length === 1) {
+    return {
+      contents: {
+        kind: MarkupKind.Markdown,
+        value:
+          "**Hardware database match** — A shell-glob pattern matched against a lookup string.\n\n[Upstream documentation](https://www.freedesktop.org/software/systemd/man/latest/hwdb.html#Hardware%20Database%20Files)",
+      },
+      range: toRange(document, node.fieldSpans[0] ?? node.span),
+    };
+  }
+  const name = node.fields[0] ?? "";
+  const definition = hwdbPropertyFor(name);
+  return {
+    contents: {
+      kind: MarkupKind.Markdown,
+      value: hwdbPropertyMarkdown(
+        name,
+        definition?.valueKind ?? "string",
+        definition?.choices ?? [],
+      ),
+    },
+    range: toRange(document, node.fieldSpans[index] ?? node.span),
+  };
+}
+
 function recordSignature(
   document: TextDocument,
   tree: ParsedDocument,
   node: RecordNode,
   position: Position,
 ): SignatureHelp | null {
+  if (tree.kind === "systemd-hwdb:hwdb" && node.fields.length === 2) {
+    const name = node.fields[0] ?? "PROPERTY";
+    const valueKind = hwdbPropertyFor(name)?.valueKind ?? "string";
+    return {
+      signatures: [
+        {
+          label: name + "=<" + valueKind + ">",
+          documentation: "Hardware database property value.",
+          parameters: [{ label: "<" + valueKind + ">" }],
+        },
+      ],
+      activeSignature: 0,
+      activeParameter: 0,
+    };
+  }
   const format = recordFormatFor(tree.kind);
   if (format === undefined) return null;
   const offset = document.offsetAt(position);
@@ -1349,6 +1488,24 @@ function recordSignature(
     activeSignature: 0,
     activeParameter: fieldIndex,
   };
+}
+
+function hwdbPropertyMarkdown(name: string, valueKind: string, choices: readonly string[]): string {
+  const values =
+    choices.length === 0
+      ? ""
+      : "\n\nValues: `" +
+        choices.map((choice) => (choice === "" ? "(empty)" : choice)).join("`, `") +
+        "`.";
+  return (
+    "**" +
+    name +
+    "=** — systemd hwdb " +
+    valueKind.replaceAll("-", " ") +
+    " property." +
+    values +
+    "\n\n[Upstream documentation](https://www.freedesktop.org/software/systemd/man/latest/hwdb.html#Hardware%20Database%20Files)"
+  );
 }
 
 function lineKeywordMarkdown(name: string, summary: string, documentation: string): string {
