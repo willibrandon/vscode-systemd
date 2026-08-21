@@ -32,6 +32,8 @@ All notable changes to this project will be documented here. The format follows
   Quadlet types, major systemd network and configuration families, and common mkosi image formats.
 - Pinned-corpus conformance against successful configuration fixtures maintained by systemd, Podman,
   and mkosi themselves.
+- Release-differential conformance for representative unit and networkd fixtures across systemd v250
+  through v261, analyzed against each fixture's matching target release.
 - Byte-reproducible VSIX, checksum, and CycloneDX SBOM release artifacts with canonical ZIP
   metadata.
 - Bundled JSON schemas and source-aligned semantic diagnostics for PCR measurement components and

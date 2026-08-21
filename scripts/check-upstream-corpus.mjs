@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import { posix, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { analyze, configureRegistryChannel, parse } from "../packages/language-core/lib/index.js";
@@ -132,16 +132,65 @@ for (const fixture of corpus) {
 
 let quadletReleases = 0;
 let quadletReleaseFixtures = 0;
+let systemdReleaseFixtures = 0;
+const systemdReleases = ["v250", "v252", "v254", "v256", "v258", "v260", "v261"];
+for (const tag of systemdReleases) {
+  const paths = gitPaths(sources.systemd, tag, "test/fuzz");
+  const units = new Map();
+  for (const path of paths) {
+    const extension = /\.(service|socket|timer|path|mount|automount|swap|target|slice)$/u.exec(
+      path,
+    )?.[1];
+    if (extension !== undefined && !path.includes("/directives") && !units.has(extension)) {
+      units.set(extension, path);
+    }
+  }
+  const network = [
+    paths.find((path) => path.endsWith("/99-default.link")),
+    paths.find((path) => path.endsWith(".netdev") && !path.includes("directives")),
+    paths.find((path) => path.endsWith(".network") && !path.includes("directives")),
+  ].filter((path) => path !== undefined);
+  const fixtures = [
+    ...[...units.values()].map((path) => ({ dialect: "systemd-unit", path })),
+    ...network.map((path) => ({ dialect: "systemd-network", path })),
+  ];
+  if (fixtures.length < 8) {
+    failures.push("systemd/" + tag + ": representative fuzz fixtures are incomplete");
+  }
+  for (const fixture of fixtures) {
+    let source = gitText(sources.systemd, tag, fixture.path);
+    if (fixture.path.startsWith("test/fuzz/fuzz-unit-file/")) {
+      source = source.replace(/^[^\r\n]+\r?\n/u, "");
+    }
+    const document = parse(
+      source,
+      fixture.dialect,
+      "upstream://systemd/" + tag + "/" + fixture.path.slice(fixture.path.lastIndexOf("/") + 1),
+    );
+    assignments += document.nodes.filter((node) => node.kind === "assignment").length;
+    systemdReleaseFixtures += 1;
+    for (const diagnostic of analyze(document, {
+      maxProblems: 10_000,
+      targetVersions: { [fixture.dialect]: tag.slice(1) },
+    })) {
+      failures.push(
+        "systemd/" +
+          tag +
+          "/" +
+          fixture.path +
+          ":" +
+          lineAt(document.lineStarts, diagnostic.span.start) +
+          ": " +
+          diagnostic.code +
+          ": " +
+          diagnostic.message,
+      );
+    }
+  }
+}
+
 for (const tag of releaseTags(sources.podman)) {
-  const paths = new Set(
-    execFileSync(
-      "git",
-      ["-C", sources.podman, "ls-tree", "-r", "--name-only", tag, "--", "test/e2e/quadlet"],
-      { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
-    )
-      .split(/\r?\n/u)
-      .filter(Boolean),
-  );
+  const paths = new Set(gitPaths(sources.podman, tag, "test/e2e/quadlet"));
   const fixtures = [
     ".artifact",
     ".build",
@@ -160,10 +209,7 @@ for (const tag of releaseTags(sources.podman)) {
   }
   quadletReleases += 1;
   for (const path of fixtures) {
-    const source = execFileSync("git", ["-C", sources.podman, "show", tag + ":" + path], {
-      encoding: "utf8",
-      maxBuffer: 4 * 1024 * 1024,
-    });
+    const source = gitText(sources.podman, tag, path);
     const document = parse(
       source,
       "podman-quadlet",
@@ -206,8 +252,38 @@ console.log(
     quadletReleaseFixtures +
     " Quadlet fixtures across " +
     quadletReleases +
-    " Podman releases, without diagnostics.",
+    " Podman releases, and " +
+    systemdReleaseFixtures +
+    " tagged systemd fuzz fixtures across " +
+    systemdReleases.length +
+    " representative releases, without diagnostics.",
 );
+
+function gitPaths(source, tag, path) {
+  return execFileSync("git", ["-C", source, "ls-tree", "-r", "--name-only", tag, "--", path], {
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  })
+    .split(/\r?\n/u)
+    .filter(Boolean);
+}
+
+function gitText(source, tag, path) {
+  let current = path;
+  for (let depth = 0; depth < 8; depth += 1) {
+    const entry = execFileSync("git", ["-C", source, "ls-tree", tag, "--", current], {
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    const text = execFileSync("git", ["-C", source, "show", tag + ":" + current], {
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    if (!entry.startsWith("120000 ")) return text;
+    current = posix.normalize(posix.join(posix.dirname(current), text.trim()));
+  }
+  throw new Error("Too many symbolic-link levels in " + tag + ":" + path);
+}
 
 function releaseTags(source) {
   return execFileSync("git", ["-C", source, "tag", "--list", "--sort=v:refname"], {

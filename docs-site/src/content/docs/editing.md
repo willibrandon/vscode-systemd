@@ -26,7 +26,10 @@ mkosi's distinct setting, directory, and subimage specifiers.
 The bundled registry is generated from pinned systemd, Podman, and mkosi source revisions. Normal
 language help does not require a network request or a host executable. Its parser is additionally
 checked against successful fixtures from those same pinned upstream trees, including mkosi's
-indented multiline values and conditional sections.
+indented multiline values and conditional sections. Representative unit and networkd fuzz fixtures
+from systemd v250, v252, v254, v256, v258, v260, and v261 are additionally analyzed against their
+matching target release, so version-aware diagnostics are exercised on historical source rather than
+synthetic examples alone.
 
 Quadlet setting types and repeat behavior come from Podman's Go converter lookups, while defaults
 and finite or open-ended choices come from the matching version of Podman's manual. Hover therefore

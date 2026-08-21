@@ -135,6 +135,9 @@ upstream source trees are not distributed in the extension.
 CI also parses a pinned, successful corpus from each upstream project's own tests and bundled
 configurations. This covers all author-configurable unit families, representative networkd files,
 every current Quadlet type, Quadlet continuation syntax, and mkosi's real multiline configurations.
+Representative systemd unit and networkd fuzz fixtures are also checked without diagnostics against
+their matching v250, v252, v254, v256, v258, v260, and v261 metadata targets; basic fixtures for
+every Quadlet type are checked across every non-prerelease Podman release from 4.4 onward.
 
 ## Development
 
