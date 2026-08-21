@@ -17,6 +17,7 @@ import {
   lineSettingsFor,
   mergeConfigurations,
   mkosiImageName,
+  mkosiPresetName,
   mkosiProfileName,
   mkosiReferenceKey,
   mkosiReferenceKindFor,
@@ -1710,6 +1711,8 @@ function mkosiCompletionValues(
 ): string[] {
   const mkosi = documents.filter(({ dialect }) => dialect === "mkosi");
   switch (kind) {
+    case "mkosi-preset":
+      return mkosi.map(({ uri }) => mkosiPresetName(uri)).filter(isString);
     case "mkosi-profile":
       return mkosi.map(({ uri }) => mkosiProfileName(uri)).filter(isString);
     case "mkosi-image":
@@ -2084,6 +2087,7 @@ function renameableReference(reference: Reference): boolean {
     case "quadlet":
       return isQuadletIdentity(reference.target);
     case "mkosi":
+    case "mkosi-preset":
     case "mkosi-profile":
     case "mkosi-image":
       return isSafeMkosiIdentity(reference.target);
@@ -2108,6 +2112,7 @@ function validReferenceRename(reference: Reference, candidate: string): boolean 
         identityExtension(candidate) === identityExtension(reference.target)
       );
     case "mkosi":
+    case "mkosi-preset":
     case "mkosi-profile":
     case "mkosi-image":
       return isSafeMkosiIdentity(candidate);

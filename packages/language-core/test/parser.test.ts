@@ -33,6 +33,8 @@ describe("complete dialect recognition", () => {
     ["file:///workspace/mkosi.tools.conf/mkosi.conf", "", "mkosi"],
     ["file:///workspace/mkosi.initrd.conf/mkosi.conf", "", "mkosi"],
     ["file:///workspace/mkosi.uki-profiles/secure.conf", "", "mkosi"],
+    ["file:///workspace/mkosi.presets/server.conf", "", "mkosi"],
+    ["file:///workspace/mkosi.presets/server/mkosi.conf", "", "mkosi"],
     ["file:///workspace/mkosi.repart/10-root.conf", "", "systemd-config"],
   ] as const)("recognizes %s", (uri, source, expected) => {
     expect(detectDialect(uri, source)).toBe(expected);
@@ -79,6 +81,7 @@ describe("lossless parsers", () => {
     ],
     ["file:///workspace/app.container.d/local.conf", "podman-quadlet", "podman-quadlet:container"],
     ["file:///workspace/mkosi.images/initrd/mkosi.conf", "mkosi", "mkosi:subimage"],
+    ["file:///workspace/mkosi.presets/server.conf", "mkosi", "mkosi:preset"],
     ["file:///workspace/mkosi.initrd.conf/mkosi.conf", "mkosi", "mkosi:initrd"],
     ["file:///workspace/mkosi.uki-profiles/secure.conf", "mkosi", "mkosi:uki-profile"],
     ["file:///etc/pcrlock.d/app.pcrlock", "systemd-json", "systemd-json:pcrlock"],

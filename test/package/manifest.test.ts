@@ -88,8 +88,11 @@ describe("extension manifest", () => {
     expect(language("systemd-environment")?.filenames).toContain("hostname");
     expect(language("systemd-boot")?.filenames).toContain("install.conf");
     expect(language("systemd-config")?.filenames).not.toContain("install.conf");
+    expect(language("mkosi")?.filenames).toContain("mkosi.initrd.conf");
     expect(language("mkosi")?.filenamePatterns).toEqual(
       expect.arrayContaining([
+        "**/mkosi.presets/*",
+        "**/mkosi.presets/**/*.conf",
         "**/mkosi.profiles/*",
         "**/mkosi.images/*",
         "**/mkosi.tools.conf/**/*.conf",

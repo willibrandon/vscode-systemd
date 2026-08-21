@@ -28,6 +28,7 @@ export {
   mergeConfigurations,
   mkosiImageName,
   mkosiIncludePath,
+  mkosiPresetName,
   mkosiProfileName,
   mkosiReferenceKey,
   mkosiReferenceKindFor,

@@ -723,6 +723,8 @@ describe("language server JSON-RPC contract", () => {
       ["mkosi.profiles/development.conf", "[Content]\nPackages=debugger\n"],
       ["mkosi.profiles/release/mkosi.conf", "[Output]\nFormat=disk\n"],
       ["mkosi.images/base.conf", "[Distribution]\nDistribution=fedora\n"],
+      ["mkosi.presets/server.conf", "[Preset]\nDependencies=base\n"],
+      ["mkosi.presets/base/mkosi.conf", "[Content]\nPackages=base-package\n"],
       ["mkosi.uki-profiles/secure.conf", "[UKIProfile]\nProfile=ID=secure\n"],
     ] as const;
     await client.sendNotification("systemd/index/documents", {
@@ -744,6 +746,9 @@ describe("language server JSON-RPC contract", () => {
       "Dependencies=",
       "[Content]",
       "UnifiedKernelImageProfiles=",
+      "[Preset]",
+      "Presets=",
+      "Dependencies=",
       "",
     ].join("\n");
     await client.sendNotification("textDocument/didOpen", {
@@ -765,6 +770,11 @@ describe("language server JSON-RPC contract", () => {
       position: { line: 4, character: 13 },
     });
     expect(images.map(({ label }) => label)).toEqual(["base"]);
+    const presets = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 8, character: "Presets=".length },
+    });
+    expect(presets.map(({ label }) => label).sort()).toEqual(["base", "server"]);
     const includes = await request<CompletionItem[]>(client, "textDocument/completion", {
       textDocument: { uri: mkosiUri },
       position: { line: 1, character: 8 },
@@ -782,6 +792,7 @@ describe("language server JSON-RPC contract", () => {
       .replace("Include=", "Include=config/common.conf")
       .replace("Profiles=", "Profiles=development,release")
       .replace("Dependencies=", "Dependencies=base")
+      .replace("Presets=", "Presets=server")
       .replace(
         "UnifiedKernelImageProfiles=",
         "UnifiedKernelImageProfiles=mkosi.uki-profiles/secure.conf",
@@ -818,6 +829,12 @@ describe("language server JSON-RPC contract", () => {
     ).toEqual([
       expect.objectContaining({ uri: "file:///workspace/mkosi.profiles/development.conf" }),
     ]);
+    expect(
+      await request<Location[]>(client, "textDocument/definition", {
+        textDocument: { uri: mkosiUri },
+        position: { line: 8, character: "Presets=ser".length },
+      }),
+    ).toEqual([expect.objectContaining({ uri: "file:///workspace/mkosi.presets/server.conf" })]);
     const prepare = await request<Range>(client, "textDocument/prepareRename", {
       textDocument: { uri: mkosiUri },
       position: { line: 3, character: 14 },

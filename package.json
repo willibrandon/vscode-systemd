@@ -350,10 +350,13 @@
           "mkosi.conf",
           "mkosi.local.conf",
           "mkosi.tools.conf",
+          "mkosi.initrd.conf",
           "mkosi.version"
         ],
         "filenamePatterns": [
           "**/mkosi.conf.d/**/*.conf",
+          "**/mkosi.presets/*",
+          "**/mkosi.presets/**/*.conf",
           "**/mkosi.profiles/*",
           "**/mkosi.profiles/**/*.conf",
           "**/mkosi.images/*",

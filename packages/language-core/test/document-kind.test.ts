@@ -90,6 +90,8 @@ describe("document kind classification", () => {
     ["file:///workspace/mkosi.tools.conf", "mkosi:tools"],
     ["file:///workspace/mkosi.local/mkosi.conf", "mkosi:local"],
     ["file:///workspace/mkosi.local.conf", "mkosi:local"],
+    ["file:///workspace/mkosi.presets/server.conf", "mkosi:preset"],
+    ["file:///workspace/mkosi.presets/server/mkosi.conf", "mkosi:preset"],
     ["file:///workspace/mkosi.profiles/server/mkosi.conf", "mkosi:profile"],
     ["file:///workspace/mkosi.images/server.conf", "mkosi:subimage"],
     ["file:///workspace/mkosi.conf.d/20-output.conf", "mkosi:drop-in"],

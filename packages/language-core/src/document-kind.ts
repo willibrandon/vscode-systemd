@@ -238,6 +238,7 @@ function classifyMkosi(normalized: string, effective: string): MkosiDocumentType
   }
   if (normalized.includes("/mkosi.tools.conf/") || effective === "mkosi.tools.conf") return "tools";
   if (normalized.includes("/mkosi.local/") || effective === "mkosi.local.conf") return "local";
+  if (normalized.includes("/mkosi.presets/")) return "preset";
   if (normalized.includes("/mkosi.profiles/")) return "profile";
   if (normalized.includes("/mkosi.images/")) return "subimage";
   if (normalized.includes("/mkosi.conf.d/")) return "drop-in";

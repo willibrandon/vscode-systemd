@@ -67,6 +67,7 @@ const graphReferenceKinds = new Set<Reference["kind"]>([
   "quadlet",
   "mkosi",
   "mkosi-include",
+  "mkosi-preset",
   "mkosi-profile",
   "mkosi-image",
 ]);
@@ -378,8 +379,13 @@ export function mkosiReferenceKindFor(
   name: string,
 ): Reference["kind"] | undefined {
   if (section === "Include" && name === "Include") return "mkosi-include";
+  if (section === "Preset" && (name === "Presets" || name === "Dependencies")) {
+    return "mkosi-preset";
+  }
   if (section === "Config" && name === "Profiles") return "mkosi-profile";
-  if (section === "Config" && name === "Dependencies") return "mkosi-image";
+  if (section === "Config" && (name === "Dependencies" || name === "Presets")) {
+    return "mkosi-image";
+  }
   if (section === "Content" && name === "UnifiedKernelImageProfiles") {
     return "mkosi-uki-profile";
   }
@@ -388,6 +394,10 @@ export function mkosiReferenceKindFor(
 
 export function mkosiProfileName(uri: string): string | undefined {
   return mkosiCollectionName(uri, "mkosi.profiles");
+}
+
+export function mkosiPresetName(uri: string): string | undefined {
+  return mkosiCollectionName(uri, "mkosi.presets");
 }
 
 export function mkosiImageName(uri: string): string | undefined {
@@ -407,6 +417,12 @@ export function mkosiIncludePath(
 export function mkosiReferenceKey(document: ParsedDocument, reference: Reference): string {
   const location = uriLocation(document.uri);
   switch (reference.kind) {
+    case "mkosi-preset":
+      return (
+        "preset:" +
+        location.origin +
+        normalizeAbsolutePath(mkosiPresetsDirectory(location.path) + "/" + reference.target)
+      );
     case "mkosi-profile":
       return (
         "profile:" +
@@ -446,6 +462,13 @@ export function resolveMkosiReferenceDocuments(
 ): readonly ParsedDocument[] {
   const candidates = documents.filter(({ dialect }) => dialect === "mkosi");
   switch (reference.kind) {
+    case "mkosi-preset":
+      return preferredMkosiEntry(
+        document.uri,
+        candidates.filter(({ uri }) => mkosiPresetName(uri) === reference.target),
+        "mkosi.presets",
+        reference.target,
+      );
     case "mkosi-profile":
       return preferredMkosiEntry(
         document.uri,
@@ -682,6 +705,7 @@ export function resolveMkosiConfiguration(
   const mainTraversal = createMkosiTraversal(available, requested.origin, "main");
   const mainEvents = mainTraversal.directory(rootPath, true, true);
   const mainBase = mainTraversal.document(rootPath + "/mkosi.conf");
+  const preset = mkosiPresetName(uri);
   const image = mkosiImageName(uri);
   let identity = "main";
   let baseUri = mainBase?.uri;
@@ -703,7 +727,26 @@ export function resolveMkosiConfiguration(
     events = [...inherited.base, ...specialEvents, ...inherited.override];
   }
 
-  if (special === undefined && image !== undefined) {
+  if (special === undefined && preset !== undefined) {
+    identity = preset;
+    const presetTraversal = createMkosiTraversal(available, requested.origin, preset);
+    const presetDirectory = rootPath + "/mkosi.presets/" + preset;
+    const direct = presetTraversal.document(presetDirectory + ".conf");
+    let presetEvents: readonly ConfigurationEvent[];
+    if (
+      requested.path === normalizeAbsolutePath(presetDirectory + ".conf") &&
+      direct !== undefined
+    ) {
+      presetEvents = presetTraversal.file(direct, rootPath, mainEvents);
+      baseUri = direct.uri;
+    } else {
+      presetEvents = presetTraversal.directory(presetDirectory, false, false, mainEvents);
+      baseUri = presetTraversal.document(presetDirectory + "/mkosi.conf")?.uri;
+    }
+    events = [...mainEvents, ...presetEvents];
+  }
+
+  if (special === undefined && preset === undefined && image !== undefined) {
     identity = image;
     const inherited = mainEvents.filter(({ node }) => node.definition?.mkosiScope === "inherit");
     const universal = mainEvents.filter(({ node }) =>
@@ -1550,6 +1593,12 @@ function mkosiReferenceDiagnostic(reference: Reference): {
   readonly severity: CoreDiagnostic["severity"];
 } {
   switch (reference.kind) {
+    case "mkosi-preset":
+      return {
+        code: "missing-mkosi-preset",
+        message: "Required mkosi preset " + reference.target + " was not found in mkosi.presets.",
+        severity: "error",
+      };
     case "mkosi-profile":
       return {
         code: "missing-mkosi-profile",
@@ -1585,7 +1634,7 @@ function mkosiReferenceDiagnostic(reference: Reference): {
 
 function mkosiCollectionName(
   uri: string,
-  collection: "mkosi.profiles" | "mkosi.images",
+  collection: "mkosi.presets" | "mkosi.profiles" | "mkosi.images",
 ): string | undefined {
   const parts = pathParts(uriLocation(uri).path);
   const index =
@@ -1598,14 +1647,16 @@ function mkosiCollectionName(
 function preferredMkosiEntry(
   sourceUri: string,
   documents: readonly ParsedDocument[],
-  collection: "mkosi.profiles" | "mkosi.images",
+  collection: "mkosi.presets" | "mkosi.profiles" | "mkosi.images",
   name: string,
 ): readonly ParsedDocument[] {
   const source = uriLocation(sourceUri);
   const collectionPath =
-    collection === "mkosi.profiles"
-      ? mkosiProfilesDirectory(source.path)
-      : mkosiImagesDirectory(source.path);
+    collection === "mkosi.presets"
+      ? mkosiPresetsDirectory(source.path)
+      : collection === "mkosi.profiles"
+        ? mkosiProfilesDirectory(source.path)
+        : mkosiImagesDirectory(source.path);
   const scoped = documents.filter((document) => {
     const location = uriLocation(document.uri);
     return location.origin === source.origin && location.path.startsWith(collectionPath + "/");
@@ -1696,7 +1747,7 @@ function mkosiWorkingDirectory(path: string): string {
   const name = parts.at(-1) ?? "";
   const confd = parts.lastIndexOf("mkosi.conf.d");
   if (confd >= 0 && confd === parts.length - 2) return "/" + parts.slice(0, confd).join("/");
-  for (const collection of ["mkosi.profiles", "mkosi.images"] as const) {
+  for (const collection of ["mkosi.presets", "mkosi.profiles", "mkosi.images"] as const) {
     const index = parts.lastIndexOf(collection);
     if (index >= 0 && index === parts.length - 2) return "/" + parts.slice(0, index).join("/");
   }
@@ -1713,6 +1764,10 @@ function mkosiProfilesDirectory(path: string): string {
   return normalizeAbsolutePath(base + "/mkosi.profiles");
 }
 
+function mkosiPresetsDirectory(path: string): string {
+  return normalizeAbsolutePath(mkosiProjectRoot(path) + "/mkosi.presets");
+}
+
 function mkosiImagesDirectory(path: string): string {
   return normalizeAbsolutePath(mkosiProjectRoot(path) + "/mkosi.images");
 }
@@ -1724,6 +1779,7 @@ function mkosiProjectRoot(path: string): string {
     "mkosi.images",
     "mkosi.initrd.conf",
     "mkosi.local",
+    "mkosi.presets",
     "mkosi.profiles",
     "mkosi.tools.conf",
     "mkosi.uki-profiles",

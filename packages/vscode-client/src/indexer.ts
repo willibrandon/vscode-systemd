@@ -413,7 +413,10 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
         if (directory) {
           if (current.mode === "root" && name === "mkosi.conf.d") {
             pending.push({ uri, mode: "drop-ins", depth: current.depth + 1 });
-          } else if (current.mode === "root" && name === "mkosi.profiles") {
+          } else if (
+            current.mode === "root" &&
+            (name === "mkosi.presets" || name === "mkosi.profiles")
+          ) {
             pending.push({ uri, mode: "profiles", depth: current.depth + 1 });
           } else if (current.mode !== "root") {
             pending.push({ uri, mode: "root", depth: current.depth + 1 });

@@ -69,7 +69,8 @@ The extension has dedicated language IDs for:
 - environment, release, locale, machine-info, and vconsole files;
 - DNS trust anchors, plus schema-backed PCR lock files and DNS resource-record JSON;
 - all current Quadlet types: artifact, build, container, image, kube, network, pod, and volume;
-- mkosi main, drop-in, profile, image, local, and UKI-profile configuration.
+- mkosi main, drop-in, historical preset, profile, image, local, tools, initrd, version, and
+  UKI-profile configuration.
 
 Compound template and backup suffixes such as `.service.in`, `.network.j2`, and `.container.ignore`
 are recognized without treating template expressions as systemd syntax errors.

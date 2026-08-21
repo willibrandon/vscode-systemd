@@ -22,6 +22,8 @@ describe("workspace index coverage", () => {
     "etc/hostname",
     "mkosi.conf",
     "mkosi.conf.d/10-base.conf",
+    "mkosi.presets/server.conf",
+    "mkosi.presets/server/mkosi.conf.d/20-packages.conf",
     "mkosi.profiles/debug",
     "mkosi.profiles/release/mkosi.conf.d/20-packages.conf",
     "mkosi.images/initrd.conf",

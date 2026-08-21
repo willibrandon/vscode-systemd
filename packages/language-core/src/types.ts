@@ -71,6 +71,7 @@ export type QuadletDocumentType =
 export type MkosiDocumentType =
   | "main"
   | "drop-in"
+  | "preset"
   | "profile"
   | "subimage"
   | "local"
@@ -314,6 +315,7 @@ export interface Reference {
     | "quadlet"
     | "mkosi"
     | "mkosi-include"
+    | "mkosi-preset"
     | "mkosi-profile"
     | "mkosi-image"
     | "mkosi-uki-profile"

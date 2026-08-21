@@ -25,7 +25,8 @@ export function configurationWorkspaceGlobs(suffixes: readonly string[]): readon
     "**/loader/entries/*.conf",
     "**/kernel/install.conf.d/*.conf",
     `**/{${exactNames}}`,
-    "**/{mkosi.conf.d,mkosi.local,mkosi.tools.conf,mkosi.initrd.conf,mkosi.profiles,mkosi.images}/**/*.conf",
+    "**/{mkosi.conf.d,mkosi.local,mkosi.tools.conf,mkosi.initrd.conf,mkosi.presets,mkosi.profiles,mkosi.images}/**/*.conf",
+    "**/mkosi.presets/*",
     "**/mkosi.profiles/*",
     "**/mkosi.images/*.conf",
     "**/mkosi.uki-profiles/*.conf",
@@ -46,6 +47,6 @@ export function configurationWorkspaceGlobs(suffixes: readonly string[]): readon
     `**/journald@*.conf.${suffixPattern}`,
     `**/journald@*.conf.d/*.conf.${suffixPattern}`,
     `**/{mkosi.conf,mkosi.local.conf,mkosi.tools.conf,mkosi.initrd.conf}.${suffixPattern}`,
-    `**/{mkosi.conf.d,mkosi.local,mkosi.tools.conf,mkosi.initrd.conf,mkosi.profiles,mkosi.images}/**/*.conf.${suffixPattern}`,
+    `**/{mkosi.conf.d,mkosi.local,mkosi.tools.conf,mkosi.initrd.conf,mkosi.presets,mkosi.profiles,mkosi.images}/**/*.conf.${suffixPattern}`,
   ];
 }

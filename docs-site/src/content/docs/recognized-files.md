@@ -26,8 +26,8 @@ Quadlet recognizes `.artifact`, `.build`, `.container`, `.image`, `.kube`, `.net
 recognized `containers/systemd` or Quadlet path; ordinary `.network` files remain systemd-networkd
 files.
 
-mkosi recognizes `mkosi.conf`, local, tools, version, drop-in, profile, image, and UKI-profile
-configuration paths.
+mkosi recognizes `mkosi.conf`, local, tools, initrd, version, drop-in, historical `mkosi.presets/`,
+profile, image, and UKI-profile configuration paths.
 
 ## Templates and unusual paths
 

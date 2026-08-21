@@ -495,6 +495,71 @@ describe("mkosi configuration references", () => {
   const mkosi = (uri: string, source = "[Config]\nMinimumVersion=26\n"): ParsedDocument =>
     parse(source, "mkosi", uri);
 
+  it("resolves the complete pre-v19 preset graph and effective configuration", () => {
+    const main = mkosi(
+      "file:///workspace/mkosi.conf",
+      "[Distribution]\nDistribution=fedora\n[Preset]\nPresets=server\n",
+    );
+    const server = mkosi(
+      "file:///workspace/mkosi.presets/server.conf",
+      "[Distribution]\nDistribution=debian\n[Preset]\nDependencies=base\n",
+    );
+    const base = mkosi(
+      "file:///workspace/mkosi.presets/base/mkosi.conf",
+      "[Content]\nPackages=base-package\n",
+    );
+    const documents = [main, server, base];
+
+    const mainReferences = extractReferences(main);
+    const serverReferences = extractReferences(server);
+    expect(mainReferences.map(({ kind, target }) => ({ kind, target }))).toEqual([
+      { kind: "mkosi-preset", target: "server" },
+    ]);
+    expect(serverReferences.map(({ kind, target }) => ({ kind, target }))).toEqual([
+      { kind: "mkosi-preset", target: "base" },
+    ]);
+    const mainReference = mainReferences[0];
+    const serverReference = serverReferences[0];
+    if (mainReference === undefined || serverReference === undefined) {
+      throw new Error("Expected both historical preset references.");
+    }
+    expect(
+      resolveMkosiReferenceDocuments(main, mainReference, documents).map(({ uri }) => uri),
+    ).toEqual([server.uri]);
+    expect(
+      resolveMkosiReferenceDocuments(server, serverReference, documents).map(({ uri }) => uri),
+    ).toEqual([base.uri]);
+    expect(analyzeWorkspaceReferences(main, documents)).toEqual([]);
+    expect(analyzeWorkspaceReferences(server, documents)).toEqual([]);
+
+    const direct = resolveMkosiConfiguration(server.uri, documents);
+    expect(direct.identity).toBe("server");
+    expect(direct.baseUri).toBe(server.uri);
+    expect(direct.documents.map(({ uri }) => uri)).toEqual([main.uri, server.uri]);
+    expect(direct.configuration.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Distribution", value: "debian" }),
+        expect.objectContaining({ name: "Presets", value: "server" }),
+        expect.objectContaining({ name: "Dependencies", value: "base" }),
+      ]),
+    );
+
+    const directory = resolveMkosiConfiguration(base.uri, documents);
+    expect(directory.identity).toBe("base");
+    expect(directory.baseUri).toBe(base.uri);
+    expect(directory.documents.map(({ uri }) => uri)).toEqual([main.uri, base.uri]);
+    expect(directory.configuration.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Packages", value: "base-package" }),
+      ]),
+    );
+
+    const missing = mkosi("file:///workspace/missing.conf", "[Preset]\nDependencies=unavailable\n");
+    expect(analyzeWorkspaceReferences(missing, documents)).toEqual([
+      expect.objectContaining({ code: "missing-mkosi-preset", severity: "error" }),
+    ]);
+  });
+
   it("classifies comma-separated includes, profiles, subimages, and UKI profiles", () => {
     const source = [
       "[Include]",

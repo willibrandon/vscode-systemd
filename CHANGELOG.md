@@ -48,6 +48,9 @@ All notable changes to this project will be documented here. The format follows
 - Typed mkosi graph intelligence for comma-separated includes, profiles, subimage dependencies, and
   UKI profiles, with compatible completion, exact navigation and rename, and unresolved-reference
   diagnostics.
+- Historical mkosi v16–v18 preset intelligence for `mkosi.presets/`, including direct and nested
+  presets, dependency selection, completion, navigation, rename, diagnostics, and inherited
+  effective configuration.
 - Source-ordered mkosi effective configurations for includes, local overrides, lexical drop-ins,
   selected profiles, subimages, tools trees, and the default initrd, including generated setting
   remapping and inheritance semantics.
