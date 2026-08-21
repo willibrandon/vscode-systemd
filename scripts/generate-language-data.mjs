@@ -552,12 +552,7 @@ function systemdChoices(block) {
     const end = period >= 0 ? period : colon >= 0 ? colon : paragraph.length;
     const sentence = paragraph.slice(lead.index, end);
     const choices = [...sentence.matchAll(/<(literal|option)>([\s\S]*?)<\/\1>/gu)]
-      .map((choice) =>
-        (choice[2] ?? "")
-          .replace(/<replaceable>[\s\S]*?<\/replaceable>/gu, "")
-          .replace(/<[^>]+>/gu, "")
-          .trim(),
-      )
+      .map((choice) => systemdChoiceToken(choice[2] ?? ""))
       .filter((choice) => /^[^\s<>&]+$/u.test(choice));
     const unique = [...new Set(choices)];
     if (unique.length >= 2 && unique.length <= 32) {
@@ -568,6 +563,23 @@ function systemdChoices(block) {
     }
   }
   return { choices: [], exclusive: undefined };
+}
+
+function systemdChoiceToken(value) {
+  let result = "";
+  let cursor = 0;
+  let replaceableDepth = 0;
+  for (const tag of value.matchAll(/<\/?([A-Za-z][A-Za-z0-9_.:-]*)(?:\s[^<>]*)?>/gu)) {
+    if (replaceableDepth === 0) result += value.slice(cursor, tag.index);
+    const name = (tag[1] ?? "").toLowerCase();
+    if (name === "replaceable") {
+      if ((tag[0] ?? "").startsWith("</")) replaceableDepth = Math.max(0, replaceableDepth - 1);
+      else replaceableDepth += 1;
+    }
+    cursor = (tag.index ?? cursor) + (tag[0]?.length ?? 0);
+  }
+  if (replaceableDepth === 0) result += value.slice(cursor);
+  return result.trim();
 }
 
 function rememberSemantics(semantics, dialect, name, section, assignmentMode, resetGroup) {

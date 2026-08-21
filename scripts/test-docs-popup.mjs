@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { chromium } from "playwright";
 
@@ -116,9 +116,9 @@ async function serve(requestUrl, response) {
     if (relative.endsWith("/")) relative += "index.html";
     const file = resolve(site, "." + relative);
     if (file !== site && !file.startsWith(site + sep)) throw new Error("Invalid docs path.");
-    if (!(await stat(file)).isFile()) throw new Error("Docs path is not a file.");
+    const contents = await readFile(file);
     response.writeHead(200, { "content-type": contentType(file) });
-    response.end(await readFile(file));
+    response.end(contents);
   } catch {
     response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     response.end("Not found");
