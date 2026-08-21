@@ -471,6 +471,35 @@
         "path": "./snippets/mkosi.json"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "systemd.explorer",
+          "name": "Systemd"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "systemd.refreshIndex",
+          "when": "view == systemd.explorer",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "systemd.showEffectiveConfiguration",
+          "when": "view == systemd.explorer && (viewItem == systemdUnit || viewItem == systemdConfiguration)",
+          "group": "inline"
+        },
+        {
+          "command": "systemd.createDropIn",
+          "when": "view == systemd.explorer && viewItem == systemdUnit",
+          "group": "systemd"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "systemd.validateWithInstalledTools",

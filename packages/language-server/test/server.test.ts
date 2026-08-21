@@ -419,6 +419,90 @@ describe("language server JSON-RPC contract", () => {
     await client.sendNotification("systemd/diagnostics/refresh", {});
     expect(await changedPromise).toEqual([]);
   });
+
+  it("reports the indexed workspace and resolves effective source precedence", async () => {
+    await client.sendNotification("systemd/index/documents", {
+      replace: true,
+      documents: [
+        {
+          uri: "file:///usr/lib/systemd/system/worker@.service",
+          languageId: "systemd-unit",
+          source: "[Unit]\nDescription=Vendor\n[Service]\nEnvironment=BASE=1\n",
+          mtime: 1,
+        },
+        {
+          uri: "file:///etc/systemd/system/service.d/10-default.conf",
+          languageId: "systemd-unit",
+          source: "[Service]\nEnvironment=DEFAULT=1\n",
+          mtime: 2,
+        },
+        {
+          uri: "file:///etc/systemd/system/worker@blue.service.d/20-local.conf",
+          languageId: "systemd-unit",
+          source: "[Unit]\nWants=database.service\n[Service]\nEnvironment=LOCAL=1\n",
+          mtime: 3,
+        },
+        {
+          uri: "file:///workspace/orphan.service.d/override.conf",
+          languageId: "systemd-unit",
+          source: "[Service]\nEnvironment=ORPHAN=1\n",
+          mtime: 4,
+        },
+        {
+          uri: "file:///etc/systemd/system/masked.service",
+          languageId: "systemd-unit",
+          source: "",
+          mtime: 5,
+        },
+      ],
+    });
+
+    const effective = await request<string>(client, "systemd/effectiveConfiguration", {
+      uri: "file:///workspace/worker@blue.service",
+    });
+    expect(effective).toContain("Description=Vendor");
+    expect(effective).toContain("Environment=DEFAULT=1");
+    expect(effective).toContain("Environment=LOCAL=1");
+    expect(effective.indexOf("10-default.conf")).toBeLessThan(effective.indexOf("20-local.conf"));
+
+    const snapshot = await request<{
+      readonly configurations: readonly {
+        readonly identity: string;
+        readonly baseUri?: string;
+        readonly dropInUris: readonly string[];
+      }[];
+      readonly documents: readonly {
+        readonly uri: string;
+        readonly references: readonly { readonly target: string }[];
+      }[];
+    }>(client, "systemd/workspaceSnapshot", {});
+    const configuration = snapshot.configurations.find(
+      ({ identity }) => identity === "worker@blue.service",
+    );
+    expect(configuration?.baseUri).toBe("file:///usr/lib/systemd/system/worker@.service");
+    expect(configuration?.dropInUris).toEqual([
+      "file:///etc/systemd/system/service.d/10-default.conf",
+      "file:///etc/systemd/system/worker@blue.service.d/20-local.conf",
+    ]);
+    expect(
+      snapshot.documents
+        .find(({ uri }) => uri.endsWith("20-local.conf"))
+        ?.references.map(({ target }) => target),
+    ).toContain("database.service");
+    const orphan = snapshot.configurations.find(({ identity }) => identity === "orphan.service");
+    expect(orphan?.baseUri).toBeUndefined();
+    expect(orphan).toMatchObject({
+      dropInUris: [
+        "file:///etc/systemd/system/service.d/10-default.conf",
+        "file:///workspace/orphan.service.d/override.conf",
+      ],
+    });
+
+    const masked = await request<string>(client, "systemd/effectiveConfiguration", {
+      uri: "file:///workspace/masked.service",
+    });
+    expect(masked).toContain("Unit is masked by file:///etc/systemd/system/masked.service");
+  });
 });
 
 async function request<T = unknown>(

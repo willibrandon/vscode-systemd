@@ -13,6 +13,9 @@ interface Manifest {
   readonly activationEvents?: readonly string[];
   readonly contributes: {
     readonly commands: readonly { readonly command: string }[];
+    readonly views: {
+      readonly explorer: readonly { readonly id: string; readonly name: string }[];
+    };
   };
 }
 
@@ -50,6 +53,13 @@ describe("extension manifest", () => {
 
   it("relies on generated activation events from contributions", () => {
     expect(manifest.activationEvents).toBeUndefined();
+  });
+
+  it("contributes the Systemd Explorer in the standard Explorer container", () => {
+    expect(manifest.contributes.views.explorer).toContainEqual({
+      id: "systemd.explorer",
+      name: "Systemd",
+    });
   });
 
   it("uses a small deterministic PNG icon", async () => {

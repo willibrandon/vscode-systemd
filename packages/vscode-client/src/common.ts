@@ -2,12 +2,13 @@ import * as vscode from "vscode";
 import type { BaseLanguageClient, LanguageClientOptions } from "vscode-languageclient";
 import type { DialectId } from "@systemd/language-core";
 import {
-  dependencyGraphRequest,
   detectDialectRequest,
-  effectiveConfigurationRequest,
   indexedDocumentsNotification,
   refreshDiagnosticsNotification,
 } from "@systemd/language-server/protocol";
+import { registerSystemdExplorer } from "./explorer.js";
+import type { DropInTarget } from "./explorer.js";
+import { registerVirtualDocuments } from "./virtual-documents.js";
 
 export const systemdLanguageIds: readonly DialectId[] = [
   "systemd-unit",
@@ -48,7 +49,14 @@ export function registerCommonFeatures(
   context: vscode.ExtensionContext,
   runtime: ClientRuntime,
 ): { readonly refreshIndex: () => Promise<void> } {
-  const refreshIndex = createWorkspaceIndexer(runtime);
+  const explorer = registerSystemdExplorer(context, runtime.client, runtime.output);
+  const virtualDocuments = registerVirtualDocuments(context, runtime.client);
+  const indexWorkspace = createWorkspaceIndexer(runtime);
+  const refreshIndex = async (): Promise<void> => {
+    await indexWorkspace();
+    await explorer.refresh();
+    await virtualDocuments.refreshEffectiveDocuments();
+  };
   context.subscriptions.push(
     vscode.commands.registerCommand("systemd.restartLanguageServer", async (): Promise<void> => {
       runtime.output.info("Restarting systemd language server.");
@@ -66,47 +74,27 @@ export function registerCommonFeatures(
     }),
     vscode.commands.registerCommand(
       "systemd.showEffectiveConfiguration",
-      async (): Promise<void> => {
-        const document = activeSystemdDocument();
-        if (document === undefined) return;
-        const content = await runtime.client.sendRequest(effectiveConfigurationRequest, {
-          uri: document.uri.toString(),
-        });
-        await showTextDocument("systemd-config", content);
+      async (selected?: unknown): Promise<void> => {
+        const source = explorer.sourceFor(selected) ?? activeSystemdUri(virtualDocuments);
+        if (source === undefined) return;
+        await virtualDocuments.showEffective(source);
       },
     ),
-    vscode.commands.registerCommand("systemd.showDependencyGraph", async (): Promise<void> => {
-      const document = activeSystemdDocument();
-      const graph = await runtime.client.sendRequest(
-        dependencyGraphRequest,
-        document === undefined ? {} : { uri: document.uri.toString() },
-      );
-      const lines = [
-        "# systemd dependency graph",
-        "",
-        "~~~mermaid",
-        "flowchart LR",
-        ...graph.edges.map(
-          (edge) =>
-            "  " +
-            mermaidId(edge.source) +
-            '["' +
-            escapeMermaid(edge.source) +
-            '"] -->|' +
-            escapeMermaid(edge.kind) +
-            "| " +
-            mermaidId(edge.target) +
-            '["' +
-            escapeMermaid(edge.target) +
-            '"]',
-        ),
-        "~~~",
-        "",
-        graph.edges.length === 0 ? "_No indexed dependencies were found._" : "",
-      ];
-      await showTextDocument("markdown", lines.join("\n"));
-    }),
-    vscode.commands.registerCommand("systemd.createDropIn", createDropIn),
+    vscode.commands.registerCommand(
+      "systemd.showDependencyGraph",
+      async (selected?: unknown): Promise<void> => {
+        const source = explorer.sourceFor(selected) ?? activeSystemdUri(virtualDocuments, false);
+        await virtualDocuments.showDependencyGraph(source);
+      },
+    ),
+    vscode.commands.registerCommand(
+      "systemd.openExplorerReference",
+      async (target: string): Promise<void> => explorer.openReference(target),
+    ),
+    vscode.commands.registerCommand(
+      "systemd.createDropIn",
+      async (selected?: unknown): Promise<void> => createDropIn(explorer.dropInTargetFor(selected)),
+    ),
     vscode.commands.registerCommand("systemd.selectDialect", async (): Promise<void> => {
       const document = vscode.window.activeTextEditor?.document;
       if (document === undefined) {
@@ -142,11 +130,24 @@ export function registerCommonFeatures(
   watcher.onDidCreate(scheduleRefresh);
   watcher.onDidChange(scheduleRefresh);
   watcher.onDidDelete(scheduleRefresh);
-  context.subscriptions.push(watcher, {
-    dispose(): void {
-      if (refreshTimer !== undefined) clearTimeout(refreshTimer);
+  let virtualRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+  const scheduleVirtualRefresh = (): void => {
+    if (virtualRefreshTimer !== undefined) clearTimeout(virtualRefreshTimer);
+    virtualRefreshTimer = setTimeout((): void => {
+      virtualRefreshTimer = undefined;
+      void Promise.all([explorer.refresh(), virtualDocuments.refreshEffectiveDocuments()]);
+    }, 150);
+  };
+  context.subscriptions.push(
+    watcher,
+    {
+      dispose(): void {
+        if (refreshTimer !== undefined) clearTimeout(refreshTimer);
+        if (virtualRefreshTimer !== undefined) clearTimeout(virtualRefreshTimer);
+      },
     },
-  });
+    vscode.workspace.onDidChangeTextDocument(scheduleVirtualRefresh),
+  );
   return { refreshIndex };
 }
 
@@ -188,30 +189,49 @@ function createWorkspaceIndexer(runtime: ClientRuntime): () => Promise<void> {
   };
 }
 
-function activeSystemdDocument(): vscode.TextDocument | undefined {
+function activeSystemdDocument(showMessage = true): vscode.TextDocument | undefined {
   const document = vscode.window.activeTextEditor?.document;
   if (document === undefined || !systemdLanguageIds.includes(document.languageId as DialectId)) {
-    void vscode.window.showInformationMessage(
-      "Open a recognized systemd configuration file first.",
-    );
+    if (showMessage) {
+      void vscode.window.showInformationMessage(
+        "Open a recognized systemd configuration file first.",
+      );
+    }
     return undefined;
   }
   return document;
 }
 
-async function showTextDocument(language: string, content: string): Promise<void> {
-  const document = await vscode.workspace.openTextDocument({ language, content });
-  await vscode.window.showTextDocument(document, { preview: false });
+function activeSystemdUri(
+  virtualDocuments: ReturnType<typeof registerVirtualDocuments>,
+  showMessage = true,
+): vscode.Uri | undefined {
+  const active = vscode.window.activeTextEditor?.document;
+  if (active !== undefined) {
+    const source = virtualDocuments.sourceFor(active.uri);
+    if (source !== undefined) return source;
+  }
+  return activeSystemdDocument(showMessage)?.uri;
 }
 
-async function createDropIn(): Promise<void> {
-  const document = activeSystemdDocument();
-  if (document === undefined) return;
-  if (document.uri.scheme !== "file" || document.languageId !== "systemd-unit") {
+async function createDropIn(selected?: DropInTarget): Promise<void> {
+  const document = selected === undefined ? activeSystemdDocument() : undefined;
+  const source = selected?.source ?? document?.uri;
+  const identity = selected?.identity ?? basename(source?.path ?? "");
+  if (source === undefined) return;
+  const languageId =
+    document?.languageId ?? (await vscode.workspace.openTextDocument(source)).languageId;
+  if (source.scheme !== "file" || languageId !== "systemd-unit") {
     await vscode.window.showInformationMessage("Drop-ins require a saved local systemd unit file.");
     return;
   }
-  const directory = vscode.Uri.file(document.uri.fsPath + ".d");
+  if (vscode.workspace.getWorkspaceFolder(source) === undefined) {
+    await vscode.window.showInformationMessage(
+      "Drop-ins are only created for workspace-owned unit files. Host unit paths remain read-only.",
+    );
+    return;
+  }
+  const directory = vscode.Uri.joinPath(source, "..", identity + ".d");
   const target = vscode.Uri.joinPath(directory, "override.conf");
   try {
     await vscode.workspace.fs.createDirectory(directory);
@@ -220,7 +240,7 @@ async function createDropIn(): Promise<void> {
     } catch {
       await vscode.workspace.fs.writeFile(
         target,
-        new TextEncoder().encode("[" + defaultDropInSection(document.uri.path) + "]\n"),
+        new TextEncoder().encode("[" + defaultDropInSection(identity) + "]\n"),
       );
     }
     const dropIn = await vscode.workspace.openTextDocument(target);
@@ -228,6 +248,10 @@ async function createDropIn(): Promise<void> {
   } catch (error) {
     await vscode.window.showErrorMessage("Unable to create drop-in: " + safeMessage(error));
   }
+}
+
+function basename(path: string): string {
+  return path.slice(path.lastIndexOf("/") + 1);
 }
 
 function defaultDropInSection(path: string): string {
@@ -257,19 +281,6 @@ function systemdWorkspaceGlob(): string {
     "fstab,crypttab,veritytab,integritytab,clonetab,loader.conf,install.conf," +
     "os-release,initrd-release,machine-info,locale.conf,vconsole.conf}"
   );
-}
-
-function mermaidId(value: string): string {
-  let hash = 2166136261;
-  for (const character of value) {
-    hash ^= character.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 16777619);
-  }
-  return "n" + String(hash >>> 0);
-}
-
-function escapeMermaid(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
 }
 
 function safeMessage(error: unknown): string {

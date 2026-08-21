@@ -1,5 +1,6 @@
 import {
   analyze,
+  configurationIdentity,
   definitionFor,
   definitionsFor,
   detectDialect,
@@ -62,7 +63,9 @@ import {
   effectiveConfigurationRequest,
   indexedDocumentsNotification,
   refreshDiagnosticsNotification,
+  workspaceSnapshotRequest,
 } from "./protocol.js";
+import type { WorkspaceSnapshot, WorkspaceSnapshotConfiguration } from "./protocol.js";
 
 const languageIds = new Set<DialectId>([
   "systemd-unit",
@@ -489,6 +492,44 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     return { nodes: [...nodes].sort(), edges };
   });
+  connection.onRequest(workspaceSnapshotRequest, (): WorkspaceSnapshot => {
+    const available = allParsed();
+    const documents = available.map((tree) => ({
+      uri: tree.uri,
+      languageId: tree.dialect,
+      identity: configurationIdentity(tree.uri),
+      references: extractReferences(tree).map(({ target, kind }) => ({ target, kind })),
+    }));
+    const groups = new Map<string, ParsedDocument[]>();
+    for (const tree of available) {
+      const identity = configurationIdentity(tree.uri);
+      if (tree.dialect === "systemd-unit" && !isUnitIdentity(identity)) continue;
+      const key = tree.dialect + "\0" + identity;
+      groups.set(key, [...(groups.get(key) ?? []), tree]);
+    }
+    const configurations: WorkspaceSnapshotConfiguration[] = [];
+    for (const group of groups.values()) {
+      const first = group[0];
+      if (first === undefined) continue;
+      const identity = configurationIdentity(first.uri);
+      const resolution = resolveConfigurationDocuments(identity, available);
+      configurations.push({
+        identity,
+        languageId: first.dialect,
+        sourceUri: resolution.baseUri ?? first.uri,
+        ...(resolution.baseUri === undefined ? {} : { baseUri: resolution.baseUri }),
+        dropInUris: resolution.dropInUris,
+        documentUris: group.map(({ uri }) => uri).sort(),
+        masked: resolution.masked,
+      });
+    }
+    return {
+      documents: documents.sort((left, right) => left.uri.localeCompare(right.uri)),
+      configurations: configurations.sort((left, right) =>
+        left.identity.localeCompare(right.identity),
+      ),
+    };
+  });
   connection.onNotification(
     indexedDocumentsNotification,
     ({ documents: candidates, replace }): void => {
@@ -826,6 +867,12 @@ function wordAt(document: TextDocument, position: Position): string {
 function basename(uri: string): string {
   const normalized = decodeURIComponent(uri).replaceAll("\\", "/");
   return normalized.slice(normalized.lastIndexOf("/") + 1);
+}
+
+function isUnitIdentity(identity: string): boolean {
+  return /\.(?:service|socket|timer|path|mount|automount|swap|target|device|slice|scope)$/u.test(
+    identity,
+  );
 }
 
 function safeMessage(error: unknown): string {

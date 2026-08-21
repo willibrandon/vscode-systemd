@@ -244,6 +244,9 @@ function configurationParts(uri: string): ConfigurationParts {
   const workingCopy = name !== rawName;
   if (parent.endsWith(".d") && name.endsWith(".conf")) {
     const owner = parent.slice(0, -2);
+    if (!owner.includes(".") && !unitTypes.has(owner)) {
+      return { identity: name, dropIn: false, workingCopy };
+    }
     return {
       identity: stripWorkingCopySuffixes(owner),
       dropIn: true,

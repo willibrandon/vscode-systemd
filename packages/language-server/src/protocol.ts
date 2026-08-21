@@ -49,6 +49,31 @@ export interface IndexedDocumentsParams {
   readonly replace: boolean;
 }
 
+export interface WorkspaceSnapshotDocument {
+  readonly uri: string;
+  readonly languageId: DialectId;
+  readonly identity: string;
+  readonly references: readonly {
+    readonly target: string;
+    readonly kind: string;
+  }[];
+}
+
+export interface WorkspaceSnapshotConfiguration {
+  readonly identity: string;
+  readonly languageId: DialectId;
+  readonly sourceUri: string;
+  readonly baseUri?: string;
+  readonly dropInUris: readonly string[];
+  readonly documentUris: readonly string[];
+  readonly masked: boolean;
+}
+
+export interface WorkspaceSnapshot {
+  readonly documents: readonly WorkspaceSnapshotDocument[];
+  readonly configurations: readonly WorkspaceSnapshotConfiguration[];
+}
+
 export const readFileRequest: RequestType<ReadFileParams, string, void> = new RequestType<
   ReadFileParams,
   string,
@@ -68,6 +93,11 @@ export const effectiveConfigurationRequest: RequestType<
 > = new RequestType<EffectiveConfigurationParams, string, void>("systemd/effectiveConfiguration");
 export const dependencyGraphRequest: RequestType<DependencyGraphParams, DependencyGraph, void> =
   new RequestType<DependencyGraphParams, DependencyGraph, void>("systemd/dependencyGraph");
+export const workspaceSnapshotRequest: RequestType<
+  Record<string, never>,
+  WorkspaceSnapshot,
+  void
+> = new RequestType<Record<string, never>, WorkspaceSnapshot, void>("systemd/workspaceSnapshot");
 export const detectDialectRequest: RequestType<DialectDetectionParams, DialectId | null, void> =
   new RequestType<DialectDetectionParams, DialectId | null, void>("systemd/detectDialect");
 export const indexedDocumentsNotification: NotificationType<IndexedDocumentsParams> =

@@ -86,6 +86,22 @@ exports.run = async function run() {
     assert.ok(commands.includes(command), command + " must be registered.");
   }
 
+  await vscode.commands.executeCommand("systemd.showEffectiveConfiguration", uri);
+  const effective = vscode.window.activeTextEditor?.document;
+  assert.ok(effective, "Effective configuration must open in an editor.");
+  assert.equal(effective.uri.scheme, "systemd-effective");
+  assert.match(effective.getText(), /Description=Integration fixture/u);
+  assert.match(effective.getText(), /Sources are listed in increasing precedence/u);
+
+  await vscode.commands.executeCommand("systemd.showDependencyGraph", uri);
+  const graph = vscode.window.activeTextEditor?.document;
+  assert.ok(graph, "Dependency graph must open in an editor.");
+  assert.equal(graph.uri.scheme, "systemd-dependency-graph");
+  assert.match(graph.getText(), /flowchart LR/u);
+  assert.match(graph.getText(), /other\.service/u);
+
+  await vscode.window.showTextDocument(document);
+
   const correction = new vscode.WorkspaceEdit();
   correction.replace(uri, new vscode.Range(6, 0, 6, 6), "Restart");
   assert.equal(await vscode.workspace.applyEdit(correction), true);
