@@ -14,15 +14,15 @@ Validate with Installed Tool** or set `systemd.externalValidation.mode` to `onSa
 
 Depending on the active dialect, the desktop extension invokes:
 
-- `systemd-analyze verify` for a systemd unit;
+- generator- and man-page-disabled `systemd-analyze verify` for a systemd unit;
 - the Quadlet generator in `-dryrun` mode for Quadlet configuration; or
-- `mkosi summary` for mkosi configuration.
+- a non-paging `mkosi summary` for source-audited mkosi versions 16 through 26.
 
 The command is available only for a saved local file in a trusted desktop workspace. Related
 configuration is copied into a private, bounded temporary directory first. The extension probes the
-installed tool for the required safe interface and does not run it when that interface is absent.
-Browser, virtual, untrusted, dirty, and unsupported configurations keep built-in diagnostics and
-skip the executable.
+installed tool for the required safe interface and does not run it when that interface is absent,
+its capability probe fails, or its mkosi version is outside the audited range. Browser, virtual,
+untrusted, dirty, and unsupported configurations keep built-in diagnostics and skip the executable.
 
 ## Process limits and host differences
 

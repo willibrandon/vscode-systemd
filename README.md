@@ -39,8 +39,8 @@ into the desktop and browser extension.
 - Unit drop-in creation.
 - Identical language analysis on desktop, Remote Development hosts, virtual workspaces, and
   vscode.dev-compatible browser hosts.
-- Optional, trust-gated validation with `systemd-analyze verify`, the Podman Quadlet generator's
-  `-dryrun` mode, or `mkosi summary`.
+- Optional, trust-gated validation with a generator-disabled `systemd-analyze verify`, the Podman
+  Quadlet generator's `-dryrun` mode, or a non-paging mkosi v16–v26 `summary`.
 
 The extension never starts, stops, enables, disables, reloads, or otherwise changes a service. It
 does not invoke `systemctl`, connect to D-Bus, require root, or use `pkexec`.

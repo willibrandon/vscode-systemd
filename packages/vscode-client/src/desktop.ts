@@ -87,6 +87,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const key = document.uri.toString();
     active.get(key)?.abort();
     const controller = new AbortController();
+    const documentVersion = document.version;
     active.set(key, controller);
     try {
       output.info("Running " + invocation.label + " for " + document.uri.fsPath + ".");
@@ -95,7 +96,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         controller.signal,
         () => vscode.workspace.isTrusted,
       );
-      if (result.cancelled) return;
+      if (
+        result.cancelled ||
+        active.get(key) !== controller ||
+        document.version !== documentVersion ||
+        document.isDirty
+      ) {
+        return;
+      }
       diagnostics.set(document.uri, diagnosticsFromResult(document, result));
       if (explicit) {
         if (result.exitCode === 0 && !result.timedOut && !result.truncated) {

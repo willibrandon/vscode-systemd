@@ -8,6 +8,8 @@ import process from "node:process";
 const maximumStagedFiles = 256;
 const maximumStagedFileBytes = 2 * 1024 * 1024;
 const maximumStagedBytes = 16 * 1024 * 1024;
+const oldestAuditedMkosiMajor = 16;
+const newestAuditedMkosiMajor = 26;
 
 export type ValidationKind = "systemd-unit" | "quadlet" | "mkosi";
 
@@ -33,6 +35,7 @@ export interface ValidationInvocation {
   readonly label: string;
   readonly environment?: Readonly<Record<string, string>>;
   readonly staging?: ValidationStaging;
+  readonly capabilityPolicy?: ValidationKind;
 }
 
 export interface ValidationResult extends ProcessResult {
@@ -56,6 +59,7 @@ export function validationInvocation(
       cwd: sourceRoot,
       label: "systemd-analyze verify",
       staging: { kind: "systemd-unit", sourcePath: configurationPath, sourceRoot },
+      capabilityPolicy: "systemd-unit",
     };
   }
   if (languageId === "podman-quadlet") {
@@ -67,16 +71,18 @@ export function validationInvocation(
       label: "Quadlet generator dry run",
       environment: { QUADLET_UNIT_DIRS: sourceRoot },
       staging: { kind: "quadlet", sourcePath: configurationPath, sourceRoot },
+      capabilityPolicy: "quadlet",
     };
   }
   if (languageId === "mkosi") {
     const sourceRoot = configurationRoot("mkosi", configurationPath);
     return {
       executable: executables.mkosi,
-      arguments: ["--directory", sourceRoot, "summary"],
+      arguments: ["--no-pager", "--directory", sourceRoot, "summary"],
       cwd: sourceRoot,
       label: "mkosi summary",
       staging: { kind: "mkosi", sourcePath: configurationPath, sourceRoot },
+      capabilityPolicy: "mkosi",
     };
   }
   return undefined;
@@ -317,7 +323,7 @@ async function applyCapabilityPolicy(
   signal: AbortSignal,
   privateRoot: string,
 ): Promise<ValidationInvocation> {
-  const kind = invocation.staging?.kind;
+  const kind = invocation.capabilityPolicy;
   if (kind === undefined || signal.aborted) return invocation;
   const helpArgument = kind === "quadlet" ? "-h" : "--help";
   const help = await runProcess(
@@ -331,18 +337,64 @@ async function applyCapabilityPolicy(
     privateRoot,
   );
   if (help.cancelled) return invocation;
-  const output = help.stdout + "\n" + help.stderr;
-  if (kind === "quadlet" && !/(?:^|\s)-dryrun(?:\s|$)/u.test(output)) {
+  const helpOutput = requiredProbeOutput(help, invocation.label + " capability probe");
+  let versionOutput: string | undefined;
+  if (kind === "mkosi") {
+    const version = await runProcess(
+      {
+        executable: invocation.executable,
+        arguments: ["--version"],
+        cwd: invocation.cwd,
+        label: invocation.label + " version probe",
+      },
+      signal,
+      privateRoot,
+    );
+    if (version.cancelled) return invocation;
+    versionOutput = requiredProbeOutput(version, invocation.label + " version probe");
+  }
+  return hardenInvocationForCapabilities(invocation, kind, helpOutput, versionOutput);
+}
+
+export function hardenInvocationForCapabilities(
+  invocation: ValidationInvocation,
+  kind: ValidationKind,
+  helpOutput: string,
+  versionOutput?: string,
+): ValidationInvocation {
+  if (kind === "quadlet" && !/(?:^|\s)-dryrun(?:\s|$)/u.test(helpOutput)) {
     throw new Error("The installed Quadlet generator does not advertise safe -dryrun support.");
   }
-  if (kind === "mkosi" && (!output.includes("--directory") || !/\bsummary\b/u.test(output))) {
-    throw new Error("The installed mkosi does not advertise the safe summary interface.");
+  if (kind === "mkosi") {
+    if (
+      !helpOutput.includes("--directory") ||
+      !helpOutput.includes("--no-pager") ||
+      !/\bsummary\b/u.test(helpOutput)
+    ) {
+      throw new Error(
+        "The installed mkosi does not advertise the safe non-paging summary interface.",
+      );
+    }
+    const major = /\bmkosi\s+v?(\d+)(?:\.\d+)*\b/iu.exec(versionOutput ?? "")?.[1];
+    const parsedMajor = major === undefined ? undefined : Number(major);
+    if (
+      parsedMajor === undefined ||
+      parsedMajor < oldestAuditedMkosiMajor ||
+      parsedMajor > newestAuditedMkosiMajor
+    ) {
+      throw new Error(
+        "Installed mkosi validation is available only for source-audited versions 16 through 26.",
+      );
+    }
   }
   if (kind !== "systemd-unit") return invocation;
-  const safeOptions: string[] = [];
-  if (output.includes("--man")) safeOptions.push("--man=no");
-  if (output.includes("--generators")) safeOptions.push("--generators=no");
-  if (output.includes("--recursive-errors")) safeOptions.push("--recursive-errors=no");
+  if (!helpOutput.includes("--man") || !helpOutput.includes("--generators")) {
+    throw new Error(
+      "The installed systemd-analyze does not advertise the required safe verification flags.",
+    );
+  }
+  const safeOptions = ["--man=no", "--generators=no"];
+  if (helpOutput.includes("--recursive-errors")) safeOptions.push("--recursive-errors=no");
   return {
     ...invocation,
     arguments: [...safeOptions, ...invocation.arguments],
@@ -353,6 +405,13 @@ async function applyCapabilityPolicy(
       SYSTEMD_UNIT_PATH: invocation.cwd,
     },
   };
+}
+
+function requiredProbeOutput(result: ProcessResult, label: string): string {
+  if (result.timedOut) throw new Error(label + " timed out.");
+  if (result.truncated) throw new Error(label + " exceeded the output limit.");
+  if (result.exitCode !== 0) throw new Error(label + " exited unsuccessfully.");
+  return result.stdout + "\n" + result.stderr;
 }
 
 function validatorEnvironment(

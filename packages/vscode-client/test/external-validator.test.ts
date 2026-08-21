@@ -2,7 +2,11 @@ import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { runValidator, validationInvocation } from "../src/external-validator.js";
+import {
+  hardenInvocationForCapabilities,
+  runValidator,
+  validationInvocation,
+} from "../src/external-validator.js";
 
 const executables = {
   systemdAnalyze: "/usr/bin/systemd-analyze",
@@ -22,6 +26,7 @@ describe("installed validator policy", () => {
         sourcePath: "/workspace/demo.service",
         sourceRoot: "/workspace",
       },
+      capabilityPolicy: "systemd-unit",
     });
   });
 
@@ -39,13 +44,14 @@ describe("installed validator policy", () => {
         sourcePath: "/workspace/demo.container",
         sourceRoot: "/workspace",
       },
+      capabilityPolicy: "quadlet",
     });
   });
 
   it("uses mkosi summary from the configuration directory", () => {
     expect(validationInvocation("mkosi", "/workspace/mkosi.conf", executables)).toEqual({
       executable: "/usr/bin/mkosi",
-      arguments: ["--directory", "/workspace", "summary"],
+      arguments: ["--no-pager", "--directory", "/workspace", "summary"],
       cwd: "/workspace",
       label: "mkosi summary",
       staging: {
@@ -53,6 +59,7 @@ describe("installed validator policy", () => {
         sourcePath: "/workspace/mkosi.conf",
         sourceRoot: "/workspace",
       },
+      capabilityPolicy: "mkosi",
     });
   });
 
@@ -74,6 +81,58 @@ describe("installed validator policy", () => {
     expect(
       validationInvocation("systemd-udev-rules", "/workspace/90-demo.rules", executables),
     ).toBeUndefined();
+  });
+
+  it("requires and applies explicit systemd verification safety flags", () => {
+    const invocation = validationInvocation("systemd-unit", "/workspace/demo.service", executables);
+    if (invocation === undefined) throw new Error("systemd invocation was not created.");
+    expect(
+      hardenInvocationForCapabilities(
+        invocation,
+        "systemd-unit",
+        "--man[=BOOL] --generators[=BOOL] --recursive-errors=MODE",
+      ),
+    ).toMatchObject({
+      arguments: [
+        "--man=no",
+        "--generators=no",
+        "--recursive-errors=no",
+        "verify",
+        "/workspace/demo.service",
+      ],
+      environment: {
+        SYSTEMD_ENVIRONMENT_GENERATOR_PATH: "",
+        SYSTEMD_GENERATOR_PATH: "",
+        SYSTEMD_UNIT_PATH: "/workspace",
+      },
+    });
+    expect(() =>
+      hardenInvocationForCapabilities(invocation, "systemd-unit", "--man[=BOOL]"),
+    ).toThrow("required safe verification flags");
+  });
+
+  it("permits only source-audited mkosi versions with a non-paging summary", () => {
+    const invocation = validationInvocation("mkosi", "/workspace/mkosi.conf", executables);
+    if (invocation === undefined) throw new Error("mkosi invocation was not created.");
+    expect(
+      hardenInvocationForCapabilities(
+        invocation,
+        "mkosi",
+        "--directory=PATH --no-pager summary",
+        "mkosi 26.1",
+      ),
+    ).toBe(invocation);
+    expect(() =>
+      hardenInvocationForCapabilities(invocation, "mkosi", "--directory=PATH summary", "mkosi 26"),
+    ).toThrow("safe non-paging summary interface");
+    expect(() =>
+      hardenInvocationForCapabilities(
+        invocation,
+        "mkosi",
+        "--directory=PATH --no-pager summary",
+        "mkosi 27",
+      ),
+    ).toThrow("source-audited versions 16 through 26");
   });
 
   it("refuses to spawn when the workspace is untrusted", async () => {
@@ -150,6 +209,7 @@ describe("installed validator policy", () => {
           ],
           cwd: workspace,
           label: "staged systemd validator",
+          environment: { SYSTEMD_UNIT_PATH: workspace },
           staging: { kind: "systemd-unit", sourcePath: source, sourceRoot: workspace },
         },
         new AbortController().signal,

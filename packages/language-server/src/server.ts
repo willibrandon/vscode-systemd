@@ -1738,7 +1738,14 @@ function uriIsWithin(candidate: string, root: string): boolean {
 }
 
 function basename(uri: string): string {
-  const normalized = decodeURIComponent(uri).replaceAll("\\", "/");
+  let normalized = uri;
+  try {
+    normalized = decodeURIComponent(uri);
+  } catch {
+    // URI input can come from workspace providers. Keep malformed escapes
+    // literal so navigation requests remain total instead of taking down LSP.
+  }
+  normalized = normalized.replaceAll("\\", "/");
   return normalized.slice(normalized.lastIndexOf("/") + 1);
 }
 

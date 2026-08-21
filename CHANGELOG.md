@@ -102,5 +102,8 @@ All notable changes to this project will be documented here. The format follows
   syscall-group, and documented address-family catalogs, broader DocBook enum extraction, unit
   specifier completion, and common duration and size values.
 - IPv4-embedded IPv6 addresses are accepted only in the final 32-bit position.
+- Installed validation now requires explicit systemd generator/man-page disabling, rejects failed
+  capability probes, uses non-paging mkosi summaries only for source-audited v16–v26 releases, and
+  keeps navigation alive when an index provider returns a malformed URI escape.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

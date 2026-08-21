@@ -858,6 +858,40 @@ describe("language server JSON-RPC contract", () => {
     });
   });
 
+  it("keeps navigation total when an indexed provider returns a malformed URI escape", async () => {
+    await client.sendNotification("systemd/index/documents", {
+      replace: false,
+      documents: [
+        {
+          uri: "file:///workspace/%E0%A4%A.service",
+          languageId: "systemd-unit",
+          source: "[Service]\nExecStart=/bin/true\n",
+          mtime: 2,
+          workspaceOwned: true,
+        },
+      ],
+    });
+    const navigationUri = "file:///workspace/malformed-reference.service";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: navigationUri,
+        languageId: "systemd-unit",
+        version: 1,
+        text: "[Unit]\nWants=missing.service\n[Service]\nExecStart=/bin/true\n",
+      },
+    });
+
+    await expect(
+      request<Location[]>(client, "textDocument/definition", {
+        textDocument: { uri: navigationUri },
+        position: { line: 1, character: 10 },
+      }),
+    ).resolves.toEqual([]);
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: navigationUri },
+    });
+  });
+
   it("applies the matching ecosystem target to diagnostics and completion", async () => {
     const quadletUri = "file:///workspace/image.build";
     await client.sendNotification("systemd/targets/detectedVersions", { podman: "5.6.9" });
