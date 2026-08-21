@@ -21,6 +21,8 @@ export type DialectId =
 export type RegistryDialect =
   "systemd-unit" | "systemd-network" | "systemd-config" | "podman-quadlet" | "mkosi";
 
+export type RegistryChannel = "stable" | "preview";
+
 export type ValueKind =
   "string" | "boolean" | "number" | "duration" | "size" | "path" | "address" | "list" | "command";
 

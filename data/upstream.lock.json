@@ -1,26 +1,32 @@
 {
   "schemaVersion": 1,
-  "adapterVersion": 2,
+  "adapterVersion": 3,
   "sources": {
     "systemd": {
       "repository": "https://github.com/systemd/systemd.git",
       "tag": "v261",
-      "revision": "58b0764a206fc6cc67aa1a1c60f9f766a366edf8",
-      "tree": "eb723b9b28a61f565c7724079aab025c1436b029",
+      "revision": "102d5065bc82a875cfa0f6fcae6a5bda651cbf0a",
+      "tree": "bcdd832c31c509f3126f7a5b88e809ea1d8172e0",
+      "previewRevision": "58b0764a206fc6cc67aa1a1c60f9f766a366edf8",
+      "previewTree": "eb723b9b28a61f565c7724079aab025c1436b029",
       "license": "LGPL-2.1-or-later"
     },
     "podman": {
       "repository": "https://github.com/podman-container-tools/podman.git",
-      "tag": "v5.4.0-rc1",
-      "revision": "f19c577355dd5fab3411aee8d12b47da61f2237b",
-      "tree": "1cc956cd75bb438ebafba9fa09bbd2c1fc05b71d",
+      "tag": "v6.1.0",
+      "revision": "3070f607ac34891ead088fc3589f767af3574ca6",
+      "tree": "a7a967fb4352f9b3b9b26f74b5368eb239075347",
+      "previewRevision": "f19c577355dd5fab3411aee8d12b47da61f2237b",
+      "previewTree": "1cc956cd75bb438ebafba9fa09bbd2c1fc05b71d",
       "license": "Apache-2.0"
     },
     "mkosi": {
       "repository": "https://github.com/systemd/mkosi.git",
       "tag": "v26",
-      "revision": "9b7d87a1707e39a42cfb54dce5cf745ef7b99a7e",
-      "tree": "a628566c29837027914af7774bad44a58b6c1357",
+      "revision": "ebd488899176524f08c3767cdea3224db0016c34",
+      "tree": "ac1057bcce3ee7a9b7d0841b7538160371cc4ee7",
+      "previewRevision": "9b7d87a1707e39a42cfb54dce5cf745ef7b99a7e",
+      "previewTree": "a628566c29837027914af7774bad44a58b6c1357",
       "license": "LGPL-2.1-or-later"
     }
   }

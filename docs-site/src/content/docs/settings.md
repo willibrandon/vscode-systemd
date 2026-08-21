@@ -24,6 +24,11 @@ correctly newer than `5.8`. On a trusted desktop or remote extension host, `auto
 an environment that excludes workspace secrets. In Restricted Mode and browser extension hosts,
 `auto` safely falls back to `latest`.
 
+`systemd.dataChannel` never downloads data at runtime. `stable` uses metadata regenerated from the
+latest pinned non-prerelease tags (currently systemd v261, Podman v6.1.0, and mkosi v26). `preview`
+applies a bundled compact delta generated from each upstream default branch. Changing the channel
+reparses open and indexed files immediately.
+
 ## Indexing and detection
 
 | Setting                       | Default            | Meaning                                                 |

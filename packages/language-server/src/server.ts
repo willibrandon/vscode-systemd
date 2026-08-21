@@ -1,6 +1,7 @@
 import {
   analyze,
   configurationIdentity,
+  configureRegistryChannel,
   definitionFor,
   definitionsFor,
   detectDialect,
@@ -66,6 +67,7 @@ import type {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   dependencyGraphRequest,
+  dataChannelNotification,
   detectedVersionsNotification,
   detectDialectRequest,
   effectiveConfigurationRequest,
@@ -204,6 +206,16 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   const invalidateGraph = (): void => {
     graphRevision += 1;
   };
+  const selectDataChannel = (candidate: unknown): void => {
+    const channel = candidate === "preview" ? "preview" : "stable";
+    configureRegistryChannel(channel);
+    for (const [uri, document] of indexed) {
+      indexed.set(uri, parse(document.source, document.dialect, document.uri));
+    }
+    settingsCache.clear();
+    invalidateGraph();
+    for (const document of documents.all()) schedule(document, 0);
+  };
   const orderingCycles = (): readonly OrderingDependencyCycle[] => {
     if (cycleCacheRevision !== graphRevision) {
       cycleCache = findOrderingDependencyCycles(allParsed());
@@ -217,6 +229,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     detectedVersions = normalizeDetectedVersions(
       object(object(params.initializationOptions)?.["detectedVersions"]),
     );
+    selectDataChannel(object(params.initializationOptions)?.["dataChannel"]);
     return {
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
@@ -250,11 +263,14 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
 
   connection.onDidChangeConfiguration((event): void => {
     settingsCache.clear();
+    const eventSettings: unknown = event.settings;
+    const changed = object(eventSettings)?.["systemd"] ?? eventSettings;
+    const changedValue = object(changed);
+    if (changedValue?.["dataChannel"] !== undefined) {
+      selectDataChannel(changedValue["dataChannel"]);
+    }
     if (!supportsConfiguration) {
-      fallbackSettings = normalizeSettings(
-        object(event.settings)?.["systemd"] ?? event.settings,
-        detectedVersions,
-      );
+      fallbackSettings = normalizeSettings(changed, detectedVersions);
     }
     for (const document of documents.all()) schedule(document, 0);
   });
@@ -262,6 +278,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     detectedVersions = normalizeDetectedVersions(object(versions));
     settingsCache.clear();
     for (const document of documents.all()) schedule(document, 0);
+  });
+  connection.onNotification(dataChannelNotification, ({ channel }): void => {
+    selectDataChannel(channel);
   });
   connection.onCompletion(async (params): Promise<CompletionItem[]> => {
     const document = documents.get(params.textDocument.uri);

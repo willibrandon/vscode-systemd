@@ -1,7 +1,10 @@
 import * as vscode from "vscode";
 import type { BaseLanguageClient, LanguageClientOptions } from "vscode-languageclient";
 import type { DialectId } from "@systemd/language-core";
-import { refreshDiagnosticsNotification } from "@systemd/language-server/protocol";
+import {
+  dataChannelNotification,
+  refreshDiagnosticsNotification,
+} from "@systemd/language-server/protocol";
 import { registerSystemdExplorer } from "./explorer.js";
 import type { DropInTarget } from "./explorer.js";
 import { createWorkspaceIndexer, registerLanguageDetection } from "./indexer.js";
@@ -35,6 +38,7 @@ export interface ClientRuntime {
 }
 
 export interface ClientInitializationOptions {
+  readonly dataChannel?: "stable" | "preview";
   readonly detectedVersions?: Readonly<{
     readonly systemd?: string;
     readonly podman?: string;
@@ -46,11 +50,14 @@ export function clientOptions(
   output: vscode.LogOutputChannel,
   initializationOptions: ClientInitializationOptions = {},
 ): LanguageClientOptions {
+  const dataChannel = vscode.workspace
+    .getConfiguration("systemd")
+    .get<"stable" | "preview">("dataChannel", "stable");
   return {
     documentSelector: systemdLanguageIds.map((language) => ({ language })),
     outputChannel: output,
     markdown: { isTrusted: false },
-    initializationOptions,
+    initializationOptions: { dataChannel, ...initializationOptions },
     synchronize: { configurationSection: "systemd" },
   };
 }
@@ -175,6 +182,15 @@ export function registerCommonFeatures(
     },
     vscode.workspace.onDidChangeTextDocument(scheduleVirtualRefresh),
     vscode.workspace.onDidChangeConfiguration((event): void => {
+      if (event.affectsConfiguration("systemd.dataChannel")) {
+        const channel = vscode.workspace
+          .getConfiguration("systemd")
+          .get<"stable" | "preview">("dataChannel", "stable");
+        void (async (): Promise<void> => {
+          await runtime.client.sendNotification(dataChannelNotification, { channel });
+          await refreshIndex();
+        })();
+      }
       if (
         event.affectsConfiguration("systemd.index") ||
         event.affectsConfiguration("systemd.dialectAssociations") ||

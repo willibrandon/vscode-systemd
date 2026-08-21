@@ -13,8 +13,10 @@ into the desktop and browser extension.
 
 - TextMate highlighting before the extension activates.
 - Built-in, error-tolerant parsing and validation for 18 configuration dialects.
-- Section, directive, indexed-reference, and value completion from 3,487 generated upstream records,
-  with lazily resolved official documentation.
+- Section, directive, indexed-reference, and value completion from 3,402 stable and 3,488 preview
+  generated upstream records, with lazily resolved official documentation.
+- Offline stable and preview metadata channels, with stable-release defaults and a compact bundled
+  default-branch delta.
 - Hover documentation with direct links to official manuals.
 - Document and workspace symbols, folding, selection ranges, semantic tokens, and formatting.
 - Unknown-section, unknown-directive, value-type, required-section, version, and deprecation

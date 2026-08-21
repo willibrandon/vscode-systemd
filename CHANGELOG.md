@@ -41,5 +41,7 @@ All notable changes to this project will be documented here. The format follows
 - Podman and mkosi target versions now use generated per-release availability data, semantic version
   comparison, version-filtered completion, and trusted installed-tool auto-detection rather than
   silently using the systemd target.
+- The stable and preview data channels now select distinct, pinned upstream registries through a
+  compact generated delta and reparse open and indexed files immediately when switched.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

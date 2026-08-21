@@ -22,18 +22,21 @@ jobs:
         with:
           repository: systemd/systemd
           path: .systemd-upstream
+          fetch-depth: 0
           persist-credentials: false
       - name: Check out Podman
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: containers/podman
           path: .podman-upstream
+          fetch-depth: 0
           persist-credentials: false
       - name: Check out mkosi
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: systemd/mkosi
           path: .mkosi-upstream
+          fetch-depth: 0
           persist-credentials: false
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -51,3 +54,4 @@ jobs:
         run: >-
           git diff --exit-code -- data/upstream.lock.json
           packages/language-core/src/generated/registry.json
+          packages/language-core/src/generated/stable-delta.json

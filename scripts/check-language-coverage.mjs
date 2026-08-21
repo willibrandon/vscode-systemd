@@ -5,6 +5,9 @@ const root = resolve(import.meta.dirname, "..");
 const registry = JSON.parse(
   await readFile(resolve(root, "packages/language-core/src/generated/registry.json"), "utf8"),
 );
+const stableDelta = JSON.parse(
+  await readFile(resolve(root, "packages/language-core/src/generated/stable-delta.json"), "utf8"),
+);
 const upstreamLock = JSON.parse(await readFile(resolve(root, "data/upstream.lock.json"), "utf8"));
 const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
 const failures = [];
@@ -74,8 +77,8 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
     failures.push(name + " does not have a pinned 40-character Git revision");
   }
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 2) {
-  failures.push("upstream lock must use schema version 1 and adapter version 2");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 3) {
+  failures.push("upstream lock must use schema version 1 and adapter version 3");
 }
 for (const name of ["systemd", "podman", "mkosi"]) {
   const source = upstreamLock.sources?.[name];
@@ -87,13 +90,25 @@ for (const name of ["systemd", "podman", "mkosi"]) {
     source.tag.length === 0 ||
     !/^[0-9a-f]{40}$/u.test(source.revision) ||
     !/^[0-9a-f]{40}$/u.test(source.tree) ||
+    !/^[0-9a-f]{40}$/u.test(source.previewRevision) ||
+    !/^[0-9a-f]{40}$/u.test(source.previewTree) ||
     typeof source.license !== "string" ||
     source.license.length === 0
   ) {
     failures.push("upstream lock entry is incomplete: " + name);
-  } else if (source.revision !== registry.upstream?.[name]) {
-    failures.push("upstream lock revision differs from the generated registry: " + name);
+  } else if (
+    source.previewRevision !== registry.upstream?.[name] ||
+    source.revision !== stableDelta.upstream?.[name]
+  ) {
+    failures.push("upstream lock revisions differ from the generated channels: " + name);
   }
+}
+if (
+  stableDelta.schemaVersion !== 1 ||
+  !Array.isArray(stableDelta.remove) ||
+  !Array.isArray(stableDelta.directives)
+) {
+  failures.push("stable registry delta is missing or invalid");
 }
 for (const [section, name, expected] of [
   ["Distribution", "Distribution", "fedora"],

@@ -55,6 +55,10 @@ export interface DetectedVersionsParams {
   readonly mkosi?: string;
 }
 
+export interface DataChannelParams {
+  readonly channel: "stable" | "preview";
+}
+
 export interface WorkspaceSnapshotDocument {
   readonly uri: string;
   readonly languageId: DialectId;
@@ -112,3 +116,5 @@ export const refreshDiagnosticsNotification: NotificationType<{ readonly uri?: s
   new NotificationType<{ readonly uri?: string }>("systemd/diagnostics/refresh");
 export const detectedVersionsNotification: NotificationType<DetectedVersionsParams> =
   new NotificationType<DetectedVersionsParams>("systemd/targets/detectedVersions");
+export const dataChannelNotification: NotificationType<DataChannelParams> =
+  new NotificationType<DataChannelParams>("systemd/registry/dataChannel");

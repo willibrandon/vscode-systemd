@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  configureRegistryChannel,
   definitionFor,
   definitionsFor,
   isDynamicDirective,
   registryDialect,
   sectionsFor,
+  registryMetadata,
 } from "../src/index.js";
 
 describe("registry queries", () => {
@@ -55,5 +57,19 @@ describe("registry queries", () => {
     expect(isDynamicDirective("ID_NET_NAME_ALLOW_ENP5S0")).toBe(true);
     expect(isDynamicDirective("ID_NET_NAME_ALLOW_")).toBe(false);
     expect(isDynamicDirective("UnknownSetting")).toBe(false);
+  });
+
+  it("switches between pinned stable data and the compact preview delta", () => {
+    configureRegistryChannel("stable");
+    const stableRevision = registryMetadata.upstream.mkosi;
+    expect(definitionFor("mkosi", "Build", "ForeignUIDRange")).toBeUndefined();
+
+    configureRegistryChannel("preview");
+    try {
+      expect(definitionFor("mkosi", "Build", "ForeignUIDRange")?.since).toBe("preview");
+      expect(registryMetadata.upstream.mkosi).not.toBe(stableRevision);
+    } finally {
+      configureRegistryChannel("stable");
+    }
   });
 });

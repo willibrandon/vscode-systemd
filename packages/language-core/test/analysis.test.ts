@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyze, parse } from "../src/index.js";
+import { analyze, configureRegistryChannel, parse } from "../src/index.js";
 import type { DialectId } from "../src/index.js";
 
 const codes = (source: string, dialect: DialectId, uri = "file:///workspace/input.conf") =>
@@ -14,8 +14,8 @@ describe("INI semantic analysis", () => {
       expect.arrayContaining(["unknown-section", "unknown-setting"]),
     );
     expect(
-      analyze(parse("[Component]\nConditionArchitecture=x86-64\n", "systemd-config"), {
-        targetVersion: "v261",
+      analyze(parse("[Unit]\nRequiresMountsFor=/srv/data\n", "systemd-unit"), {
+        targetVersion: "v255",
       }).map(({ code }) => code),
     ).toContain("setting-unavailable");
     expect(codes("[Build]\nPackageManagerTrees=/tmp/tree\n", "mkosi")).toContain(
@@ -62,18 +62,23 @@ describe("INI semantic analysis", () => {
   });
 
   it("marks preview-only metadata unavailable for an explicit released target", () => {
+    configureRegistryChannel("preview");
     const document = parse(
       "[Build]\nForeignUIDRange=1000\n",
       "mkosi",
       "file:///workspace/mkosi.conf",
     );
 
-    expect(
-      analyze(document, { targetVersions: { mkosi: "26" } }).map(({ code }) => code),
-    ).toContain("setting-unavailable");
-    expect(
-      analyze(document, { targetVersions: { mkosi: "latest" } }).map(({ code }) => code),
-    ).not.toContain("setting-unavailable");
+    try {
+      expect(
+        analyze(document, { targetVersions: { mkosi: "26" } }).map(({ code }) => code),
+      ).toContain("setting-unavailable");
+      expect(
+        analyze(document, { targetVersions: { mkosi: "latest" } }).map(({ code }) => code),
+      ).not.toContain("setting-unavailable");
+    } finally {
+      configureRegistryChannel("stable");
+    }
   });
 
   it.each([

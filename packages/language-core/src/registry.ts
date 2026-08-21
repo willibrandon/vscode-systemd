@@ -1,43 +1,71 @@
 import rawRegistry from "./generated/registry.json" with { type: "json" };
-import type { DialectId, DirectiveDefinition, RegistryDialect, RegistryMetadata } from "./types.js";
+import rawStableDelta from "./generated/stable-delta.json" with { type: "json" };
+import type {
+  DialectId,
+  DirectiveDefinition,
+  RegistryChannel,
+  RegistryDialect,
+  RegistryMetadata,
+} from "./types.js";
 
 interface RawRegistry extends RegistryMetadata {
   readonly directives: readonly DirectiveDefinition[];
 }
 
-const registry = rawRegistry as RawRegistry;
-const exact = new Map<string, DirectiveDefinition>();
-const byDialect = new Map<RegistryDialect, readonly DirectiveDefinition[]>();
-
-for (const definition of registry.directives) {
-  exact.set(key(definition.dialect, definition.section, definition.name), definition);
-}
-for (const dialect of [
-  "systemd-unit",
-  "systemd-network",
-  "systemd-config",
-  "podman-quadlet",
-  "mkosi",
-] as const) {
-  byDialect.set(
-    dialect,
-    registry.directives.filter((definition) => definition.dialect === dialect),
-  );
+interface RawRegistryDelta {
+  readonly upstream: RegistryMetadata["upstream"];
+  readonly remove: readonly string[];
+  readonly directives: readonly DirectiveDefinition[];
 }
 
-const dynamicPatterns = registry.dynamicDirectivePatterns.map(
+const previewRegistry = rawRegistry as RawRegistry;
+const stableRegistry = applyDelta(previewRegistry, rawStableDelta as RawRegistryDelta);
+const registries: Readonly<Record<RegistryChannel, RawRegistry>> = {
+  stable: stableRegistry,
+  preview: previewRegistry,
+};
+let activeChannel: RegistryChannel = "stable";
+let exact = new Map<string, DirectiveDefinition>();
+let byDialect = new Map<RegistryDialect, readonly DirectiveDefinition[]>();
+
+const dynamicPatterns = previewRegistry.dynamicDirectivePatterns.map(
   (pattern) => new RegExp(pattern, "u"),
 );
 
-export const registryMetadata: RegistryMetadata = {
-  schemaVersion: registry.schemaVersion,
-  generatedAt: registry.generatedAt,
-  upstream: registry.upstream,
-  quadletExtensions: registry.quadletExtensions,
-  dynamicDirectivePatterns: registry.dynamicDirectivePatterns,
-};
+export let registryMetadata: RegistryMetadata;
+export let directiveDefinitions: readonly DirectiveDefinition[];
 
-export const directiveDefinitions: readonly DirectiveDefinition[] = registry.directives;
+configureRegistryChannel("stable");
+
+export function configureRegistryChannel(channel: RegistryChannel): void {
+  activeChannel = channel;
+  const registry = registries[activeChannel];
+  exact = new Map();
+  byDialect = new Map();
+  for (const definition of registry.directives) {
+    exact.set(key(definition.dialect, definition.section, definition.name), definition);
+  }
+  for (const dialect of [
+    "systemd-unit",
+    "systemd-network",
+    "systemd-config",
+    "podman-quadlet",
+    "mkosi",
+  ] as const) {
+    byDialect.set(
+      dialect,
+      registry.directives.filter((definition) => definition.dialect === dialect),
+    );
+  }
+  registryMetadata = {
+    schemaVersion: registry.schemaVersion,
+    generatedAt: registry.generatedAt,
+    upstream: registry.upstream,
+    quadletExtensions: registry.quadletExtensions,
+    dynamicDirectivePatterns: registry.dynamicDirectivePatterns,
+  };
+  directiveDefinitions = registry.directives;
+}
 
 export function registryDialect(dialect: DialectId): RegistryDialect | undefined {
   switch (dialect) {
@@ -127,4 +155,26 @@ function inheritedSystemdDefinition(
 
 function key(dialect: RegistryDialect, section: string, name: string): string {
   return [dialect, section, name].join("\0");
+}
+
+function applyDelta(preview: RawRegistry, delta: RawRegistryDelta): RawRegistry {
+  const directives = new Map(
+    preview.directives.map((definition) => [
+      key(definition.dialect, definition.section, definition.name),
+      definition,
+    ]),
+  );
+  for (const removed of delta.remove) directives.delete(removed);
+  for (const definition of delta.directives) {
+    directives.set(key(definition.dialect, definition.section, definition.name), definition);
+  }
+  return {
+    ...preview,
+    upstream: delta.upstream,
+    directives: [...directives.values()].sort((left, right) =>
+      key(left.dialect, left.section, left.name).localeCompare(
+        key(right.dialect, right.section, right.name),
+      ),
+    ),
+  };
 }

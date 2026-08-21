@@ -1,14 +1,15 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { basename, dirname, extname, resolve } from "node:path";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import process from "node:process";
 
 const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "packages/language-core/src/generated/registry.json");
+const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const existingLock = JSON.parse(await readFile(lockOutput, "utf8"));
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -91,26 +92,35 @@ for (const [name, source] of Object.entries(sources)) {
 if (unavailable.length > 0) {
   if (!checking) throw new Error("Missing upstream trees: " + unavailable.join(", "));
   const bundled = JSON.parse(await readFile(output, "utf8"));
+  const stableDelta = JSON.parse(await readFile(stableDeltaOutput, "utf8"));
   const lock = JSON.parse(await readFile(lockOutput, "utf8"));
   if (!Array.isArray(bundled.directives) || bundled.directives.length < 100) {
     throw new Error("Bundled registry is missing or incomplete.");
   }
-  validateLock(lock, bundled.upstream);
-  console.log("Validated bundled registry with " + bundled.directives.length + " records.");
+  validateLock(lock, bundled.upstream, stableDelta.upstream);
+  console.log(
+    "Validated bundled registry with " +
+      bundled.directives.length +
+      " preview records and a stable delta.",
+  );
   process.exit(0);
 }
 
 const availability = extractAvailability(sources);
-const records = new Map();
-await extractSystemd(sources.systemd);
-await extractQuadlet(sources.podman);
-await extractMkosi(sources.mkosi);
-
-const directives = [...records.values()].sort((a, b) =>
-  [a.dialect, a.section, a.name]
-    .join("\0")
-    .localeCompare([b.dialect, b.section, b.name].join("\0")),
-);
+let records = new Map();
+const directives = await generateDirectives(sources);
+const stableTags = {
+  systemd: latestStableTag(sources.systemd, /^v\d+$/u),
+  podman: latestStableTag(sources.podman, /^v\d+\.\d+\.\d+$/u),
+  mkosi: latestStableTag(sources.mkosi, /^v\d+(?:\.\d+)*$/u),
+};
+const stableSources = await extractStableSources(sources, stableTags);
+let stableDirectives;
+try {
+  stableDirectives = await generateDirectives(stableSources.sources);
+} finally {
+  await rm(stableSources.temporaryDirectory, { recursive: true, force: true });
+}
 const registry = {
   schemaVersion: 1,
   generatedAt: "1970-01-01T00:00:00.000Z",
@@ -138,31 +148,38 @@ const registry = {
   directives,
 };
 const serialized = JSON.stringify(registry, null, 2) + "\n";
+const stableUpstream = {
+  systemd: revision(sources.systemd, stableTags.systemd),
+  podman: revision(sources.podman, stableTags.podman),
+  mkosi: revision(sources.mkosi, stableTags.mkosi),
+};
+const stableDelta = createRegistryDelta(directives, stableDirectives, stableUpstream);
+const serializedStableDelta = JSON.stringify(stableDelta, null, 2) + "\n";
 const upstreamLock = {
   schemaVersion: 1,
-  adapterVersion: 2,
+  adapterVersion: 3,
   sources: {
     systemd: sourceMetadata(
-      "systemd",
       sources.systemd,
       "https://github.com/systemd/systemd.git",
       "LGPL-2.1-or-later",
+      stableTags.systemd,
     ),
     podman: sourceMetadata(
-      "podman",
       sources.podman,
       "https://github.com/podman-container-tools/podman.git",
       "Apache-2.0",
+      stableTags.podman,
     ),
     mkosi: sourceMetadata(
-      "mkosi",
       sources.mkosi,
       "https://github.com/systemd/mkosi.git",
       "LGPL-2.1-or-later",
+      stableTags.mkosi,
     ),
   },
 };
-validateLock(upstreamLock, registry.upstream);
+validateLock(upstreamLock, registry.upstream, stableUpstream);
 const serializedLock = JSON.stringify(upstreamLock, null, 2) + "\n";
 
 if (checking) {
@@ -172,22 +189,41 @@ if (checking) {
       "Generated registry is stale (" + digest(current) + " != " + digest(serialized) + ").",
     );
   }
+  const currentStableDelta = await readFile(stableDeltaOutput, "utf8");
+  if (currentStableDelta !== serializedStableDelta) {
+    throw new Error(
+      "Generated stable delta is stale (" +
+        digest(currentStableDelta) +
+        " != " +
+        digest(serializedStableDelta) +
+        ").",
+    );
+  }
   const currentLock = await readFile(lockOutput, "utf8");
   if (currentLock !== serializedLock) {
     throw new Error(
       "Upstream lock is stale (" + digest(currentLock) + " != " + digest(serializedLock) + ").",
     );
   }
-  console.log("Generated registry is current with " + directives.length + " records.");
+  console.log(
+    "Generated registries are current with " +
+      stableDirectives.length +
+      " stable and " +
+      directives.length +
+      " preview records.",
+  );
 } else {
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, serialized, "utf8");
+  await writeFile(stableDeltaOutput, serializedStableDelta, "utf8");
   await mkdir(dirname(lockOutput), { recursive: true });
   await writeFile(lockOutput, serializedLock, "utf8");
   console.log(
     "Generated " +
       directives.length +
-      " records at " +
+      " preview records and " +
+      stableDirectives.length +
+      " stable records at " +
       output +
       " and refreshed " +
       lockOutput +
@@ -195,39 +231,32 @@ if (checking) {
   );
 }
 
-function revision(source) {
-  return execFileSync("git", ["-C", source, "rev-parse", "HEAD"], {
+function revision(source, ref = "HEAD") {
+  return execFileSync("git", ["-C", source, "rev-parse", ref], {
     encoding: "utf8",
   }).trim();
 }
 
-function sourceMetadata(name, source, repository, license) {
+function tree(source, ref = "HEAD") {
+  return execFileSync("git", ["-C", source, "rev-parse", ref + "^{tree}"], {
+    encoding: "utf8",
+  }).trim();
+}
+
+function sourceMetadata(source, repository, license, stableTag) {
   return {
     repository,
-    tag: checking
-      ? existingLock.sources[name].tag
-      : describeTag(source, existingLock.sources[name].tag),
-    revision: revision(source),
-    tree: execFileSync("git", ["-C", source, "rev-parse", "HEAD^{tree}"], {
-      encoding: "utf8",
-    }).trim(),
+    tag: stableTag,
+    revision: revision(source, stableTag),
+    tree: tree(source, stableTag),
+    previewRevision: revision(source),
+    previewTree: tree(source),
     license,
   };
 }
 
-function describeTag(source, fallback) {
-  try {
-    return execFileSync("git", ["-C", source, "describe", "--tags", "--abbrev=0"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return fallback;
-  }
-}
-
-function validateLock(lock, revisions) {
-  if (lock.schemaVersion !== 1 || lock.adapterVersion !== 2 || typeof lock.sources !== "object") {
+function validateLock(lock, previewRevisions, stableRevisions) {
+  if (lock.schemaVersion !== 1 || lock.adapterVersion !== 3 || typeof lock.sources !== "object") {
     throw new Error("Upstream lock has an unsupported schema or adapter version.");
   }
   for (const name of Object.keys(sources)) {
@@ -240,19 +269,91 @@ function validateLock(lock, revisions) {
       source.tag.length === 0 ||
       !/^[0-9a-f]{40}$/u.test(source.revision) ||
       !/^[0-9a-f]{40}$/u.test(source.tree) ||
+      !/^[0-9a-f]{40}$/u.test(source.previewRevision) ||
+      !/^[0-9a-f]{40}$/u.test(source.previewTree) ||
       typeof source.license !== "string" ||
       source.license.length === 0
     ) {
       throw new Error("Upstream lock entry is incomplete: " + name + ".");
     }
-    if (source.revision !== revisions[name]) {
-      throw new Error("Upstream lock revision does not match the registry: " + name + ".");
+    if (
+      source.revision !== stableRevisions[name] ||
+      source.previewRevision !== previewRevisions[name]
+    ) {
+      throw new Error("Upstream lock revisions do not match the registries: " + name + ".");
     }
   }
 }
 
 function digest(value) {
   return createHash("sha256").update(value).digest("hex").slice(0, 12);
+}
+
+async function generateDirectives(sourceTrees) {
+  records = new Map();
+  await extractSystemd(sourceTrees.systemd);
+  await extractQuadlet(sourceTrees.podman);
+  await extractMkosi(sourceTrees.mkosi);
+  return [...records.values()].sort((left, right) =>
+    directiveKey(left).localeCompare(directiveKey(right)),
+  );
+}
+
+function latestStableTag(source, pattern) {
+  const tag = releaseTags(source, pattern).at(-1);
+  if (tag === undefined) throw new Error("No stable release tag found in " + source + ".");
+  return tag;
+}
+
+async function extractStableSources(sourceTrees, tags) {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "vscode-systemd-registry-"));
+  const extracted = {
+    systemd: join(temporaryDirectory, "systemd"),
+    podman: join(temporaryDirectory, "podman"),
+    mkosi: join(temporaryDirectory, "mkosi"),
+  };
+  try {
+    await Promise.all(Object.values(extracted).map((directory) => mkdir(directory)));
+    extractSourceArchive(sourceTrees.systemd, tags.systemd, extracted.systemd, ["src", "man"]);
+    extractSourceArchive(sourceTrees.podman, tags.podman, extracted.podman, [
+      "pkg/systemd/quadlet/quadlet.go",
+    ]);
+    extractSourceArchive(sourceTrees.mkosi, tags.mkosi, extracted.mkosi, ["mkosi"]);
+    return { temporaryDirectory, sources: extracted };
+  } catch (error) {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function extractSourceArchive(source, ref, destination, paths) {
+  const archive = execFileSync("git", ["-C", source, "archive", "--format=tar", ref, ...paths], {
+    maxBuffer: 128 * 1024 * 1024,
+  });
+  execFileSync("tar", ["-xf", "-", "-C", destination], {
+    input: archive,
+    maxBuffer: 128 * 1024 * 1024,
+  });
+}
+
+function createRegistryDelta(previewDirectives, stableDirectives, upstream) {
+  const preview = new Map(
+    previewDirectives.map((directive) => [directiveKey(directive), directive]),
+  );
+  const stable = new Map(stableDirectives.map((directive) => [directiveKey(directive), directive]));
+  return {
+    schemaVersion: 1,
+    generatedAt: "1970-01-01T00:00:00.000Z",
+    upstream,
+    remove: [...preview.keys()].filter((key) => !stable.has(key)).sort(),
+    directives: [...stable.entries()]
+      .filter(([key, directive]) => JSON.stringify(preview.get(key)) !== JSON.stringify(directive))
+      .map(([, directive]) => directive),
+  };
+}
+
+function directiveKey(directive) {
+  return [directive.dialect, directive.section, directive.name].join("\0");
 }
 
 function add(candidate) {

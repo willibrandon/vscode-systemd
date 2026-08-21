@@ -16,7 +16,7 @@ const sources = {
 };
 const failures = [];
 
-if (lock.schemaVersion !== 1 || lock.adapterVersion !== 2) {
+if (lock.schemaVersion !== 1 || lock.adapterVersion !== 3) {
   failures.push("the upstream lock schema or adapter version is unsupported");
 }
 
@@ -32,21 +32,31 @@ for (const [name, directory] of Object.entries(sources)) {
     failures.push(`${name}: source tree is missing at ${directory}`);
     continue;
   }
-  const [revision, tree, remote] = await Promise.all([
+  const [revision, tree, stableRevision, stableTree, remote] = await Promise.all([
     git(directory, ["rev-parse", "HEAD"]),
     git(directory, ["rev-parse", "HEAD^{tree}"]),
+    git(directory, ["rev-parse", expected.tag]),
+    git(directory, ["rev-parse", expected.tag + "^{tree}"]),
     git(directory, ["remote", "get-url", "origin"]),
   ]);
-  if (revision !== expected.revision) {
-    failures.push(`${name}: revision ${revision} does not match ${expected.revision}`);
+  if (revision !== expected.previewRevision) {
+    failures.push(
+      `${name}: preview revision ${revision} does not match ${expected.previewRevision}`,
+    );
   }
-  if (tree !== expected.tree) {
-    failures.push(`${name}: tree ${tree} does not match ${expected.tree}`);
+  if (tree !== expected.previewTree) {
+    failures.push(`${name}: preview tree ${tree} does not match ${expected.previewTree}`);
+  }
+  if (stableRevision !== expected.revision) {
+    failures.push(`${name}: stable revision ${stableRevision} does not match ${expected.revision}`);
+  }
+  if (stableTree !== expected.tree) {
+    failures.push(`${name}: stable tree ${stableTree} does not match ${expected.tree}`);
   }
   if (normalizeRemote(remote) !== normalizeRemote(expected.repository)) {
     failures.push(`${name}: remote ${remote} does not match ${expected.repository}`);
   }
-  if (registry.upstream?.[name] !== revision) {
+  if (registry.upstream?.[name] !== expected.previewRevision) {
     failures.push(
       `${name}: generated registry is pinned to ${registry.upstream?.[name] ?? "nothing"}`,
     );
