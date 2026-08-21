@@ -15,7 +15,7 @@
   "bugs": {
     "url": "https://github.com/willibrandon/vscode-systemd/issues"
   },
-  "homepage": "https://github.com/willibrandon/vscode-systemd#readme",
+  "homepage": "https://willibrandon.github.io/vscode-systemd/",
   "icon": "media/icon.png",
   "categories": [
     "Programming Languages",
@@ -701,6 +701,7 @@
     "test:remote:prepared": "node ./scripts/run-remote-ssh-smoke.mjs",
     "test:grammar": "vitest run test/grammar",
     "test:package": "vitest run test/package",
+    "capture:docs": "npm run package && node ./scripts/capture-docs-screenshots.mjs",
     "build": "node ./esbuild.mjs",
     "check:bundles": "node ./scripts/check-bundles.mjs",
     "check:licenses": "node ./scripts/check-licenses.mjs",

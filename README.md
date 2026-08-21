@@ -35,6 +35,10 @@ into the desktop and browser extension.
 The extension never starts, stops, enables, disables, reloads, or otherwise changes a service. It
 does not invoke `systemctl`, connect to D-Bus, require root, or use `pkexec`.
 
+Read the complete [extension documentation](https://willibrandon.github.io/vscode-systemd/) for file
+recognition, editor features, effective configuration, settings, validation, privacy, and
+troubleshooting.
+
 ## Recognized configuration
 
 The extension has dedicated language IDs for:

@@ -24,5 +24,12 @@ All notable changes to this project will be documented here. The format follows
   both the Visual Studio Marketplace and Open VSX.
 - Exact-VSIX smoke tests plus minimum/stable VS Code coverage on Linux, macOS, Windows, browser
   workers, Dev Containers, and Remote SSH hosts.
+- A searchable GitHub Pages documentation site with screenshots captured from the packaged
+  extension.
+
+### Fixed
+
+- Effective-configuration provenance now reports one-based source line numbers instead of byte
+  offsets.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main
