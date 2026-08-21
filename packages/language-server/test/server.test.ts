@@ -20,6 +20,7 @@ import type {
   InlayHint,
   InitializeResult,
   Location,
+  Range,
   SelectionRange,
   SemanticTokens,
   SignatureHelp,
@@ -504,6 +505,128 @@ describe("language server JSON-RPC contract", () => {
     for (const openUri of [tmpfilesUri, loaderUri, installUri]) {
       await client.sendNotification("textDocument/didClose", { textDocument: { uri: openUri } });
     }
+  });
+
+  it("navigates and renames structured Quadlet references without treating OCI names as files", async () => {
+    const quadletDocuments = [
+      ["base.image", "[Image]\nImage=quay.io/example/base:latest\n"],
+      ["builder.build", "[Build]\nImageTag=localhost/builder:latest\nFile=Containerfile\n"],
+      ["backend.network", "[Network]\nNetworkName=backend\n"],
+      ["data.volume", "[Volume]\nVolumeName=data\n"],
+      ["application.pod", "[Pod]\nPodName=application\n"],
+    ] as const;
+    await client.sendNotification("systemd/index/documents", {
+      replace: false,
+      documents: quadletDocuments.map(([name, text], index) => ({
+        uri: "file:///workspace/" + name,
+        languageId: "podman-quadlet",
+        source: text,
+        mtime: index + 1,
+        workspaceOwned: true,
+      })),
+    });
+
+    const containerUri = "file:///workspace/application.container";
+    const containerSource = [
+      "[Container]",
+      "Image=quay.io/example/application:latest",
+      "Network=backend.network:interface_name=eth0",
+      "Volume=data.volume:/var/lib/data:Z",
+      "Pod=application.pod",
+      "",
+    ].join("\n");
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: containerUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: containerSource,
+      },
+    });
+
+    await client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: containerUri, version: 2 },
+      contentChanges: [{ text: containerSource.replace("quay.io/example/application:latest", "") }],
+    });
+    const images = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: containerUri },
+      position: { line: 1, character: 6 },
+    });
+    expect(images.map(({ label }) => label).sort()).toEqual(["base.image", "builder.build"]);
+
+    await client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: containerUri, version: 3 },
+      contentChanges: [{ text: containerSource }],
+    });
+    const definitions = await request<Location[]>(client, "textDocument/definition", {
+      textDocument: { uri: containerUri },
+      position: { line: 2, character: 15 },
+    });
+    expect(definitions.map(({ uri: target }) => target)).toEqual([
+      "file:///workspace/backend.network",
+    ]);
+    const prepare = await request<Range>(client, "textDocument/prepareRename", {
+      textDocument: { uri: containerUri },
+      position: { line: 2, character: 15 },
+    });
+    expect(prepare).toEqual({
+      start: { line: 2, character: 8 },
+      end: { line: 2, character: 23 },
+    });
+    const rename = await request<WorkspaceEdit>(client, "textDocument/rename", {
+      textDocument: { uri: containerUri },
+      position: { line: 2, character: 15 },
+      newName: "renamed.network",
+    });
+    expect(rename.changes?.[containerUri]?.[0]).toMatchObject({
+      newText: "renamed.network",
+      range: prepare,
+    });
+    expect(
+      await request<WorkspaceEdit>(client, "textDocument/rename", {
+        textDocument: { uri: containerUri },
+        position: { line: 2, character: 15 },
+        newName: "renamed.volume",
+      }),
+    ).toEqual({ changes: {} });
+    expect(
+      await request(client, "textDocument/prepareRename", {
+        textDocument: { uri: containerUri },
+        position: { line: 1, character: 15 },
+      }),
+    ).toBeNull();
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: containerUri } });
+  });
+
+  it("refreshes referring diagnostics when open Quadlet targets appear and disappear", async () => {
+    const containerUri = "file:///workspace/refresh.container";
+    const networkUri = "file:///workspace/refresh.network";
+    const missing = nextDiagnostics(client, containerUri);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: containerUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: "[Container]\nImage=quay.io/example/app:latest\nNetwork=refresh.network\n",
+      },
+    });
+    expect((await missing).map(({ code }) => code)).toContain("missing-quadlet-reference");
+
+    const resolved = nextDiagnostics(client, containerUri);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: networkUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: "[Network]\nNetworkName=refresh\n",
+      },
+    });
+    expect((await resolved).map(({ code }) => code)).not.toContain("missing-quadlet-reference");
+
+    const missingAgain = nextDiagnostics(client, containerUri);
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: networkUri } });
+    expect((await missingAgain).map(({ code }) => code)).toContain("missing-quadlet-reference");
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: containerUri } });
   });
 
   it("completes systemd enum values from generated upstream metadata", async () => {

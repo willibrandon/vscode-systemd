@@ -1,5 +1,6 @@
 import type {
   AssignmentNode,
+  CoreDiagnostic,
   EffectiveConfiguration,
   EffectiveEntry,
   ParsedDocument,
@@ -23,23 +24,43 @@ const unitReferenceSettings = new Set([
   "ReloadPropagatedFrom",
   "Requires",
   "Requisite",
+  "StopPropagatedFrom",
   "Upholds",
   "Wants",
   "WantedBy",
   "RequiredBy",
+  "UpheldBy",
   "Also",
   "Alias",
 ]);
 
-const quadletReferenceSettings = new Set([
-  "Artifact",
-  "Build",
-  "Image",
-  "ImageVolume",
-  "Network",
-  "Pod",
-  "Volume",
+const quadletUnitDependencySettings = new Set([
+  "After",
+  "Before",
+  "BindsTo",
+  "Conflicts",
+  "OnFailure",
+  "OnSuccess",
+  "PartOf",
+  "PropagatesReloadTo",
+  "PropagatesStopTo",
+  "ReloadPropagatedFrom",
+  "Requires",
+  "Requisite",
+  "StopPropagatedFrom",
+  "Upholds",
+  "Wants",
 ]);
+const quadletExtensions = [
+  ".artifact",
+  ".build",
+  ".container",
+  ".image",
+  ".kube",
+  ".network",
+  ".pod",
+  ".volume",
+] as const;
 const graphReferenceKinds = new Set<Reference["kind"]>(["unit", "quadlet", "mkosi"]);
 
 const unitTypes = new Set([
@@ -54,6 +75,16 @@ const unitTypes = new Set([
   "device",
   "slice",
   "scope",
+]);
+const quadletTypes = new Set([
+  "artifact",
+  "build",
+  "container",
+  "image",
+  "kube",
+  "network",
+  "pod",
+  "volume",
 ]);
 const workingCopySuffixes = [
   ".ignore",
@@ -101,7 +132,7 @@ function resolveConfigurationDocumentsWithAliases(
   aliases: AliasIndex,
 ): ConfigurationResolution {
   const identity = configurationIdentity(uri);
-  if (!isUnitName(identity)) {
+  if (!isDropInAwareName(identity)) {
     const related = available
       .filter((document) => relatedConfiguration(uri, document.uri))
       .sort((left, right) => compareUriPrecedence(left.uri, right.uri));
@@ -122,7 +153,7 @@ function resolveConfigurationDocumentsWithAliases(
     const parts = configurationParts(document.uri);
     return (
       !parts.dropIn &&
-      isUnitName(parts.identity) &&
+      isDropInAwareName(parts.identity) &&
       !parts.workingCopy &&
       (equivalentIdentities.includes(parts.identity) ||
         equivalentIdentities.map(templateName).includes(parts.identity))
@@ -262,6 +293,13 @@ export function extractReferences(document: ParsedDocument): readonly Reference[
   const result: Reference[] = [];
   for (const node of document.nodes) {
     if (node.kind !== "assignment" || node.value === "") continue;
+    if (document.dialect === "podman-quadlet") {
+      const quadlet = extractQuadletReferences(document, node);
+      if (quadlet !== undefined) {
+        result.push(...quadlet);
+        continue;
+      }
+    }
     const kind = referenceKind(document, node);
     if (kind === undefined) continue;
     for (const value of splitValues(node.value, node.valueSpan.start)) {
@@ -276,6 +314,42 @@ export function extractReferences(document: ParsedDocument): readonly Reference[
   return result;
 }
 
+export function quadletReferenceExtensionsFor(
+  kind: ParsedDocument["kind"],
+  section: string | null,
+  name: string,
+): readonly string[] {
+  if (section === "Unit" && quadletUnitDependencySettings.has(name)) return quadletExtensions;
+  if (
+    name === "Image" &&
+    (kind === "podman-quadlet:container" || kind === "podman-quadlet:volume")
+  ) {
+    return [".build", ".image"];
+  }
+  if (
+    name === "Network" &&
+    [
+      "podman-quadlet:container",
+      "podman-quadlet:build",
+      "podman-quadlet:kube",
+      "podman-quadlet:pod",
+    ].includes(kind)
+  ) {
+    return [".network", ".container"];
+  }
+  if (name === "Pod" && kind === "podman-quadlet:container") return [".pod"];
+  if (
+    name === "Volume" &&
+    ["podman-quadlet:container", "podman-quadlet:build", "podman-quadlet:pod"].includes(kind)
+  ) {
+    return [".volume", ".artifact"];
+  }
+  if (name === "Mount" && kind === "podman-quadlet:container") {
+    return [".volume", ".image", ".artifact"];
+  }
+  return [];
+}
+
 export function buildSemanticModel(document: ParsedDocument): SemanticModel {
   return {
     document,
@@ -284,6 +358,29 @@ export function buildSemanticModel(document: ParsedDocument): SemanticModel {
     records: document.nodes.filter((node) => node.kind === "record"),
     references: extractReferences(document),
   };
+}
+
+export function analyzeWorkspaceReferences(
+  document: ParsedDocument,
+  documents: readonly ParsedDocument[],
+): readonly CoreDiagnostic[] {
+  if (document.dialect !== "podman-quadlet") return [];
+  const available = new Set(
+    documents
+      .filter(({ dialect }) => dialect === "podman-quadlet")
+      .map(({ uri }) => configurationIdentity(uri)),
+  );
+  return extractReferences(document)
+    .filter(({ kind, target }) => kind === "quadlet" && !available.has(target))
+    .map(({ target, span }): CoreDiagnostic => ({
+      code: "missing-quadlet-reference",
+      message:
+        "Referenced Quadlet " + target + " was not found in the indexed configuration graph.",
+      severity: "error",
+      span,
+      documentation:
+        "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#quadlet-unit-dependencies",
+    }));
 }
 
 export function buildReferenceGraph(documents: readonly ParsedDocument[]): ReferenceGraph {
@@ -465,7 +562,7 @@ function configurationParts(uri: string): ConfigurationParts {
   const workingCopy = name !== rawName;
   if (parent.endsWith(".d") && name.endsWith(".conf")) {
     const owner = parent.slice(0, -2);
-    if (!owner.includes(".") && !unitTypes.has(owner)) {
+    if (!owner.includes(".") && !unitTypes.has(owner) && !quadletTypes.has(owner)) {
       return { identity: name, dropIn: false, workingCopy };
     }
     return {
@@ -498,6 +595,11 @@ function isUnitName(name: string): boolean {
   return unitTypes.has(type);
 }
 
+function isDropInAwareName(name: string): boolean {
+  const type = name.slice(name.lastIndexOf(".") + 1);
+  return unitTypes.has(type) || quadletTypes.has(type);
+}
+
 function templateName(name: string): string {
   const at = name.indexOf("@");
   const dot = name.lastIndexOf(".");
@@ -505,7 +607,7 @@ function templateName(name: string): string {
 }
 
 function dropInOwners(name: string): readonly string[] {
-  if (!isUnitName(name)) return [name];
+  if (!isDropInAwareName(name)) return [name];
   const result: string[] = [];
   expandDropInOwners(name, result);
   result.push(name.slice(name.lastIndexOf(".") + 1));
@@ -549,9 +651,19 @@ function compareDropIn(
 ): number {
   if (left.queried !== right.queried) return left.queried ? 1 : -1;
   const path = loadPathRank(left.document.uri) - loadPathRank(right.document.uri);
-  if (path !== 0) return path;
   const owner = right.owner - left.owner;
-  return owner !== 0 ? owner : left.document.uri.localeCompare(right.document.uri);
+  if (left.document.dialect === "podman-quadlet" && right.document.dialect === "podman-quadlet") {
+    return owner !== 0
+      ? owner
+      : path !== 0
+        ? path
+        : left.document.uri.localeCompare(right.document.uri);
+  }
+  return path !== 0
+    ? path
+    : owner !== 0
+      ? owner
+      : left.document.uri.localeCompare(right.document.uri);
 }
 
 function compareUriPrecedence(left: string, right: string): number {
@@ -561,6 +673,16 @@ function compareUriPrecedence(left: string, right: string): number {
 
 function loadPathRank(uri: string): number {
   const path = normalizeUriPath(uri);
+  if (
+    /\/run\/(?:user\/[^/]+\/)?containers\/systemd\//u.test(path) ||
+    path.includes("/.local/run/containers/systemd/")
+  ) {
+    return 50;
+  }
+  if (path.includes("/.config/containers/systemd/") || path.includes("/etc/containers/systemd/")) {
+    return 40;
+  }
+  if (path.includes("/usr/share/containers/systemd/")) return 10;
   if (path.includes("/etc/systemd/") || path.includes("/.config/systemd/")) return 40;
   if (path.includes("/run/systemd/") || /\/run\/user\/[^/]+\/systemd\//u.test(path)) return 30;
   if (path.includes("/.local/share/systemd/")) return 25;
@@ -643,17 +765,192 @@ function referenceKind(
   node: AssignmentNode,
 ): Reference["kind"] | undefined {
   if (unitReferenceSettings.has(node.name)) return "unit";
-  if (document.dialect === "podman-quadlet" && quadletReferenceSettings.has(node.name)) {
-    return "quadlet";
-  }
   if (document.dialect === "mkosi" && ["Include", "Profiles", "Dependencies"].includes(node.name)) {
     return "mkosi";
   }
   if (node.name === "Documentation") return "documentation";
-  if (node.definition?.valueKind === "path" || /(?:File|Path|Directory|Image)$/u.test(node.name)) {
+  if (node.definition?.valueKind === "path") {
     return "path";
   }
   return undefined;
+}
+
+function extractQuadletReferences(
+  document: ParsedDocument,
+  node: AssignmentNode,
+): readonly Reference[] | undefined {
+  if (node.section === "Unit" && unitReferenceSettings.has(node.name)) {
+    return splitValues(node.value, node.valueSpan.start).map((value) => ({
+      sourceUri: document.uri,
+      target: value.target,
+      kind:
+        quadletUnitDependencySettings.has(node.name) &&
+        quadletExtensions.some((extension) => value.target.endsWith(extension))
+          ? "quadlet"
+          : "unit",
+      span: value.span,
+    }));
+  }
+
+  const extensions = quadletReferenceExtensionsFor(document.kind, node.section, node.name);
+  if (extensions.length === 0) {
+    return isQuadletResourceSetting(node.name) ? [] : undefined;
+  }
+  const candidates =
+    node.name === "Mount"
+      ? mountSourceReferences(node.value, node.valueSpan.start)
+      : node.name === "Network" || node.name === "Volume"
+        ? delimitedReference(node.value, node.valueSpan.start, ":")
+        : delimitedReference(node.value, node.valueSpan.start);
+  return candidates
+    .filter(
+      ({ target }) =>
+        (!requiresNonPathQuadletSource(node.name) || isPlainQuadletIdentity(target)) &&
+        extensions.some((extension) => target.endsWith(extension)),
+    )
+    .map(({ target, span }) => ({
+      sourceUri: document.uri,
+      target,
+      kind: "quadlet",
+      span,
+    }));
+}
+
+function isQuadletResourceSetting(name: string): boolean {
+  return [
+    "Artifact",
+    "Build",
+    "Image",
+    "ImageVolume",
+    "Mount",
+    "Network",
+    "Pod",
+    "Volume",
+  ].includes(name);
+}
+
+function isPlainQuadletIdentity(value: string): boolean {
+  return value !== "" && !value.startsWith(".") && !value.startsWith("/");
+}
+
+function requiresNonPathQuadletSource(name: string): boolean {
+  return name === "Mount" || name === "Volume";
+}
+
+function delimitedReference(
+  value: string,
+  valueOffset: number,
+  delimiter?: string,
+): readonly { readonly target: string; readonly span: TextSpan }[] {
+  const end = delimiter === undefined ? value.length : value.indexOf(delimiter);
+  const raw = value.slice(0, end < 0 ? value.length : end);
+  const leading = raw.length - raw.trimStart().length;
+  let target = raw.trim();
+  let quoteOffset = 0;
+  if (
+    target.length >= 2 &&
+    ((target.startsWith('"') && target.endsWith('"')) ||
+      (target.startsWith("'") && target.endsWith("'")))
+  ) {
+    target = target.slice(1, -1);
+    quoteOffset = 1;
+  }
+  if (target === "") return [];
+  const start = valueOffset + leading + quoteOffset;
+  return [{ target, span: { start, end: start + target.length } }];
+}
+
+function mountSourceReferences(
+  value: string,
+  valueOffset: number,
+): readonly { readonly target: string; readonly span: TextSpan }[] {
+  const fields = parseCsvFields(value);
+  if (fields === undefined) return [];
+
+  let mountType = "volume";
+  let foundType = false;
+  const tokens: CsvField[] = [];
+  for (const field of fields) {
+    const parts = field.value.split("=");
+    if (!foundType && parts.length === 2 && parts[0] === "type") {
+      mountType = parts[1] ?? "";
+      foundType = true;
+    } else {
+      tokens.push(field);
+    }
+  }
+  if (!["artifact", "bind", "glob", "image", "volume"].includes(mountType)) return [];
+
+  let selected: { readonly field: CsvField; readonly valueStart: number } | undefined;
+  for (const field of tokens) {
+    const equals = field.value.indexOf("=");
+    if (equals < 0) continue;
+    const key = field.value.slice(0, equals);
+    if (key === "source" || key === "src") {
+      selected = { field, valueStart: equals + 1 };
+    }
+  }
+  if (selected === undefined) return [];
+  const target = selected.field.value.slice(selected.valueStart);
+  if (target === "") return [];
+  const rawStart = selected.field.boundaries[selected.valueStart];
+  const rawEnd = selected.field.boundaries[selected.field.value.length];
+  if (rawStart === undefined || rawEnd === undefined) return [];
+  return [
+    {
+      target,
+      span: { start: valueOffset + rawStart, end: valueOffset + rawEnd },
+    },
+  ];
+}
+
+interface CsvField {
+  readonly value: string;
+  readonly boundaries: readonly number[];
+}
+
+function parseCsvFields(value: string): readonly CsvField[] | undefined {
+  const result: CsvField[] = [];
+  let index = 0;
+  while (index <= value.length) {
+    if (value[index] === '"') {
+      index += 1;
+      let decoded = "";
+      const boundaries = [index];
+      let closed = false;
+      while (index < value.length) {
+        if (value[index] === '"') {
+          if (value[index + 1] === '"') {
+            decoded += '"';
+            index += 2;
+            boundaries.push(index);
+            continue;
+          }
+          index += 1;
+          closed = true;
+          break;
+        }
+        decoded += value[index] ?? "";
+        index += 1;
+        boundaries.push(index);
+      }
+      if (!closed || (index < value.length && value[index] !== ",")) return undefined;
+      result.push({ value: decoded, boundaries });
+    } else {
+      const start = index;
+      while (index < value.length && value[index] !== ",") {
+        if (value[index] === '"') return undefined;
+        index += 1;
+      }
+      result.push({
+        value: value.slice(start, index),
+        boundaries: Array.from({ length: index - start + 1 }, (_, offset) => start + offset),
+      });
+    }
+    if (index >= value.length) break;
+    index += 1;
+  }
+  return result;
 }
 
 function splitValues(

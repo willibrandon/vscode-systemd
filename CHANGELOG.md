@@ -76,5 +76,9 @@ All notable changes to this project will be documented here. The format follows
   Argument column, sysusers understands `u!`, binfmt uses exactly seven fields, each fstab-family
   table enforces its own layout, and DNSSEC trust anchors and boot-loader records receive
   format-specific validation.
+- Quadlet references now follow Podman's field-specific conversion rules, including structured
+  network, volume, and CSV mount values; unresolved local resources are diagnosed, completion and
+  navigation use only compatible Quadlet types, rename preserves the resource suffix, and effective
+  configurations apply Podman's main-file and drop-in precedence.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

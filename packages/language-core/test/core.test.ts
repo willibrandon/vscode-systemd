@@ -126,7 +126,7 @@ describe("formatting and workspace semantics", () => {
 
   it("extracts references and renders effective provenance", () => {
     const base = parse(
-      "[Unit]\nRequires=network.target dbus.socket\nDocumentation=file:/etc/app.md https://example.test/help\n[Service]\nEnvironment=ONE=1\n",
+      "[Unit]\nRequires=network.target dbus.socket\nDocumentation=file:/etc/app.md https://example.test/help\n[Service]\nEnvironment=ONE=1\n[Install]\nUpheldBy=supervisor.service\nAlso=app-helper.service\n",
       "systemd-unit",
       "file:///workspace/app.service",
     );
@@ -141,6 +141,8 @@ describe("formatting and workspace semantics", () => {
       "dbus.socket",
       "file:/etc/app.md",
       "https://example.test/help",
+      "supervisor.service",
+      "app-helper.service",
     ]);
     for (const reference of references) {
       expect(base.source.slice(reference.span.start, reference.span.end)).toBe(reference.target);

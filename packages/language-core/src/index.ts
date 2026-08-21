@@ -15,12 +15,14 @@ export {
   sectionsFor,
 } from "./registry.js";
 export {
+  analyzeWorkspaceReferences,
   buildReferenceGraph,
   buildSemanticModel,
   configurationIdentity,
   extractReferences,
   findOrderingDependencyCycles,
   mergeConfigurations,
+  quadletReferenceExtensionsFor,
   relatedConfiguration,
   renderEffectiveConfiguration,
   resolveConfigurationDocuments,

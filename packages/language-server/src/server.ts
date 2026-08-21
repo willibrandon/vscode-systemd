@@ -1,5 +1,6 @@
 import {
   analyze,
+  analyzeWorkspaceReferences,
   buildReferenceGraph,
   configurationIdentity,
   configureRegistryChannel,
@@ -13,6 +14,7 @@ import {
   lineSettingsFor,
   mergeConfigurations,
   parse,
+  quadletReferenceExtensionsFor,
   recordFormatFor,
   resolveConfigurationDocuments,
   resolveUnitConfigurations,
@@ -183,6 +185,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
                 mkosi: settings.targetVersions.mkosi,
               },
             }).map((item) => toDiagnostic(document, item)),
+            ...analyzeWorkspaceReferences(tree, allParsed()).map((item) =>
+              toDiagnostic(document, item),
+            ),
             ...orderingCycleDiagnostics(document, tree, orderingCycles(), allParsed(), documents),
           ].slice(0, settings.validation.maxProblems);
     void connection.sendDiagnostics({
@@ -214,6 +219,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     return [...result.values()];
   };
+  const scheduleAll = (delay = 120): void => {
+    for (const document of documents.all()) schedule(document, delay);
+  };
   const invalidateGraph = (): void => {
     graphRevision += 1;
   };
@@ -231,7 +239,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     settingsCache.clear();
     invalidateGraph();
-    for (const document of documents.all()) schedule(document, 0);
+    scheduleAll(0);
   };
   const orderingCycles = (): readonly OrderingDependencyCycle[] => {
     if (cycleCacheRevision !== graphRevision) {
@@ -294,12 +302,12 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     if (!supportsConfiguration) {
       fallbackSettings = normalizeSettings(changed, detectedVersions);
     }
-    for (const document of documents.all()) schedule(document, 0);
+    scheduleAll(0);
   });
   connection.onNotification(detectedVersionsNotification, (versions): void => {
     detectedVersions = normalizeDetectedVersions(object(versions));
     settingsCache.clear();
-    for (const document of documents.all()) schedule(document, 0);
+    scheduleAll(0);
   });
   connection.onNotification(dataChannelNotification, ({ channel }): void => {
     selectDataChannel(channel);
@@ -325,7 +333,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     const assignment = assignmentAt(tree, offset);
     if (assignment !== undefined && offset >= assignment.valueSpan.start) {
-      return valueCompletions(assignment, allParsed());
+      return valueCompletions(tree, assignment, allParsed());
     }
     const settings = await settingsFor(document.uri);
     return definitionsFor(tree.dialect, sectionAt(tree, offset), tree.kind)
@@ -499,21 +507,33 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   connection.onDefinition((params): Location[] => {
     const context = contextAt(documents, params.textDocument.uri, params.position, parsed);
     if (context?.node.kind !== "assignment") return [];
-    if (context.document.offsetAt(params.position) < context.node.valueSpan.start) return [];
-    const target = wordAt(context.document, params.position);
-    return target === "" ? [] : documentLocations(target, allParsed(), documents);
+    const offset = context.document.offsetAt(params.position);
+    if (offset < context.node.valueSpan.start) return [];
+    const reference = referenceAt(context.tree, offset);
+    const target = reference?.target ?? wordAt(context.document, params.position);
+    return target === "" ? [] : documentLocations(target, allParsed(), documents, reference?.kind);
   });
   connection.onReferences((params): Location[] => {
     const document = documents.get(params.textDocument.uri);
-    if (document === undefined) return [];
-    const target = wordAt(document, params.position);
+    const tree = document === undefined ? undefined : parsed(document);
+    if (document === undefined || tree === undefined) return [];
+    const offset = document.offsetAt(params.position);
+    const selectedReference = referenceAt(tree, offset);
+    const target = selectedReference?.target ?? wordAt(document, params.position);
     if (target === "") return [];
     const result: Location[] = [];
     for (const tree of allParsed()) {
       const source =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
       for (const reference of extractReferences(tree)) {
-        if (reference.target === target || basename(reference.target) === basename(target)) {
+        const exactIdentity =
+          selectedReference?.kind === "unit" ||
+          selectedReference?.kind === "quadlet" ||
+          selectedReference?.kind === "mkosi";
+        if (
+          reference.target === target ||
+          (!exactIdentity && basename(reference.target) === basename(target))
+        ) {
           result.push({ uri: tree.uri, range: toRange(source, reference.span) });
         }
       }
@@ -666,9 +686,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const context = contextAt(documents, params.textDocument.uri, params.position, parsed);
     if (context === undefined || !workspaceOwns(context.document.uri)) return null;
     const offset = context.document.offsetAt(params.position);
-    return renameReferenceAt(context.tree, offset) === undefined
-      ? null
-      : wordRangeAt(context.document, params.position);
+    const reference = renameReferenceAt(context.tree, offset);
+    return reference === undefined ? null : toRange(context.document, reference.span);
   });
   connection.onRenameRequest((params): WorkspaceEdit => {
     const document = documents.get(params.textDocument.uri);
@@ -785,7 +804,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         else indexedWorkspaceOwned.delete(candidate.uri);
       }
       invalidateGraph();
-      for (const document of documents.all()) schedule(document, 0);
+      scheduleAll(0);
     },
   );
   connection.onNotification(refreshDiagnosticsNotification, ({ uri }): void => {
@@ -794,13 +813,13 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
   });
 
-  documents.onDidOpen(({ document }): void => {
+  documents.onDidOpen((): void => {
     invalidateGraph();
-    schedule(document, 0);
+    scheduleAll(0);
   });
-  documents.onDidChangeContent(({ document }): void => {
+  documents.onDidChangeContent((): void => {
     invalidateGraph();
-    schedule(document);
+    scheduleAll();
   });
   documents.onDidClose(({ document }): void => {
     invalidateGraph();
@@ -809,6 +828,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     pending.delete(document.uri);
     settingsCache.delete(document.uri);
     void connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
+    scheduleAll(0);
   });
   documents.listen(connection);
   connection.listen();
@@ -1198,6 +1218,7 @@ function lineSettingMarkdown(definition: LineSettingDefinition): string {
 }
 
 function valueCompletions(
+  tree: ParsedDocument,
   assignment: AssignmentNode,
   documents: readonly ParsedDocument[],
 ): CompletionItem[] {
@@ -1208,15 +1229,7 @@ function valueCompletions(
       ? definition.choices
       : definition.valueKind === "boolean"
         ? ["yes", "no"]
-        : unitReferenceSettings.has(assignment.name)
-          ? documents
-              .map(({ uri }) => configurationIdentity(uri))
-              .filter((identity) => isUnitIdentity(identity))
-          : quadletReferenceSettings.has(assignment.name)
-            ? documents
-                .filter(({ dialect }) => dialect === "podman-quadlet")
-                .map(({ uri }) => configurationIdentity(uri))
-            : [];
+        : referenceCompletionValues(tree, assignment, documents);
   const unique = values.filter(
     (value, index, candidates) => value !== "" && candidates.indexOf(value) === index,
   );
@@ -1226,6 +1239,28 @@ function valueCompletions(
     kind: CompletionItemKind.Value,
     detail: definition.name + "= value",
   }));
+}
+
+function referenceCompletionValues(
+  tree: ParsedDocument,
+  assignment: AssignmentNode,
+  documents: readonly ParsedDocument[],
+): string[] {
+  const extensions =
+    tree.dialect === "podman-quadlet"
+      ? quadletReferenceExtensionsFor(tree.kind, assignment.section, assignment.name)
+      : [];
+  const identities = documents.map(({ uri }) => configurationIdentity(uri));
+  if (unitReferenceSettings.has(assignment.name)) {
+    return identities.filter(
+      (identity) =>
+        isUnitIdentity(identity) || extensions.some((extension) => identity.endsWith(extension)),
+    );
+  }
+  if (extensions.length === 0) return [];
+  return identities.filter((identity) =>
+    extensions.some((extension) => identity.endsWith(extension)),
+  );
 }
 
 const unitReferenceSettings = new Set([
@@ -1241,18 +1276,14 @@ const unitReferenceSettings = new Set([
   "ReloadPropagatedFrom",
   "Requires",
   "Requisite",
+  "StopPropagatedFrom",
   "Upholds",
   "Wants",
-]);
-
-const quadletReferenceSettings = new Set([
-  "Artifact",
-  "Build",
-  "Image",
-  "ImageVolume",
-  "Network",
-  "Pod",
-  "Volume",
+  "WantedBy",
+  "RequiredBy",
+  "UpheldBy",
+  "Also",
+  "Alias",
 ]);
 
 interface CompletionData {
@@ -1345,9 +1376,14 @@ function documentLocations(
   target: string,
   trees: readonly ParsedDocument[],
   documents: TextDocuments<TextDocument>,
+  kind?: Reference["kind"],
 ): Location[] {
   return trees
-    .filter((tree) => basename(tree.uri) === basename(target))
+    .filter((tree) =>
+      kind === "unit" || kind === "quadlet" || kind === "mkosi"
+        ? configurationIdentity(tree.uri) === target
+        : basename(tree.uri) === basename(target),
+    )
     .map((tree): Location => {
       const document =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
@@ -1461,11 +1497,13 @@ function wordAt(document: TextDocument, position: Position): string {
 }
 
 function renameReferenceAt(tree: ParsedDocument, offset: number): Reference | undefined {
+  const reference = referenceAt(tree, offset);
+  return reference !== undefined && renameableReference(reference) ? reference : undefined;
+}
+
+function referenceAt(tree: ParsedDocument, offset: number): Reference | undefined {
   return extractReferences(tree).find(
-    (reference) =>
-      reference.span.start <= offset &&
-      offset <= reference.span.end &&
-      renameableReference(reference),
+    (reference) => reference.span.start <= offset && offset <= reference.span.end,
   );
 }
 
@@ -1486,15 +1524,26 @@ function renameableReference(reference: Reference): boolean {
 function validReferenceRename(reference: Reference, candidate: string): boolean {
   switch (reference.kind) {
     case "unit":
-      return isUnitIdentity(candidate);
+      return (
+        isUnitIdentity(candidate) &&
+        identityExtension(candidate) === identityExtension(reference.target)
+      );
     case "quadlet":
-      return isQuadletIdentity(candidate);
+      return (
+        isQuadletIdentity(candidate) &&
+        identityExtension(candidate) === identityExtension(reference.target)
+      );
     case "mkosi":
       return isSafeMkosiIdentity(candidate);
     case "documentation":
     case "path":
       return false;
   }
+}
+
+function identityExtension(identity: string): string {
+  const dot = identity.lastIndexOf(".");
+  return dot < 0 ? "" : identity.slice(dot);
 }
 
 function isQuadletIdentity(identity: string): boolean {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  analyzeWorkspaceReferences,
   buildReferenceGraph,
   buildSemanticModel,
+  extractReferences,
   findOrderingDependencyCycles,
   mergeConfigurations,
   parse,
@@ -275,5 +277,192 @@ describe("typed semantic and reference models", () => {
         sourceUri: first.uri,
       },
     ]);
+  });
+
+  it("extracts only real Quadlet references and preserves structured source spans", () => {
+    const source = [
+      "[Unit]",
+      "After=database.container network-online.target",
+      "[Container]",
+      "Image=quay.io/example/application:latest",
+      "Network=backend.network:interface_name=eth0",
+      "Network=none",
+      "Pod=application.pod",
+      "Volume=data.volume:/var/lib/data:Z",
+      "Volume=/srv/cache:/cache:ro",
+      "Mount=type=image,source=base.image,target=/opt/base",
+      'Mount="type=image","source=archive,base.image",target=/opt/archive',
+      "Mount=type=tmpfs,source=ignored.image,target=/run/cache",
+      "Mount=type=image,source=first.image,src=last.image,target=/opt/last",
+      "ImageVolume=bind",
+      "",
+    ].join("\n");
+    const document = parse(source, "podman-quadlet", "file:///workspace/application.container");
+    const references = extractReferences(document);
+
+    expect(references.map(({ target, kind }) => ({ target, kind }))).toEqual([
+      { target: "database.container", kind: "quadlet" },
+      { target: "network-online.target", kind: "unit" },
+      { target: "backend.network", kind: "quadlet" },
+      { target: "application.pod", kind: "quadlet" },
+      { target: "data.volume", kind: "quadlet" },
+      { target: "base.image", kind: "quadlet" },
+      { target: "archive,base.image", kind: "quadlet" },
+      { target: "last.image", kind: "quadlet" },
+    ]);
+    for (const reference of references) {
+      expect(source.slice(reference.span.start, reference.span.end)).toBe(reference.target);
+    }
+  });
+
+  it("does not confuse OCI resources with references from their own Quadlet files", () => {
+    const image = parse(
+      "[Image]\nImage=quay.io/example/base.image\n",
+      "podman-quadlet",
+      "file:///workspace/base.image",
+    );
+    const artifact = parse(
+      "[Artifact]\nArtifact=quay.io/example/data:latest\n",
+      "podman-quadlet",
+      "file:///workspace/data.artifact",
+    );
+    const volume = parse(
+      "[Volume]\nDriver=image\nImage=base.build\n",
+      "podman-quadlet",
+      "file:///workspace/data.volume",
+    );
+
+    expect(extractReferences(image)).toEqual([]);
+    expect(extractReferences(artifact)).toEqual([]);
+    expect(extractReferences(volume).map(({ target }) => target)).toEqual(["base.build"]);
+
+    const suffixAmbiguity = parse(
+      "[Container]\nImage=quay.io/example/base.image\n",
+      "podman-quadlet",
+      "file:///workspace/application.container",
+    );
+    expect(extractReferences(suffixAmbiguity).map(({ target }) => target)).toEqual([
+      "quay.io/example/base.image",
+    ]);
+
+    const suffixBeforePathHandling = parse(
+      "[Container]\nImage=/missing.image\nNetwork=./missing.network\nVolume=/srv/cache.volume:/cache\n",
+      "podman-quadlet",
+      "file:///workspace/application.container",
+    );
+    expect(extractReferences(suffixBeforePathHandling).map(({ target }) => target)).toEqual([
+      "/missing.image",
+      "./missing.network",
+    ]);
+  });
+
+  it("reports only unresolved mandatory Quadlet references", () => {
+    const container = parse(
+      "[Container]\nImage=base.image\nNetwork=missing.network\n",
+      "podman-quadlet",
+      "file:///workspace/application.container",
+    );
+    const image = parse(
+      "[Image]\nImage=quay.io/example/base:latest\n",
+      "podman-quadlet",
+      "file:///workspace/base.image",
+    );
+
+    const diagnostics = analyzeWorkspaceReferences(container, [container, image]);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      code: "missing-quadlet-reference",
+      severity: "error",
+    });
+    expect(diagnostics[0]?.message).toContain("missing.network");
+  });
+});
+
+describe("Quadlet configuration resolution", () => {
+  const quadlet = (uri: string, source: string): ParsedDocument =>
+    parse(source, "podman-quadlet", uri);
+
+  it("selects one main file and applies type-wide, dash-prefix, and exact drop-ins", () => {
+    const vendor = quadlet(
+      "file:///usr/share/containers/systemd/web-api.container",
+      "[Container]\nImage=vendor.example/web:latest\n",
+    );
+    const administrator = quadlet(
+      "file:///etc/containers/systemd/web-api.container",
+      "[Container]\nImage=admin.example/web:latest\n",
+    );
+    const typeWide = quadlet(
+      "file:///etc/containers/systemd/container.d/10-common.conf",
+      "[Container]\nEnvironment=TYPE_WIDE=1\n",
+    );
+    const dashPrefix = quadlet(
+      "file:///etc/containers/systemd/web-.container.d/20-prefix.conf",
+      "[Container]\nEnvironment=PREFIX=1\n",
+    );
+    const exact = quadlet(
+      "file:///etc/containers/systemd/web-api.container.d/30-exact.conf",
+      "[Container]\nEnvironment=EXACT=1\n",
+    );
+
+    const resolution = resolveConfigurationDocuments(administrator.uri, [
+      vendor,
+      exact,
+      typeWide,
+      administrator,
+      dashPrefix,
+    ]);
+
+    expect(resolution.baseUri).toBe(administrator.uri);
+    expect(resolution.documents.map(({ uri }) => uri)).toEqual([
+      administrator.uri,
+      typeWide.uri,
+      dashPrefix.uri,
+      exact.uri,
+    ]);
+  });
+
+  it("lets a more-specific Quadlet drop-in directory win before source-directory priority", () => {
+    const base = quadlet(
+      "file:///etc/containers/systemd/web-api.container",
+      "[Container]\nImage=example.test/web:latest\n",
+    );
+    const runtimeBroad = quadlet(
+      "file:///run/containers/systemd/container.d/50-policy.conf",
+      "[Container]\nEnvironment=SOURCE=runtime-broad\n",
+    );
+    const administratorSpecific = quadlet(
+      "file:///etc/containers/systemd/web-api.container.d/50-policy.conf",
+      "[Container]\nEnvironment=SOURCE=admin-specific\n",
+    );
+
+    const resolution = resolveConfigurationDocuments(base.uri, [
+      runtimeBroad,
+      base,
+      administratorSpecific,
+    ]);
+    expect(resolution.dropInUris).toEqual([administratorSpecific.uri]);
+  });
+
+  it("resolves template-instance Quadlet drop-ins", () => {
+    const template = quadlet(
+      "file:///etc/containers/systemd/worker@.container",
+      "[Container]\nImage=example.test/worker:latest\n",
+    );
+    const templateDropIn = quadlet(
+      "file:///etc/containers/systemd/worker@.container.d/10-template.conf",
+      "[Container]\nEnvironment=TEMPLATE=1\n",
+    );
+    const instanceDropIn = quadlet(
+      "file:///etc/containers/systemd/worker@blue.container.d/20-instance.conf",
+      "[Container]\nEnvironment=INSTANCE=blue\n",
+    );
+
+    expect(
+      resolveConfigurationDocuments("file:///workspace/worker@blue.container", [
+        instanceDropIn,
+        template,
+        templateDropIn,
+      ]).documents.map(({ uri }) => uri),
+    ).toEqual([template.uri, templateDropIn.uri, instanceDropIn.uri]);
   });
 });
