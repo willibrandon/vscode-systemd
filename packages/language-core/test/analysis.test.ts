@@ -49,6 +49,65 @@ describe("INI semantic analysis", () => {
     expect(codes(source, dialect)).toContain("invalid-value");
   });
 
+  it.each([
+    ["[Coredump]\nExternalSizeMax=0x20\n", "systemd-config"],
+    ["[Journal]\nMaxFileSec=1h 30min\n", "systemd-config"],
+    ["[Coredump]\nJournalSizeMax=1.5 GiB\n", "systemd-config"],
+    ["[Delegate]\nDNS=[2001:db8::1]:53\n", "systemd-config"],
+  ] as const)("accepts valid typed value in %s", (source, dialect) => {
+    expect(codes(source, dialect)).not.toContain("invalid-value");
+  });
+
+  it("covers systemd numeric, duration, size, address, and path forms", () => {
+    for (const value of ["+42", "-0o17", "0xAf"]) {
+      expect(codes("[Coredump]\nExternalSizeMax=" + value + "\n", "systemd-config")).not.toContain(
+        "invalid-value",
+      );
+    }
+    for (const value of ["+", "0x", "0o8", "12x"]) {
+      expect(codes("[Coredump]\nExternalSizeMax=" + value + "\n", "systemd-config")).toContain(
+        "invalid-value",
+      );
+    }
+    for (const value of ["infinity", "-1.5 sec", "1 ms", "1h30min"]) {
+      expect(codes("[Journal]\nMaxFileSec=" + value + "\n", "systemd-config")).not.toContain(
+        "invalid-value",
+      );
+    }
+    for (const value of ["+", "1.", "1unknown"]) {
+      expect(codes("[Journal]\nMaxFileSec=" + value + "\n", "systemd-config")).toContain(
+        "invalid-value",
+      );
+    }
+    for (const value of ["infinity", "-42", "42B", "42%", "42K", "42KB", "42Ki", "42KiB"]) {
+      expect(codes("[Coredump]\nJournalSizeMax=" + value + "\n", "systemd-config")).not.toContain(
+        "invalid-value",
+      );
+    }
+    for (const value of ["+", "1.", "1XB"]) {
+      expect(codes("[Coredump]\nJournalSizeMax=" + value + "\n", "systemd-config")).toContain(
+        "invalid-value",
+      );
+    }
+    expect(codes("[Delegate]\nDNS=[::1]/64:53\n", "systemd-config")).not.toContain("invalid-value");
+    for (const value of ["[]", "[abc", "x[abc]", "abc//24", "abc/", "abc/1234", "abc/x"]) {
+      expect(codes("[Delegate]\nDNS=" + value + "\n", "systemd-config")).toContain("invalid-value");
+    }
+    expect(codes("[Build]\nBuildDirectory=/tmp/build\n", "mkosi")).not.toContain("invalid-value");
+    expect(codes("[Build]\nBuildDirectory=/tmp/\0build\n", "mkosi")).toContain("invalid-value");
+  });
+
+  it("validates adversarial values in linear time", () => {
+    const started = performance.now();
+    expect(
+      codes("[Journal]\nMaxFileSec=" + "000.".repeat(25_000) + "!\n", "systemd-config"),
+    ).toContain("invalid-value");
+    expect(codes("[Delegate]\nDNS=" + "0 ".repeat(50_000) + "!\n", "systemd-config")).not.toContain(
+      "invalid-value",
+    );
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
   it("requires only genuinely mandatory unit and Quadlet sections", () => {
     expect(codes("[Unit]\nDescription=x\n", "systemd-unit", "file:///demo.service")).toContain(
       "missing-required-section",
@@ -90,6 +149,32 @@ describe("record and JSON semantic analysis", () => {
     expect(codes("bad key=value\n", "systemd-sysctl")).toContain("invalid-sysctl-key");
     expect(codes("GOOD_NAME=value\n", "systemd-environment")).not.toContain(
       "invalid-environment-name",
+    );
+  });
+
+  it("accepts current tmpfiles types and modifiers and strict udev expressions", () => {
+    expect(codes("w+ /tmp/app - - - - value\n", "systemd-tmpfiles")).not.toContain(
+      "invalid-record-field",
+    );
+    expect(codes("K$ /tmp/app\n", "systemd-tmpfiles")).not.toContain("invalid-record-field");
+    expect(codes('ENV{ID_MODEL} == "demo"\n', "systemd-udev-rules")).not.toContain(
+      "invalid-record-field",
+    );
+    expect(codes('ENV{ID_MODEL == "demo"\n', "systemd-udev-rules")).toContain(
+      "invalid-record-field",
+    );
+    expect(codes("f++ /tmp/app\n", "systemd-tmpfiles")).toContain("invalid-record-field");
+    expect(codes("f# /tmp/app\n", "systemd-tmpfiles")).toContain("invalid-record-field");
+    for (const operator of ["==", "!=", ":=", "+=", "-=", "="]) {
+      expect(codes("ENV{ID_MODEL} " + operator + ' "demo"\n', "systemd-udev-rules")).not.toContain(
+        "invalid-record-field",
+      );
+    }
+    for (const expression of ["ENV{}=demo", "ENV", "ENV="]) {
+      expect(codes(expression + "\n", "systemd-udev-rules")).toContain("invalid-record-field");
+    }
+    expect(codes("usb:v0001*\n ID_MODEL=Demo\n", "systemd-hwdb")).not.toContain(
+      "invalid-record-field",
     );
   });
 

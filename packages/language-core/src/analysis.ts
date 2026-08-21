@@ -7,6 +7,55 @@ export interface AnalysisOptions {
 }
 
 const booleans = new Set(["1", "0", "yes", "no", "true", "false", "on", "off", "y", "n", "t", "f"]);
+const durationUnits = [
+  "month",
+  "year",
+  "week",
+  "sec",
+  "min",
+  "day",
+  "hr",
+  "ns",
+  "us",
+  "µs",
+  "ms",
+  "s",
+  "m",
+  "h",
+  "d",
+  "w",
+  "y",
+];
+const tmpfilesTypes = new Set([
+  "f",
+  "w",
+  "d",
+  "D",
+  "e",
+  "v",
+  "q",
+  "Q",
+  "p",
+  "L",
+  "c",
+  "b",
+  "C",
+  "x",
+  "X",
+  "r",
+  "R",
+  "z",
+  "Z",
+  "t",
+  "T",
+  "h",
+  "H",
+  "a",
+  "A",
+  "k",
+  "K",
+]);
+const tmpfilesModifiers = new Set(["!", "+", "-", "=", "~", "^", "$", "?"]);
 
 export function analyze(
   document: ParsedDocument,
@@ -126,25 +175,19 @@ function validateValue(
       expectation = "a boolean such as yes or no";
       break;
     case "number":
-      valid = /^[+-]?(?:\d+|0x[0-9a-f]+|0o[0-7]+)$/iu.test(value);
+      valid = isInteger(value);
       expectation = "an integer";
       break;
     case "duration":
-      valid =
-        /^(?:infinity|[+-]?(?:\d+(?:\.\d+)?\s*(?:ns|us|µs|ms|s|sec|m|min|h|hr|d|day|w|week|month|y|year)?\s*)+)$/iu.test(
-          value,
-        );
+      valid = isDuration(value);
       expectation = "a systemd time span";
       break;
     case "size":
-      valid = /^(?:infinity|[+-]?\d+(?:\.\d+)?\s*(?:[KMGTPE]i?B?|B|%)?)$/iu.test(value);
+      valid = isSize(value);
       expectation = "a byte size or percentage";
       break;
     case "address":
-      valid =
-        /^(?:\[[0-9a-f:]+\]|[0-9a-f:]+|(?:\d{1,3}\.){3}\d{1,3}|[A-Za-z0-9_.-]+)(?:\/\d{1,3})?(?::\d+)?(?:\s+.*)?$/iu.test(
-          value,
-        );
+      valid = isAddress(value);
       expectation = "an address, prefix, or hostname";
       break;
     case "path":
@@ -202,7 +245,7 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
     switch (document.dialect) {
       case "systemd-tmpfiles":
         checkColumns(node, 2, 7, "tmpfiles", diagnostics);
-        if (!/^[fFdDvVqQpLp+cCbCxXrRzZtThHaA]!?[+~-]*$/u.test(node.fields[0] ?? "")) {
+        if (!isTmpfilesAction(node.fields[0] ?? "")) {
           fieldError(node, 0, "Unknown tmpfiles entry type.", diagnostics);
         }
         break;
@@ -229,11 +272,7 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
         break;
       case "systemd-udev-rules":
         for (let index = 0; index < node.fields.length; index += 1) {
-          if (
-            !/^[A-Za-z0-9_{}.-]+(?:\{[^}]+\})?\s*(?:==|!=|:=|\+=|-=|=)\s*.+$/u.test(
-              node.fields[index] ?? "",
-            )
-          ) {
+          if (!isUdevExpression(node.fields[index] ?? "")) {
             fieldError(node, index, "Malformed udev match or assignment.", diagnostics);
           }
         }
@@ -242,6 +281,169 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
         break;
     }
   }
+}
+
+function isInteger(value: string): boolean {
+  let start = value.startsWith("+") || value.startsWith("-") ? 1 : 0;
+  if (start === value.length) return false;
+  if (value.slice(start, start + 2).toLowerCase() === "0x") {
+    start += 2;
+    return start < value.length && everyCharacter(value, start, isHexDigit);
+  }
+  if (value.slice(start, start + 2).toLowerCase() === "0o") {
+    start += 2;
+    return (
+      start < value.length &&
+      everyCharacter(value, start, (character) => character >= "0" && character <= "7")
+    );
+  }
+  return everyCharacter(value, start, isDigit);
+}
+
+function isDuration(value: string): boolean {
+  if (value.toLowerCase() === "infinity") return true;
+  const normalized = value.toLowerCase();
+  let cursor = normalized.startsWith("+") || normalized.startsWith("-") ? 1 : 0;
+  let segments = 0;
+  while (cursor < normalized.length) {
+    const integerStart = cursor;
+    while (isDigit(normalized[cursor] ?? "")) cursor += 1;
+    if (cursor === integerStart) return false;
+    if (normalized[cursor] === ".") {
+      cursor += 1;
+      const fractionStart = cursor;
+      while (isDigit(normalized[cursor] ?? "")) cursor += 1;
+      if (cursor === fractionStart) return false;
+    }
+    while (isHorizontalWhitespace(normalized[cursor] ?? "")) cursor += 1;
+    const unit = durationUnits.find((candidate) => normalized.startsWith(candidate, cursor));
+    if (unit !== undefined) cursor += unit.length;
+    if (unit === undefined && isAsciiLetter(normalized[cursor] ?? "")) return false;
+    while (isHorizontalWhitespace(normalized[cursor] ?? "")) cursor += 1;
+    segments += 1;
+  }
+  return segments > 0;
+}
+
+function isSize(value: string): boolean {
+  if (value.toLowerCase() === "infinity") return true;
+  let cursor = value.startsWith("+") || value.startsWith("-") ? 1 : 0;
+  const integerStart = cursor;
+  while (isDigit(value[cursor] ?? "")) cursor += 1;
+  if (cursor === integerStart) return false;
+  if (value[cursor] === ".") {
+    cursor += 1;
+    const fractionStart = cursor;
+    while (isDigit(value[cursor] ?? "")) cursor += 1;
+    if (cursor === fractionStart) return false;
+  }
+  while (isHorizontalWhitespace(value[cursor] ?? "")) cursor += 1;
+  const suffix = value.slice(cursor).toUpperCase();
+  if (suffix === "" || suffix === "B" || suffix === "%") return true;
+  if (!["K", "M", "G", "T", "P", "E"].includes(suffix[0] ?? "")) return false;
+  return (
+    suffix.length === 1 ||
+    suffix.slice(1) === "B" ||
+    suffix.slice(1) === "I" ||
+    suffix.slice(1) === "IB"
+  );
+}
+
+function isAddress(value: string): boolean {
+  if (value === "" || isHorizontalWhitespace(value[0] ?? "")) return false;
+  let end = 0;
+  while (end < value.length && !isHorizontalWhitespace(value[end] ?? "")) end += 1;
+  const endpoint = value.slice(0, end);
+  if (!everyCharacter(endpoint, 0, isAddressCharacter)) return false;
+  if (!someCharacter(endpoint, isAsciiLetterOrDigit)) return false;
+  const opening = endpoint.indexOf("[");
+  const closing = endpoint.indexOf("]");
+  if ((opening === -1) !== (closing === -1)) return false;
+  if (opening !== -1 && (opening !== 0 || closing <= opening + 1)) return false;
+  const slash = endpoint.indexOf("/");
+  if (slash !== -1) {
+    if (endpoint.includes("/", slash + 1)) return false;
+    const suffix = endpoint.slice(slash + 1).split(":", 2)[0] ?? "";
+    if (suffix.length < 1 || suffix.length > 3 || !everyCharacter(suffix, 0, isDigit)) return false;
+  }
+  return true;
+}
+
+function isTmpfilesAction(action: string): boolean {
+  if (!tmpfilesTypes.has(action[0] ?? "")) return false;
+  const seen = new Set<string>();
+  for (const modifier of action.slice(1)) {
+    if (!tmpfilesModifiers.has(modifier) || seen.has(modifier)) return false;
+    seen.add(modifier);
+  }
+  return true;
+}
+
+function isUdevExpression(value: string): boolean {
+  let cursor = 0;
+  while (isUdevKeyCharacter(value[cursor] ?? "")) cursor += 1;
+  if (cursor === 0) return false;
+  if (value[cursor] === "{") {
+    const closing = value.indexOf("}", cursor + 1);
+    if (closing <= cursor + 1) return false;
+    cursor = closing + 1;
+  }
+  while (isHorizontalWhitespace(value[cursor] ?? "")) cursor += 1;
+  const operator = ["==", "!=", ":=", "+=", "-=", "="].find((candidate) =>
+    value.startsWith(candidate, cursor),
+  );
+  if (operator === undefined) return false;
+  cursor += operator.length;
+  while (isHorizontalWhitespace(value[cursor] ?? "")) cursor += 1;
+  return cursor < value.length;
+}
+
+function everyCharacter(
+  value: string,
+  start: number,
+  predicate: (character: string) => boolean,
+): boolean {
+  for (let index = start; index < value.length; index += 1) {
+    if (!predicate(value[index] ?? "")) return false;
+  }
+  return true;
+}
+
+function someCharacter(value: string, predicate: (character: string) => boolean): boolean {
+  for (const character of value) {
+    if (predicate(character)) return true;
+  }
+  return false;
+}
+
+function isDigit(character: string): boolean {
+  return character >= "0" && character <= "9";
+}
+
+function isHexDigit(character: string): boolean {
+  const normalized = character.toLowerCase();
+  return isDigit(character) || (normalized >= "a" && normalized <= "f");
+}
+
+function isAsciiLetter(character: string): boolean {
+  const normalized = character.toLowerCase();
+  return normalized >= "a" && normalized <= "z";
+}
+
+function isAsciiLetterOrDigit(character: string): boolean {
+  return isAsciiLetter(character) || isDigit(character);
+}
+
+function isHorizontalWhitespace(character: string): boolean {
+  return character === " " || character === "\t";
+}
+
+function isAddressCharacter(character: string): boolean {
+  return character !== "" && (isAsciiLetterOrDigit(character) || "_.-:[]/".includes(character));
+}
+
+function isUdevKeyCharacter(character: string): boolean {
+  return character !== "" && (isAsciiLetterOrDigit(character) || "_.-".includes(character));
 }
 
 function validateSimpleAssignment(

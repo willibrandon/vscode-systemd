@@ -136,29 +136,32 @@ describe("installed validator policy", () => {
     await expect(validation).resolves.toMatchObject({ cancelled: true, timedOut: false });
   });
 
-  it("force-kills a validator that ignores graceful termination", async () => {
-    const controller = new AbortController();
-    const validation = runValidator(
-      {
-        executable: process.execPath,
-        arguments: [
-          "-e",
-          "process.on('SIGTERM', () => {}); process.stdout.write('ready'); setInterval(() => {}, 1000)",
-        ],
-        cwd: process.cwd(),
-        label: "stubborn validator",
-      },
-      controller.signal,
-      () => true,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    controller.abort();
-    await expect(validation).resolves.toMatchObject({
-      stdout: "ready",
-      cancelled: true,
-      timedOut: false,
-    });
-  });
+  it.skipIf(process.platform === "win32")(
+    "force-kills a validator that ignores graceful termination",
+    async () => {
+      const controller = new AbortController();
+      const validation = runValidator(
+        {
+          executable: process.execPath,
+          arguments: [
+            "-e",
+            "process.on('SIGTERM', () => {}); process.stdout.write('ready'); setInterval(() => {}, 1000)",
+          ],
+          cwd: process.cwd(),
+          label: "stubborn validator",
+        },
+        controller.signal,
+        () => true,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      controller.abort();
+      await expect(validation).resolves.toMatchObject({
+        stdout: "ready",
+        cancelled: true,
+        timedOut: false,
+      });
+    },
+  );
 
   it("truncates excessive combined output and terminates the process", async () => {
     const result = await runValidator(
