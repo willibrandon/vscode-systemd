@@ -10,7 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 6;
+const adapterVersion = 7;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -376,6 +376,9 @@ function add(candidate) {
     summary: candidate.summary ?? candidate.name + " in [" + section + "].",
     choices: candidate.choices ?? [],
   };
+  if (candidate.documentKinds?.length > 0) {
+    value.documentKinds = [...new Set(candidate.documentKinds)].sort();
+  }
   if (candidate.assignmentMode !== undefined && candidate.assignmentMode !== "replace") {
     value.assignmentMode = candidate.assignmentMode;
   }
@@ -405,6 +408,10 @@ function add(candidate) {
     summary: documentation === value.documentation ? value.summary : existing.summary,
     choices: useExistingChoices ? existing.choices : value.choices,
   };
+  const documentKinds = [
+    ...new Set([...(existing.documentKinds ?? []), ...(value.documentKinds ?? [])]),
+  ].sort();
+  if (documentKinds.length > 0) merged.documentKinds = documentKinds;
   const exclusiveChoices = useExistingChoices ? existing.exclusiveChoices : value.exclusiveChoices;
   if (exclusiveChoices !== undefined) merged.exclusiveChoices = exclusiveChoices;
   if (merged.assignmentMode === undefined && value.assignmentMode !== undefined) {
@@ -437,11 +444,8 @@ async function extractSystemd(source) {
     /gperf(?:\.in)?$/u.test(name),
   )) {
     const text = await readFile(file, "utf8");
-    const dialect = file.includes("/src/core/")
-      ? "systemd-unit"
-      : file.includes("/src/network/") || file.includes("/src/udev/net/")
-        ? "systemd-network"
-        : "systemd-config";
+    const sourceClassification = classifySystemdParserTable(file);
+    const dialect = sourceClassification.dialect;
     for (const line of text.split(/\r?\n/u)) {
       const match =
         /^\s*([A-Za-z0-9_@{}:+-]+)\.([A-Za-z][A-Za-z0-9_:@{}+.-]*),\s*(config_parse_[A-Za-z0-9_]+)/u.exec(
@@ -463,6 +467,7 @@ async function extractSystemd(source) {
         dialect,
         section: parserSection,
         name: match[2],
+        documentKinds: sourceClassification.documentKinds,
         valueKind: parserKind(match[3] ?? ""),
         assignmentMode,
         resetGroup,
@@ -487,6 +492,7 @@ async function extractSystemd(source) {
         : /^systemd\.(?:network|netdev|link|dnssd|dns-delegate)\.xml$/u.test(manual)
           ? "systemd-network"
           : "systemd-config";
+    const documentKinds = systemdManualDocumentKinds(manual);
     const defaultSection = manualDefaultSection(manual);
     let section = defaultSection;
     const tokens =
@@ -515,6 +521,7 @@ async function extractSystemd(source) {
           dialect,
           section: resolvedSection,
           name,
+          documentKinds,
           assignmentMode: inherited?.assignmentMode,
           resetGroup: inherited?.resetGroup,
           since: /xpointer="v(\d+)"/u.exec(block)?.[1] ?? null,
@@ -531,6 +538,35 @@ async function extractSystemd(source) {
       }
     }
   }
+}
+
+function classifySystemdParserTable(file) {
+  if (file.includes("/src/core/")) return { dialect: "systemd-unit" };
+  if (file.endsWith("/src/network/networkd-network-gperf.gperf")) {
+    return { dialect: "systemd-network", documentKinds: ["systemd-network:network"] };
+  }
+  if (file.endsWith("/src/network/netdev/netdev-gperf.gperf")) {
+    return { dialect: "systemd-network", documentKinds: ["systemd-network:netdev"] };
+  }
+  if (file.endsWith("/src/udev/net/link-config-gperf.gperf")) {
+    return { dialect: "systemd-network", documentKinds: ["systemd-network:link"] };
+  }
+  if (file.endsWith("/src/network/networkd-gperf.gperf")) {
+    return { dialect: "systemd-config", documentKinds: ["systemd-config:networkd"] };
+  }
+  return { dialect: "systemd-config" };
+}
+
+function systemdManualDocumentKinds(manual) {
+  const kind =
+    {
+      "systemd.network.xml": "systemd-network:network",
+      "systemd.netdev.xml": "systemd-network:netdev",
+      "systemd.link.xml": "systemd-network:link",
+      "systemd.dnssd.xml": "systemd-network:dnssd",
+      "systemd.dns-delegate.xml": "systemd-network:dns-delegate",
+    }[manual] ?? undefined;
+  return kind === undefined ? undefined : [kind];
 }
 
 function isClosedSystemdChoice(dialect, section, name) {

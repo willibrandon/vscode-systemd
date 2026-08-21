@@ -220,11 +220,15 @@ function definitionAllowedInDocument(
   documentKind: DocumentKind | undefined,
 ): boolean {
   if (documentKind === undefined) return true;
+  if (definition.documentKinds !== undefined && !definition.documentKinds.includes(documentKind)) {
+    return false;
+  }
   if (definition.section !== "*" && !sectionAllowedInDocument(documentKind, definition.section)) {
     return false;
   }
   const networkPage = networkManualFor(documentKind);
   if (networkPage !== undefined) {
+    if (definition.documentKinds?.includes(documentKind) === true) return true;
     if (definition.documentation.includes("/" + networkPage + ".html")) return true;
     if (!definition.documentation.includes("/systemd.directives.html")) return false;
     return networkSections(documentKind).has(definition.section);
@@ -255,7 +259,11 @@ function networkSections(documentKind: DocumentKind): ReadonlySet<string> {
   if (page === undefined) return new Set();
   const sections = new Set(
     (byDialect.get("systemd-network") ?? [])
-      .filter((definition) => definition.documentation.includes("/" + page + ".html"))
+      .filter(
+        (definition) =>
+          definition.documentKinds?.includes(documentKind) === true ||
+          definition.documentation.includes("/" + page + ".html"),
+      )
       .map(({ section }) => section),
   );
   networkSectionCache.set(documentKind, sections);

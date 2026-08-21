@@ -513,4 +513,137 @@ describe("record and JSON semantic analysis", () => {
       "[300,0,0,1]",
     );
   });
+
+  it("reports every malformed .pcrlock record shape without rejecting future hash algorithms", () => {
+    const diagnostics = codes(
+      JSON.stringify([
+        null,
+        { pcr: "7", digests: {}, content_type: 7 },
+        {
+          pcr: 0,
+          digests: [
+            null,
+            {},
+            { hashAlg: 7 },
+            { hashAlg: "sha1" },
+            { hashAlg: "future-hash", digest: false },
+          ],
+          content_type: "systemd",
+          content: { string: 1, eventType: false },
+        },
+        { nv_index: 0, digests: [], content_type: "vendor" },
+      ]),
+      "systemd-json",
+      "file:///etc/pcrlock.d/shapes.pcrlock",
+    );
+
+    expect(diagnostics).toEqual(
+      expect.arrayContaining([
+        "invalid-pcrlock-record",
+        "invalid-pcrlock-pcr",
+        "invalid-pcrlock-digests",
+        "invalid-pcrlock-content-type",
+        "invalid-pcrlock-digest",
+        "pcrlock-hash-algorithm-required",
+        "invalid-pcrlock-content",
+      ]),
+    );
+    expect(diagnostics.filter((code) => code === "pcrlock-hash-algorithm-required")).toHaveLength(
+      2,
+    );
+    expect(diagnostics.filter((code) => code === "invalid-pcrlock-content")).toHaveLength(2);
+  });
+
+  it("accepts .pcrlock integer and digest boundaries", () => {
+    const valid = JSON.stringify([
+      { pcr: 0, digests: [{ hashAlg: "SHA1", digest: "" }] },
+      { pcr: 23, digests: [{ hashAlg: "sha512", digest: "ff".repeat(64) }] },
+      { nv_index: 4_294_967_294, digests: [{ hashAlg: "sha384", digest: "0123456789abcdef" }] },
+    ]);
+    expect(codes(valid, "systemd-json", "file:///etc/pcrlock.d/boundaries.pcrlock")).toEqual([]);
+  });
+
+  it("accepts every supported DNS JSON representation and DNS-name form", () => {
+    const valid = JSON.stringify([
+      { key: { name: "ipv4.example.", class: 0, type: 1 }, address: "192.0.2.1" },
+      { key: { name: "bytes.example", class: 65_535, type: 1 }, address: [0, 255, 2, 1] },
+      { key: { name: "full-v6.example", type: 28 }, address: "2001:db8:0:0:0:0:0:1" },
+      { key: { name: "compressed-v6.example", type: 28 }, address: "2001:db8::1" },
+      { key: { name: "embedded-v4.example", type: 28 }, address: "::ffff:192.0.2.1" },
+      {
+        key: { name: "v6-bytes.example", type: 28 },
+        address: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 254, 255],
+      },
+      { key: { name: "ns.example", type: 2 }, name: "." },
+      { key: { name: "alias.example", type: 5 }, name: "target.example." },
+      { key: { name: "ptr.example", type: 12 }, name: "escaped\\032label.example" },
+      { key: { name: "dname.example", type: 39 }, name: "target.example" },
+    ]);
+    expect(codes(valid, "systemd-json", "file:///etc/systemd/resolve/static.d/valid.rr")).toEqual(
+      [],
+    );
+
+    const validObject = JSON.stringify({
+      key: { name: "single.example", type: 1 },
+      address: "203.0.113.4",
+    });
+    expect(
+      codes(validObject, "systemd-json", "file:///etc/systemd/resolve/static.d/single.rr"),
+    ).toEqual([]);
+  });
+
+  it("rejects malformed DNS keys, addresses, types, and names at their boundaries", () => {
+    const overlongName = `${"a".repeat(63)}.${"b".repeat(63)}.${"c".repeat(63)}.${"d".repeat(63)}.x`;
+    const invalid = JSON.stringify([
+      {},
+      { key: [] },
+      { key: { name: "", type: 1 }, address: "192.0.2.1" },
+      { key: { name: overlongName, type: 1 }, address: "192.0.2.1" },
+      { key: { name: "bad/name", type: 1 }, address: "192.0.2.1" },
+      { key: { name: "bad..name", type: 1 }, address: "192.0.2.1" },
+      { key: { name: `${"a".repeat(64)}.example`, type: 1 }, address: "192.0.2.1" },
+      { key: { name: "class.example", class: -1, type: 1 }, address: "192.0.2.1" },
+      { key: { name: "class.example", class: 1.5, type: 1 }, address: "192.0.2.1" },
+      { key: { name: "missing-type.example" } },
+      { key: { name: "string-type.example", type: "1" } },
+      { key: { name: "negative-type.example", type: -1 } },
+      { key: { name: "large-type.example", type: 65_536 } },
+      { key: { name: "fractional-type.example", type: 1.5 } },
+      { key: { name: "unsupported.example", type: 16 } },
+      { key: { name: "a.example", type: 1 }, address: "192.0.2" },
+      { key: { name: "a.example", type: 1 }, address: "192.0.2.999" },
+      { key: { name: "a.example", type: 1 }, address: "192.0.two.1" },
+      { key: { name: "a.example", type: 1 }, address: [192, 0, 2] },
+      { key: { name: "a.example", type: 1 }, address: [192, 0, 2, -1] },
+      { key: { name: "a.example", type: 1 }, address: [192, 0, 2, 1.5] },
+      { key: { name: "aaaa.example", type: 28 }, address: "" },
+      { key: { name: "aaaa.example", type: 28 }, address: "fe80::1%eth0" },
+      { key: { name: "aaaa.example", type: 28 }, address: "2001:db8 ::1" },
+      { key: { name: "aaaa.example", type: 28 }, address: "2001::db8::1" },
+      { key: { name: "aaaa.example", type: 28 }, address: "2001:db8:zz::1" },
+      { key: { name: "aaaa.example", type: 28 }, address: "2001:db8:0:0:0:0:1" },
+      { key: { name: "aaaa.example", type: 28 }, address: "1:2:3:4:5:6:7:8:9" },
+      { key: { name: "aaaa.example", type: 28 }, address: "192.0.2.1::" },
+      { key: { name: "aaaa.example", type: 28 }, address: "::192.0.2.999" },
+      { key: { name: "alias.example", type: 5 } },
+      { key: { name: "alias.example", type: 5 }, name: "bad/name" },
+    ]);
+    const diagnostics = codes(
+      invalid,
+      "systemd-json",
+      "file:///etc/systemd/resolve/static.d/invalid.rr",
+    );
+
+    expect(diagnostics.filter((code) => code === "rr-key-required")).toHaveLength(2);
+    expect(diagnostics.filter((code) => code === "invalid-rr-name")).toHaveLength(5);
+    expect(diagnostics.filter((code) => code === "invalid-rr-class")).toHaveLength(2);
+    expect(diagnostics.filter((code) => code === "invalid-rr-type")).toHaveLength(5);
+    expect(diagnostics).toContain("unsupported-rr-type");
+    expect(diagnostics.filter((code) => code === "invalid-rr-address")).toHaveLength(15);
+    expect(diagnostics.filter((code) => code === "invalid-rr-target-name")).toHaveLength(2);
+  });
+
+  it("does not apply format-specific checks to an unrecognized JSON filename", () => {
+    expect(codes('{"arbitrary":true}', "systemd-json", "file:///workspace/data.json")).toEqual([]);
+  });
 });

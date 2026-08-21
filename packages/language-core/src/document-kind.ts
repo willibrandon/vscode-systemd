@@ -166,7 +166,7 @@ function systemdConfigSections(kind: DocumentKind): readonly string[] | undefine
     case "systemd-config:timesyncd":
       return ["Time"];
     case "systemd-config:networkd":
-      return ["Network", "DHCPv4", "DHCPv6", "DHCPServer", "DHCPRelay", "IPv6AcceptRA"];
+      return ["Network", "DHCP", "DHCPv4", "DHCPv6", "DHCPServer", "DHCPRelay", "IPv6AcceptRA"];
     case "systemd-config:coredump":
       return ["Coredump"];
     case "systemd-config:oomd":

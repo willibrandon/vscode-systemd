@@ -89,6 +89,22 @@ describe("registry queries", () => {
       definitionFor("systemd-network", "Link", "MACAddressPolicy", "systemd-network:link"),
     ).toBeDefined();
     expect(
+      definitionFor("systemd-network", "Match", "Kind", "systemd-network:network"),
+    ).toBeDefined();
+    expect(
+      definitionFor("systemd-network", "Match", "Type", "systemd-network:network"),
+    ).toBeDefined();
+    expect(sectionsFor("systemd-network", "systemd-network:network")).toContain("DHCP");
+    expect(
+      definitionFor("systemd-network", "DHCP", "UseDNS", "systemd-network:network"),
+    ).toBeDefined();
+    expect(
+      definitionFor("systemd-network", "DHCP", "UseDNS", "systemd-network:link"),
+    ).toBeUndefined();
+    expect(
+      definitionFor("systemd-config", "DHCP", "DUIDType", "systemd-config:networkd"),
+    ).toBeDefined();
+    expect(
       definitionFor("systemd-config", "Manager", "DefaultTimeoutStartSec", "systemd-config:system"),
     ).toBeDefined();
     expect(

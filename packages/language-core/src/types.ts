@@ -133,6 +133,7 @@ export interface DirectiveDefinition {
   readonly dialect: RegistryDialect;
   readonly section: string;
   readonly name: string;
+  readonly documentKinds?: readonly DocumentKind[];
   readonly valueKind: ValueKind;
   readonly assignmentMode?: AssignmentMode;
   readonly mkosiScope?: MkosiSettingScope;

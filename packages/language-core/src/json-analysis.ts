@@ -384,20 +384,21 @@ function isIpv6Address(value: string): boolean {
   if (value === "" || value.includes("%") || /\s/u.test(value)) return false;
   const halves = value.split("::");
   if (halves.length > 2) return false;
-  const left = ipv6Words(halves[0] ?? "");
+  const left = ipv6Words(halves[0] ?? "", halves.length === 1);
   const right = ipv6Words(halves[1] ?? "");
   if (left === undefined || right === undefined) return false;
   return halves.length === 2 ? left + right < 8 : left === 8;
 }
 
-function ipv6Words(value: string): number | undefined {
+function ipv6Words(value: string, allowEmbeddedIpv4 = true): number | undefined {
   if (value === "") return 0;
   const words = value.split(":");
   let count = 0;
   for (let index = 0; index < words.length; index += 1) {
     const word = words[index] ?? "";
     if (word.includes(".")) {
-      if (index !== words.length - 1 || !isIpv4Address(word)) return undefined;
+      if (!allowEmbeddedIpv4 || index !== words.length - 1 || !isIpv4Address(word))
+        return undefined;
       count += 2;
     } else {
       if (!/^[A-Fa-f0-9]{1,4}$/u.test(word)) return undefined;
