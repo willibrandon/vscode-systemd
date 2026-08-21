@@ -1,4 +1,5 @@
 import { definitionFor, isDynamicDirective, sectionsFor } from "./registry.js";
+import { analyzeSystemdJson } from "./json-analysis.js";
 import type {
   AssignmentNode,
   CoreDiagnostic,
@@ -78,7 +79,9 @@ export function analyze(
   ) {
     analyzeIni(document, diagnostics, options);
   } else if (document.dialect === "systemd-json") {
-    analyzeJson(document, diagnostics);
+    if (!diagnostics.some((diagnostic) => diagnostic.code === "systemd-json-syntax")) {
+      diagnostics.push(...analyzeSystemdJson(document));
+    }
   } else {
     analyzeRecords(document, diagnostics);
   }
@@ -526,28 +529,6 @@ function validateSimpleAssignment(
   }
 }
 
-function analyzeJson(document: ParsedDocument, diagnostics: CoreDiagnostic[]): void {
-  if (diagnostics.some((diagnostic) => diagnostic.code === "systemd-json-syntax")) return;
-  const value: unknown = JSON.parse(document.source);
-  const normalized = document.uri.toLowerCase();
-  if (normalized.includes(".pcrlock") && !Array.isArray(value)) {
-    diagnostics.push({
-      code: "invalid-pcrlock-root",
-      message: "A .pcrlock file must contain a CEL-JSON array.",
-      severity: "error",
-      span: { start: 0, end: Math.min(document.source.length, 1) },
-    });
-  }
-  if (normalized.endsWith(".rr") && !(Array.isArray(value) || isObject(value))) {
-    diagnostics.push({
-      code: "invalid-rr-root",
-      message: "A .rr file must contain a DNS record object or an array of record objects.",
-      severity: "error",
-      span: { start: 0, end: Math.min(document.source.length, 1) },
-    });
-  }
-}
-
 function validateTable(uri: string, node: RecordNode, diagnostics: CoreDiagnostic[]): void {
   const name = uri.slice(uri.lastIndexOf("/") + 1).toLowerCase();
   const expected = name === "fstab" ? [4, 6] : name === "clonetab" ? [2, 4] : [2, 4];
@@ -641,8 +622,4 @@ function targetVersionFor(definition: DirectiveDefinition, options: AnalysisOpti
 
 function containsTemplate(value: string): boolean {
   return /(?:<%|\{\{|\{%|@[^@]+@)/u.test(value);
-}
-
-function isObject(value: unknown): boolean {
-  return typeof value === "object" && value !== null;
 }

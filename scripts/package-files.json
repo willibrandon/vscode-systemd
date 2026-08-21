@@ -12,6 +12,8 @@
   "language-configuration.json",
   "media/icon.png",
   "package.json",
+  "schemas/systemd-pcrlock.schema.json",
+  "schemas/systemd-rr.schema.json",
   "snippets/config.json",
   "snippets/mkosi.json",
   "snippets/network.json",

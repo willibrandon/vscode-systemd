@@ -16,6 +16,7 @@ interface Manifest {
     readonly views: {
       readonly explorer: readonly { readonly id: string; readonly name: string }[];
     };
+    readonly jsonValidation: readonly { readonly fileMatch: string; readonly url: string }[];
   };
 }
 
@@ -53,6 +54,24 @@ describe("extension manifest", () => {
 
   it("relies on generated activation events from contributions", () => {
     expect(manifest.activationEvents).toBeUndefined();
+  });
+
+  it("bundles schemas for both systemd JSON formats", async () => {
+    expect(manifest.contributes.jsonValidation).toEqual([
+      {
+        fileMatch: "*.pcrlock",
+        url: "./schemas/systemd-pcrlock.schema.json",
+      },
+      { fileMatch: "*.rr", url: "./schemas/systemd-rr.schema.json" },
+    ]);
+    for (const { url } of manifest.contributes.jsonValidation) {
+      const schema = JSON.parse(
+        await readFile(resolve(root, url.replace(/^\.\//u, "")), "utf8"),
+      ) as unknown;
+      expect(schema).toMatchObject({
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+      });
+    }
   });
 
   it("contributes the Systemd Explorer in the standard Explorer container", () => {

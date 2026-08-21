@@ -34,6 +34,8 @@ All notable changes to this project will be documented here. The format follows
   and mkosi themselves.
 - Byte-reproducible VSIX, checksum, and CycloneDX SBOM release artifacts with canonical ZIP
   metadata.
+- Bundled JSON schemas and source-aligned semantic diagnostics for PCR measurement components and
+  systemd-resolved static DNS resource records.
 
 ### Fixed
 

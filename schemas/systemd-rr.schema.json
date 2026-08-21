@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://willibrandon.github.io/vscode-systemd/schemas/systemd-rr.schema.json",
+  "title": "systemd-resolved Static DNS Resource Records",
+  "description": "One DNS resource record or an array of records consumed from systemd resolve/static.d directories.",
+  "$comment": "Derived from systemd.rr(5), src/resolve/resolved-static-records.c, and src/shared/dns-rr.c at the pinned systemd revision.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/record"
+    },
+    {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/record"
+      }
+    }
+  ],
+  "$defs": {
+    "key": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 1,
+          "description": "Numeric DNS class; defaults to IN (1)."
+        },
+        "type": {
+          "type": "integer",
+          "enum": [1, 2, 5, 12, 28, 39],
+          "description": "Numeric DNS type: A, NS, CNAME, PTR, AAAA, or DNAME."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Owner name for the resource record."
+        }
+      },
+      "required": ["type", "name"],
+      "additionalProperties": true
+    },
+    "byte": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "ipv4": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "ipv4"
+        },
+        {
+          "type": "array",
+          "prefixItems": [
+            { "$ref": "#/$defs/byte" },
+            { "$ref": "#/$defs/byte" },
+            { "$ref": "#/$defs/byte" },
+            { "$ref": "#/$defs/byte" }
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        }
+      ]
+    },
+    "ipv6": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "ipv6"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/byte"
+          },
+          "minItems": 16,
+          "maxItems": 16
+        }
+      ]
+    },
+    "record": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "address": {},
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Target name for NS, CNAME, PTR, and DNAME records."
+        }
+      },
+      "required": ["key"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "key": {
+                "properties": {
+                  "type": {
+                    "const": 1
+                  }
+                },
+                "required": ["type"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "address": {
+                "$ref": "#/$defs/ipv4"
+              }
+            },
+            "required": ["address"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "key": {
+                "properties": {
+                  "type": {
+                    "const": 28
+                  }
+                },
+                "required": ["type"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "address": {
+                "$ref": "#/$defs/ipv6"
+              }
+            },
+            "required": ["address"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "key": {
+                "properties": {
+                  "type": {
+                    "enum": [2, 5, 12, 39]
+                  }
+                },
+                "required": ["type"]
+              }
+            }
+          },
+          "then": {
+            "required": ["name"]
+          }
+        }
+      ],
+      "additionalProperties": true
+    }
+  }
+}

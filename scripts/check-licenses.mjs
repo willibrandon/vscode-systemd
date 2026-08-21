@@ -28,6 +28,7 @@ const approvedLicenses = new Set([
 const expectedRuntimePackages = new Set([
   "balanced-match@4.0.4",
   "brace-expansion@5.0.9",
+  "jsonc-parser@3.3.1",
   "minimatch@10.2.6",
   "semver@7.8.5",
   "vscode-jsonrpc@9.0.1",
@@ -36,6 +37,7 @@ const expectedRuntimePackages = new Set([
   "vscode-languageserver-textdocument@1.0.12",
   "vscode-languageserver-types@3.18.0",
   "vscode-languageserver@10.1.0",
+  "vscode-uri@3.1.0",
 ]);
 const mitSha256 = "f74f925ccd6fc2f4b9bdf7682f6927a64809c8668e8232997c541cc6f992787b";
 

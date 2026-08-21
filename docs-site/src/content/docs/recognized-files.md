@@ -16,7 +16,8 @@ actual configuration grammar.
   repart, sysupdate, and portable-service profiles.
 - Line-oriented formats: `tmpfiles.d`, `sysusers.d`, `sysctl.d`, `modules-load.d`, `binfmt.d`,
   presets, udev rules, hwdb, environment files, boot configuration, and fstab-family tables.
-- Specialized data: DNSSEC trust anchors, PCR lock files, and DNS resource-record JSON.
+- Specialized data: DNSSEC trust anchors, plus schema-backed PCR lock files and DNS resource-record
+  JSON with source-aligned semantic diagnostics.
 
 ## Podman Quadlet and mkosi
 

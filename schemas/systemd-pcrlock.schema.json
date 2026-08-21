@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://willibrandon.github.io/vscode-systemd/schemas/systemd-pcrlock.schema.json",
+  "title": "systemd PCR Measurement Component",
+  "description": "CEL-JSON measurement records consumed from systemd pcrlock.d directories.",
+  "$comment": "Derived from systemd.pcrlock(8) and src/pcrlock/pcrlock.c at the pinned systemd revision.",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/record"
+  },
+  "$defs": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "pcr": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23,
+          "description": "TPM2 platform configuration register measured by this record."
+        },
+        "nv_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967294,
+          "description": "TPM2 non-volatile index measured by this record."
+        },
+        "digests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "content": {
+          "type": "object",
+          "properties": {
+            "string": {
+              "type": "string"
+            },
+            "eventType": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": ["digests"],
+      "oneOf": [
+        {
+          "required": ["pcr"],
+          "not": {
+            "required": ["nv_index"]
+          }
+        },
+        {
+          "required": ["nv_index"],
+          "not": {
+            "required": ["pcr"]
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "content_type": {
+                "const": "systemd"
+              }
+            },
+            "required": ["content_type"]
+          },
+          "then": {
+            "required": ["content"]
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "digest": {
+      "type": "object",
+      "properties": {
+        "hashAlg": {
+          "type": "string",
+          "description": "TPM2 hash algorithm name; current systemd recognizes sha1, sha256, sha384, and sha512."
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^(?:[A-Fa-f0-9]{2}){0,64}$",
+          "description": "Even-length hexadecimal digest of at most 64 bytes."
+        }
+      },
+      "required": ["hashAlg"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "hashAlg": {
+                "enum": ["sha1", "sha256", "sha384", "sha512"]
+              }
+            },
+            "required": ["hashAlg"]
+          },
+          "then": {
+            "required": ["digest"]
+          }
+        }
+      ],
+      "additionalProperties": true
+    }
+  }
+}

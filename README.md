@@ -59,7 +59,7 @@ The extension has dedicated language IDs for:
   and fstab-family tables;
 - udev `.rules` and hardware database `.hwdb` files;
 - environment, release, locale, machine-info, and vconsole files;
-- DNS trust anchors, PCR lock files, and DNS resource-record JSON;
+- DNS trust anchors, plus schema-backed PCR lock files and DNS resource-record JSON;
 - all current Quadlet types: artifact, build, container, image, kube, network, pod, and volume;
 - mkosi main, drop-in, profile, image, local, and UKI-profile configuration.
 

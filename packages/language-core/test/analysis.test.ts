@@ -293,4 +293,84 @@ describe("record and JSON semantic analysis", () => {
     );
     expect(codes("{", "systemd-json", "file:///app.pcrlock")).toEqual(["systemd-json-syntax"]);
   });
+
+  it("validates .pcrlock records using systemd parser constraints", () => {
+    const valid = JSON.stringify([
+      {
+        pcr: 7,
+        digests: [{ hashAlg: "sha256", digest: "00" }, { hashAlg: "future-hash" }],
+        content_type: "systemd",
+        content: { string: "Secure Boot policy", eventType: "variable" },
+      },
+      { nv_index: 22_020_198, digests: [] },
+    ]);
+    expect(codes(valid, "systemd-json", "file:///etc/pcrlock.d/app.pcrlock")).toEqual([]);
+
+    const diagnostics = codes(
+      JSON.stringify([
+        {
+          pcr: 24,
+          nv_index: 4_294_967_295,
+          digests: [
+            { hashAlg: "sha256", digest: "xyz" },
+            { hashAlg: "SHA256", digest: "00" },
+          ],
+        },
+        { content_type: "systemd", content: "wrong" },
+      ]),
+      "systemd-json",
+      "file:///etc/pcrlock.d/app.pcrlock",
+    );
+    expect(diagnostics).toEqual(
+      expect.arrayContaining([
+        "pcrlock-index-exclusive",
+        "invalid-pcrlock-pcr",
+        "invalid-pcrlock-nv-index",
+        "invalid-pcrlock-digest",
+        "duplicate-pcrlock-hash-algorithm",
+        "pcrlock-index-required",
+        "pcrlock-digests-required",
+        "pcrlock-content-required",
+      ]),
+    );
+  });
+
+  it("validates all DNS record encodings supported by systemd-resolved", () => {
+    const valid = JSON.stringify([
+      { key: { name: "a.example", type: 1 }, address: [192, 0, 2, 1] },
+      { key: { name: "aaaa.example", type: 28, class: 1 }, address: "2001:db8::1" },
+      { key: { name: "alias.example", type: 5 }, name: "target.example" },
+      { key: { name: "root.example", type: 2 }, name: "." },
+    ]);
+    expect(codes(valid, "systemd-json", "file:///etc/systemd/resolve/static.d/app.rr")).toEqual([]);
+
+    const diagnostics = codes(
+      JSON.stringify([
+        { key: { name: "bad name", type: 1, class: 65_536 }, address: [300, 0, 0, 1] },
+        { key: { name: "mx.example", type: 15 } },
+        { key: { name: "alias.example", type: 5 } },
+        null,
+      ]),
+      "systemd-json",
+      "file:///etc/systemd/resolve/static.d/app.rr",
+    );
+    expect(diagnostics).toEqual(
+      expect.arrayContaining([
+        "invalid-rr-name",
+        "invalid-rr-class",
+        "invalid-rr-address",
+        "unsupported-rr-type",
+        "invalid-rr-target-name",
+        "invalid-rr-record",
+      ]),
+    );
+
+    const source = '{"key":{"name":"a.example","type":1},"address":[300,0,0,1]}';
+    const addressDiagnostic = analyze(
+      parse(source, "systemd-json", "file:///etc/systemd/resolve/static.d/app.rr"),
+    ).find(({ code }) => code === "invalid-rr-address");
+    expect(source.slice(addressDiagnostic?.span.start, addressDiagnostic?.span.end)).toBe(
+      "[300,0,0,1]",
+    );
+  });
 });

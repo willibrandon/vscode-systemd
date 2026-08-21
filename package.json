@@ -457,6 +457,16 @@
         ]
       }
     ],
+    "jsonValidation": [
+      {
+        "fileMatch": "*.pcrlock",
+        "url": "./schemas/systemd-pcrlock.schema.json"
+      },
+      {
+        "fileMatch": "*.rr",
+        "url": "./schemas/systemd-rr.schema.json"
+      }
+    ],
     "snippets": [
       {
         "language": "systemd-unit",
@@ -777,6 +787,7 @@
     "dist/browserServer.js",
     "syntaxes/",
     "snippets/",
+    "schemas/",
     "media/icon.png",
     "language-configuration.json",
     "README.md",
