@@ -206,6 +206,10 @@ async function waitForDiagnostics(page) {
 }
 
 async function expandSystemdExplorer(page) {
+  await page.getByText("Systemd: Explorer", { exact: true }).first().waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
   await page.getByText("Workspace", { exact: true }).first().waitFor({
     state: "visible",
     timeout: 30_000,
