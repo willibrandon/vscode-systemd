@@ -984,6 +984,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         uri: tree.uri,
         languageId: tree.dialect,
         identity: configurationIdentity(tree.uri),
+        workspaceOwned: workspaceOwns(tree.uri),
         references: extractReferences(tree).map(({ target, kind }) => ({ target, kind })),
       }));
     const groups = new Map<string, ParsedDocument[]>();
@@ -1006,6 +1007,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         identity,
         languageId: first.dialect,
         sourceUri: resolution.baseUri ?? first.uri,
+        workspaceOwned: group.some((tree) => workspaceOwns(tree.uri)),
         ...(resolution.baseUri === undefined ? {} : { baseUri: resolution.baseUri }),
         dropInUris: resolution.dropInUris,
         documentUris: group.map(({ uri }) => uri).sort(),

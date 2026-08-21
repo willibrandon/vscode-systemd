@@ -19,9 +19,16 @@ interface Manifest {
       readonly filenames?: readonly string[];
       readonly filenamePatterns?: readonly string[];
     }[];
-    readonly views: {
-      readonly explorer: readonly { readonly id: string; readonly name: string }[];
+    readonly viewsContainers: {
+      readonly activitybar: readonly {
+        readonly id: string;
+        readonly title: string;
+        readonly icon: string;
+      }[];
     };
+    readonly views: Readonly<
+      Record<string, readonly { readonly id: string; readonly name: string }[]>
+    >;
     readonly jsonValidation: readonly { readonly fileMatch: string; readonly url: string }[];
   };
 }
@@ -124,11 +131,14 @@ describe("extension manifest", () => {
     );
   });
 
-  it("contributes the Systemd Explorer in the standard Explorer container", () => {
-    expect(manifest.contributes.views.explorer).toContainEqual({
-      id: "systemd.explorer",
-      name: "Systemd",
+  it("contributes one stable Systemd Activity Bar container without a duplicate folder icon", () => {
+    expect(manifest.contributes.viewsContainers.activitybar).toEqual([
+      { id: "systemd", title: "Systemd", icon: "$(server)" },
+    ]);
+    expect(manifest.contributes.views).toEqual({
+      systemd: [{ id: "systemd.explorer", name: "Explorer" }],
     });
+    expect(manifest.contributes.views).not.toHaveProperty("explorer");
   });
 
   it("uses a small deterministic PNG icon", async () => {

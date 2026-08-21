@@ -71,6 +71,7 @@ export interface WorkspaceSnapshotDocument {
   readonly uri: string;
   readonly languageId: DialectId;
   readonly identity: string;
+  readonly workspaceOwned: boolean;
   readonly references: readonly {
     readonly target: string;
     readonly kind: string;
@@ -81,6 +82,7 @@ export interface WorkspaceSnapshotConfiguration {
   readonly identity: string;
   readonly languageId: DialectId;
   readonly sourceUri: string;
+  readonly workspaceOwned: boolean;
   readonly baseUri?: string;
   readonly dropInUris: readonly string[];
   readonly documentUris: readonly string[];

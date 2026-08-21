@@ -120,10 +120,6 @@ export function registerCommonFeatures(
       },
     ),
     vscode.commands.registerCommand(
-      "systemd.openExplorerReference",
-      async (target: string): Promise<void> => explorer.openReference(target),
-    ),
-    vscode.commands.registerCommand(
       "systemd.createDropIn",
       async (selected?: unknown): Promise<void> => createDropIn(explorer.dropInTargetFor(selected)),
     ),

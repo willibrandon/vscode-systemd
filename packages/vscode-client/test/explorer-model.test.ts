@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { WorkspaceSnapshotConfiguration } from "@systemd/language-server/protocol";
-import { collectConfigurations, configurationTooltip } from "../src/explorer-model.js";
+import type {
+  WorkspaceSnapshot,
+  WorkspaceSnapshotConfiguration,
+} from "@systemd/language-server/protocol";
+import {
+  collectConfigurations,
+  collectConfigurationScopes,
+  configurationTooltip,
+  indexedSourceUri,
+} from "../src/explorer-model.js";
 
 const configuration = (
   identity: string,
@@ -9,6 +17,7 @@ const configuration = (
   identity,
   languageId: "systemd-unit",
   sourceUri: "file:///workspace/" + identity,
+  workspaceOwned: true,
   baseUri: "file:///usr/lib/systemd/system/" + identity,
   dropInUris: [],
   documentUris: ["file:///usr/lib/systemd/system/" + identity],
@@ -71,6 +80,7 @@ describe("Systemd Explorer model", () => {
       identity: "masked.service",
       languageId: "systemd-unit",
       sourceUri: "file:///etc/systemd/system/masked.service",
+      workspaceOwned: true,
       documentUris: [],
       dropInUris: [],
       masked: true,
@@ -78,5 +88,82 @@ describe("Systemd Explorer model", () => {
 
     expect(configurationTooltip(item, 0, 0)).toContain("Status: masked");
     expect(configurationTooltip(item, 0, 0)).toContain("Base: none");
+  });
+
+  it("opens an indexed configuration at the effective base file", () => {
+    const snapshot: WorkspaceSnapshot = {
+      configurations: [
+        configuration("prometheus.service", {
+          sourceUri: "file:///workspace/prometheus.service.d/override.conf",
+          baseUri: "file:///usr/lib/systemd/system/prometheus.service",
+        }),
+      ],
+      documents: [],
+    };
+
+    expect(indexedSourceUri(snapshot, "prometheus.service")).toBe(
+      "file:///usr/lib/systemd/system/prometheus.service",
+    );
+  });
+
+  it("falls back to an indexed configuration source when no base file exists", () => {
+    const snapshot: WorkspaceSnapshot = {
+      configurations: [
+        {
+          identity: "local.service",
+          languageId: "systemd-unit",
+          sourceUri: "file:///workspace/local.service",
+          workspaceOwned: true,
+          dropInUris: [],
+          documentUris: ["file:///workspace/local.service"],
+          masked: false,
+        },
+      ],
+      documents: [],
+    };
+
+    expect(indexedSourceUri(snapshot, "local.service")).toBe("file:///workspace/local.service");
+  });
+
+  it("resolves an indexed document that is not an effective configuration", () => {
+    const snapshot: WorkspaceSnapshot = {
+      configurations: [],
+      documents: [
+        {
+          uri: "file:///workspace/network.network",
+          identity: "network.network",
+          languageId: "systemd-network",
+          workspaceOwned: true,
+          references: [],
+        },
+      ],
+    };
+
+    expect(indexedSourceUri(snapshot, "network.network")).toBe("file:///workspace/network.network");
+  });
+
+  it("does not invent a source for a valid reference that is unavailable on this host", () => {
+    const snapshot: WorkspaceSnapshot = { configurations: [], documents: [] };
+
+    expect(indexedSourceUri(snapshot, "timers.target")).toBeUndefined();
+    expect(indexedSourceUri(snapshot, "prometheus.service")).toBeUndefined();
+  });
+
+  it("puts workspace configurations before host configurations", () => {
+    const scopes = collectConfigurationScopes([
+      configuration("system.service", {
+        sourceUri: "file:///usr/lib/systemd/system/system.service",
+        workspaceOwned: false,
+      }),
+      configuration("dotsider-website.service"),
+      configuration("caddy-report.timer"),
+    ]);
+
+    expect(scopes.map(({ label }) => label)).toEqual(["Workspace", "Host"]);
+    expect(scopes[0]?.configurations.map(({ identity }) => identity)).toEqual([
+      "caddy-report.timer",
+      "dotsider-website.service",
+    ]);
+    expect(scopes[1]?.configurations.map(({ identity }) => identity)).toEqual(["system.service"]);
   });
 });

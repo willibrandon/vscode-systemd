@@ -5,13 +5,17 @@ import type {
   WorkspaceSnapshot,
   WorkspaceSnapshotConfiguration,
 } from "@systemd/language-server/protocol";
-import { collectConfigurations, configurationTooltip } from "./explorer-model.js";
+import {
+  collectConfigurations,
+  collectConfigurationScopes,
+  configurationTooltip,
+  indexedSourceUri,
+} from "./explorer-model.js";
 
 const viewId = "systemd.explorer";
 
 export interface SystemdExplorer extends vscode.Disposable {
   refresh(): Promise<void>;
-  openReference(target: string): Promise<void>;
   sourceFor(element: unknown): vscode.Uri | undefined;
   dropInTargetFor(element: unknown): DropInTarget | undefined;
 }
@@ -31,13 +35,19 @@ export function registerSystemdExplorer(
     treeDataProvider: provider,
     showCollapseAll: true,
   });
-  provider.attach(view);
   context.subscriptions.push(view, provider);
   return provider;
 }
 
 type ExplorerNode =
-  CategoryNode | ConfigurationNode | GroupNode | ActionNode | FileNode | ReferenceNode;
+  ScopeNode | CategoryNode | ConfigurationNode | GroupNode | ActionNode | FileNode | ReferenceNode;
+
+interface ScopeNode {
+  readonly kind: "scope";
+  readonly label: "Workspace" | "Host";
+  readonly workspaceOwned: boolean;
+  readonly configurations: readonly WorkspaceSnapshotConfiguration[];
+}
 
 interface CategoryNode {
   readonly kind: "category";
@@ -78,12 +88,12 @@ interface ReferenceNode {
   readonly target: string;
   readonly description?: string;
   readonly incoming: boolean;
+  readonly uri: string | undefined;
 }
 
 class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, SystemdExplorer {
   private readonly changed = new vscode.EventEmitter<ExplorerNode | undefined>();
   private snapshot: WorkspaceSnapshot = { documents: [], configurations: [] };
-  private view: vscode.TreeView<ExplorerNode> | undefined;
   private disposed = false;
   private readonly client: BaseLanguageClient;
   private readonly output: vscode.LogOutputChannel;
@@ -95,12 +105,10 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
     this.output = output;
   }
 
-  public attach(view: vscode.TreeView<ExplorerNode>): void {
-    this.view = view;
-  }
-
   public getTreeItem(element: ExplorerNode): vscode.TreeItem {
     switch (element.kind) {
+      case "scope":
+        return scopeItem(element);
       case "category":
         return categoryItem(element);
       case "configuration":
@@ -124,8 +132,10 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
   }
 
   public getChildren(element?: ExplorerNode): ExplorerNode[] {
-    if (element === undefined) return this.categories();
+    if (element === undefined) return this.scopes();
     switch (element.kind) {
+      case "scope":
+        return this.categories(element.configurations);
       case "category":
         return collectConfigurations(element.configurations).map((collection) => {
           const children: ConfigurationNode[] = collection.configurations.map((configuration) => ({
@@ -161,33 +171,10 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
     try {
       this.snapshot = await this.client.sendRequest(workspaceSnapshotRequest, {});
       if (this.disposed) return;
-      if (this.view !== undefined) {
-        this.view.badge = {
-          value: this.snapshot.configurations.length,
-          tooltip: String(this.snapshot.configurations.length) + " indexed configurations",
-        };
-      }
       this.changed.fire(undefined);
     } catch (error) {
       this.output.warn("Unable to refresh Systemd Explorer: " + safeMessage(error));
     }
-  }
-
-  public async openReference(target: string): Promise<void> {
-    const configuration = this.snapshot.configurations.find(
-      (candidate) => candidate.identity === target,
-    );
-    const document = this.snapshot.documents.find(
-      (candidate) => basename(candidate.uri) === target,
-    );
-    const uri = configuration?.baseUri ?? configuration?.sourceUri ?? document?.uri;
-    if (uri === undefined) {
-      await vscode.window.showInformationMessage(
-        "No indexed configuration defines " + target + ".",
-      );
-      return;
-    }
-    await vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(uri));
   }
 
   public sourceFor(element: unknown): vscode.Uri | undefined {
@@ -201,6 +188,7 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
         return vscode.Uri.parse(element.uri);
       case "action":
         return vscode.Uri.parse(element.argument);
+      case "scope":
       case "category":
       case "group":
       case "reference":
@@ -224,9 +212,16 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
     this.changed.dispose();
   }
 
-  private categories(): CategoryNode[] {
+  private scopes(): ScopeNode[] {
+    return collectConfigurationScopes(this.snapshot.configurations).map((scope) => ({
+      kind: "scope",
+      ...scope,
+    }));
+  }
+
+  private categories(configurations: readonly WorkspaceSnapshotConfiguration[]): CategoryNode[] {
     const groups = new Map<string, WorkspaceSnapshotConfiguration[]>();
-    for (const configuration of this.snapshot.configurations) {
+    for (const configuration of configurations) {
       const label = categoryLabel(configuration.languageId);
       groups.set(label, [...(groups.get(label) ?? []), configuration]);
     }
@@ -335,6 +330,7 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
         target,
         description: kind,
         incoming: false,
+        uri: indexedSourceUri(this.snapshot, target),
       }));
   }
 
@@ -351,8 +347,22 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
         target,
         description: kind,
         incoming: true,
+        uri: indexedSourceUri(this.snapshot, target),
       }));
   }
+}
+
+function scopeItem(node: ScopeNode): vscode.TreeItem {
+  const state = node.workspaceOwned
+    ? vscode.TreeItemCollapsibleState.Expanded
+    : vscode.TreeItemCollapsibleState.Collapsed;
+  const item = new vscode.TreeItem(node.label, state);
+  item.description = String(node.configurations.length);
+  item.tooltip = node.workspaceOwned
+    ? "Configurations in the current workspace"
+    : "Read-only configurations indexed from this host";
+  item.iconPath = new vscode.ThemeIcon(node.workspaceOwned ? "files" : "server");
+  return item;
 }
 
 function categoryItem(node: CategoryNode): vscode.TreeItem {
@@ -415,13 +425,19 @@ function fileItem(node: FileNode): vscode.TreeItem {
 
 function referenceItem(node: ReferenceNode): vscode.TreeItem {
   const item = new vscode.TreeItem(node.target, vscode.TreeItemCollapsibleState.None);
-  if (node.description !== undefined) item.description = node.description;
+  item.description = [node.description, node.uri === undefined ? "not indexed" : undefined]
+    .filter((value): value is string => value !== undefined)
+    .join(" · ");
+  if (node.uri === undefined) {
+    item.tooltip = node.target + " is referenced, but its source file is not indexed.";
+    item.iconPath = new vscode.ThemeIcon("question");
+    return item;
+  }
+  const uri = vscode.Uri.parse(node.uri);
+  item.tooltip = node.uri;
+  item.resourceUri = uri;
   item.iconPath = new vscode.ThemeIcon(node.incoming ? "arrow-left" : "arrow-right");
-  item.command = {
-    command: "systemd.openExplorerReference",
-    title: "Open reference",
-    arguments: [node.target],
-  };
+  item.command = { command: "vscode.open", title: "Open reference", arguments: [uri] };
   return item;
 }
 
@@ -457,7 +473,7 @@ function safeMessage(error: unknown): string {
 function isExplorerNode(value: unknown): value is ExplorerNode {
   if (typeof value !== "object" || value === null || !("kind" in value)) return false;
   const kind = Reflect.get(value, "kind");
-  return ["category", "configuration", "group", "action", "file", "reference"].includes(
+  return ["scope", "category", "configuration", "group", "action", "file", "reference"].includes(
     String(kind),
   );
 }

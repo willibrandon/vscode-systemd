@@ -2,7 +2,7 @@
   "name": "systemd",
   "displayName": "systemd Unit Files",
   "description": "Complete language support for systemd, Podman Quadlet, and mkosi configuration",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "publisher": "willibrandon",
   "author": {
@@ -519,11 +519,20 @@
         "path": "./snippets/mkosi.json"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "systemd",
+          "title": "Systemd",
+          "icon": "$(server)"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "systemd": [
         {
           "id": "systemd.explorer",
-          "name": "Systemd"
+          "name": "Explorer"
         }
       ]
     },

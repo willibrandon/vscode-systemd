@@ -4,6 +4,17 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-21
+
+### Fixed
+
+- Moved the Systemd Explorer into its own stable Activity Bar container so opening or closing it
+  does not create a duplicate folder icon or reorder other icons.
+- Split Explorer results into an expanded Workspace section and a collapsed Host section so project
+  files are not buried by system units on Linux and WSL.
+- Stopped unresolved Explorer references from opening a dead link. Sources that are unavailable on
+  the current host are labeled `not indexed` instead.
+
 ## [0.2.0] - 2026-08-21
 
 ### Added
@@ -33,5 +44,6 @@ Notable changes are listed here. Releases follow semantic versioning.
 - Release artifacts include a reproducible VSIX, SHA-256 checksum, CycloneDX SBOM, and build
   attestations.
 
-[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/willibrandon/vscode-systemd/releases/tag/v0.2.0

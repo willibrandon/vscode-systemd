@@ -1976,11 +1976,13 @@ describe("language server JSON-RPC contract", () => {
     const snapshot = await request<{
       readonly configurations: readonly {
         readonly identity: string;
+        readonly workspaceOwned: boolean;
         readonly baseUri?: string;
         readonly dropInUris: readonly string[];
       }[];
       readonly documents: readonly {
         readonly uri: string;
+        readonly workspaceOwned: boolean;
         readonly references: readonly { readonly target: string }[];
       }[];
     }>(client, "systemd/workspaceSnapshot", {});
@@ -1988,17 +1990,17 @@ describe("language server JSON-RPC contract", () => {
       ({ identity }) => identity === "worker@blue.service",
     );
     expect(configuration?.baseUri).toBe("file:///usr/lib/systemd/system/worker@.service");
+    expect(configuration?.workspaceOwned).toBe(false);
     expect(configuration?.dropInUris).toEqual([
       "file:///etc/systemd/system/service.d/10-default.conf",
       "file:///etc/systemd/system/worker@blue.service.d/20-local.conf",
     ]);
-    expect(
-      snapshot.documents
-        .find(({ uri }) => uri.endsWith("20-local.conf"))
-        ?.references.map(({ target }) => target),
-    ).toContain("database.service");
+    const localDocument = snapshot.documents.find(({ uri }) => uri.endsWith("20-local.conf"));
+    expect(localDocument?.references.map(({ target }) => target)).toContain("database.service");
+    expect(localDocument?.workspaceOwned).toBe(false);
     const orphan = snapshot.configurations.find(({ identity }) => identity === "orphan.service");
     expect(orphan?.baseUri).toBeUndefined();
+    expect(orphan?.workspaceOwned).toBe(true);
     expect(orphan).toMatchObject({
       dropInUris: [
         "file:///etc/systemd/system/service.d/10-default.conf",

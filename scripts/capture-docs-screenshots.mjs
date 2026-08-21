@@ -104,6 +104,7 @@ try {
   await runCommand(page, "View: Toggle Secondary Side Bar Visibility");
   await waitForEditor(page);
   await waitForDiagnostics(page);
+  await runCommand(page, "View: Show Systemd");
   await expandSystemdExplorer(page);
 
   await replaceLine(page, 7, "Rest");
@@ -205,9 +206,10 @@ async function waitForDiagnostics(page) {
 }
 
 async function expandSystemdExplorer(page) {
-  const header = page.locator(".pane-header").filter({ hasText: "Systemd" }).first();
-  await header.waitFor({ state: "visible", timeout: 30_000 });
-  if ((await header.getAttribute("aria-expanded")) !== "true") await header.click();
+  await page.getByText("Workspace", { exact: true }).first().waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
   await page.getByText("Quadlet resources", { exact: false }).waitFor({
     state: "visible",
     timeout: 30_000,
