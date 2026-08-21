@@ -49,5 +49,11 @@ All notable changes to this project will be documented here. The format follows
   combine canonical and alias drop-ins, and preserve `/dev/null` mask behavior.
 - Incomplete Quadlet files now report the required converter inputs for artifact, build, container,
   image, and Kubernetes units before installed-tool validation runs.
+- Generated systemd metadata now distinguishes declared directives from names mentioned in manual
+  prose and supplies conservative enum completion and validation from explicit upstream value lists.
+- TextMate continuation handling now preserves complete multiline assignments, keeps template
+  islands scoped inside values, and explicitly avoids shell-language injection into command values.
+- The Systemd Explorer now groups templates with their instances and exposes source precedence,
+  masking, candidate, drop-in, and reference details in configuration hover text.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

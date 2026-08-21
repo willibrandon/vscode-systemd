@@ -9,10 +9,13 @@ error tolerant, so editing help remains available while a file is incomplete.
 ## Language help
 
 Completion suggests sections, directives, values, specifiers, and indexed unit or resource names
-that are valid at the cursor. Hover describes the selected directive and links to its official
-manual. Signature help presents the expected value shape. Document and workspace symbols, folding,
-selection ranges, semantic tokens, and specifier inlay hints use the parsed configuration rather
-than text-only guesses.
+that are valid at the cursor. For settings whose upstream declaration gives a closed list of values,
+such as service type or network link activation policy, completion offers those exact values and
+validation rejects values outside the list. Open-ended settings still provide useful suggestions
+without rejecting valid custom forms. Hover describes the selected directive and links to its
+official manual. Signature help presents the expected value shape. Document and workspace symbols,
+folding, selection ranges, semantic tokens, and specifier inlay hints use the parsed configuration
+rather than text-only guesses.
 
 The bundled registry is generated from pinned systemd, Podman, and mkosi source revisions. Normal
 language help does not require a network request or a host executable.

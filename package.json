@@ -704,6 +704,7 @@
     "test:remote:prepared": "node ./scripts/run-remote-ssh-smoke.mjs",
     "test:grammar": "vitest run test/grammar",
     "test:package": "vitest run test/package",
+    "test:docs": "npm --prefix docs-site run build && node ./scripts/test-docs-popup.mjs",
     "capture:docs": "npm run package && node ./scripts/capture-docs-screenshots.mjs",
     "build": "node ./esbuild.mjs",
     "check:bundles": "node ./scripts/check-bundles.mjs",

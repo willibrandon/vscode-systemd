@@ -7,6 +7,10 @@ The extension indexes recognized workspace files and, on a trusted Linux desktop
 standard system and user configuration paths. This powers indexed-reference completion, navigation,
 the Systemd Explorer, effective-configuration documents, and dependency graphs.
 
+The Systemd Explorer groups a template and all known instances under one template node. Hover a
+configuration to inspect its selected source, base fragment, mask status, applied drop-ins, shadowed
+candidates, and incoming and outgoing reference counts without opening every file.
+
 ## Workspace and host scope
 
 `systemd.index.scope` defaults to `workspaceAndHost`. Choose `workspace` when a project should not

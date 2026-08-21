@@ -13,7 +13,7 @@ into the desktop and browser extension.
 
 - TextMate highlighting before the extension activates.
 - Built-in, error-tolerant parsing and validation for 18 configuration dialects.
-- Section, directive, indexed-reference, and value completion from 3,402 stable and 3,488 preview
+- Section, directive, indexed-reference, and value completion from 2,699 stable and 2,748 preview
   generated upstream records, with lazily resolved official documentation.
 - Offline stable and preview metadata channels, with stable-release defaults and a compact bundled
   default-branch delta.
@@ -147,8 +147,9 @@ npm run build
 npm run package
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution contract and [SECURITY.md](SECURITY.md)
-for the trust and process-execution model.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution contract,
+[the predecessor issue acceptance ledger](docs/issue-acceptance.md) for the complete 36-issue audit,
+and [SECURITY.md](SECURITY.md) for the trust and process-execution model.
 
 ## License
 
