@@ -10,7 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 10;
+const adapterVersion = 11;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -128,9 +128,9 @@ try {
   await rm(stableSources.temporaryDirectory, { recursive: true, force: true });
 }
 const hwdbLanguage = await extractHwdbLanguage(sources.systemd);
-const compactDirectives = compactQuadletAppendModes(directives);
+const compactDirectives = serializeDirectives(directives);
 const registry = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: "1970-01-01T00:00:00.000Z",
   upstream: {
     systemd: revision(sources.systemd),
@@ -373,7 +373,7 @@ function createRegistryDelta(previewDirectives, stableDirectives, upstream, stab
   const hwdbMatchPrefixesChanged =
     JSON.stringify(hwdbLanguage.matchPrefixes) !== JSON.stringify(stableHwdbLanguage.matchPrefixes);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: "1970-01-01T00:00:00.000Z",
     upstream,
     hwdbPropertyRemove: [...previewHwdb.keys()].filter((name) => !stableHwdb.has(name)).sort(),
@@ -386,24 +386,49 @@ function createRegistryDelta(previewDirectives, stableDirectives, upstream, stab
     remove: [...preview.keys()].filter((key) => !stable.has(key)).sort(),
     directives: [...stable.entries()]
       .filter(([key, directive]) => JSON.stringify(preview.get(key)) !== JSON.stringify(directive))
-      .map(([, directive]) => directive),
+      .map(([, directive]) => serializeDirective(directive)),
   };
 }
 
-function compactQuadletAppendModes(directives) {
+function serializeDirectives(directives) {
   const appendIndexes = [];
   return {
     appendIndexes,
     directives: directives.map((directive, index) => {
-      if (directive.dialect !== "podman-quadlet" || directive.assignmentMode !== "append") {
-        return directive;
+      const omitAssignmentMode =
+        directive.dialect === "podman-quadlet" && directive.assignmentMode === "append";
+      if (omitAssignmentMode) {
+        appendIndexes.push(index);
       }
-      appendIndexes.push(index);
-      const compact = { ...directive };
-      delete compact.assignmentMode;
-      return compact;
+      return serializeDirective(directive, omitAssignmentMode);
     }),
   };
+}
+
+function serializeDirective(directive, omitAssignmentMode = false) {
+  const extras = {};
+  if (directive.documentKinds !== undefined) extras.k = directive.documentKinds;
+  if (!omitAssignmentMode && directive.assignmentMode !== undefined) {
+    extras.a = directive.assignmentMode;
+  }
+  if (directive.mkosiScope !== undefined) extras.s = directive.mkosiScope;
+  if (directive.mkosiTarget !== undefined) {
+    extras.t = [directive.mkosiTarget.section, directive.mkosiTarget.name];
+  }
+  if (directive.resetGroup !== undefined) extras.r = directive.resetGroup;
+  if (directive.exclusiveChoices !== undefined) extras.x = directive.exclusiveChoices;
+  return [
+    directive.dialect,
+    directive.section,
+    directive.name,
+    directive.valueKind,
+    directive.since,
+    directive.deprecated ? 1 : 0,
+    directive.documentation,
+    directive.summary,
+    directive.choices,
+    ...(Object.keys(extras).length === 0 ? [] : [extras]),
+  ];
 }
 
 function serializeHwdbProperty(property) {
@@ -1421,6 +1446,13 @@ function balancedCall(text, opening) {
 function parserKind(parser) {
   const normalized = parser.toLowerCase();
   if (normalized === "config_parse_memory_limit") return "size";
+  if (normalized === "config_parse_unit_env_file") return "path";
+  if (
+    normalized === "config_parse_image_policy" ||
+    normalized === "config_parse_root_image_options"
+  ) {
+    return "string";
+  }
   if (normalized === "config_parse_dhcp" || normalized.endsWith("_address_family")) return "string";
   if (normalized.endsWith("_address_families")) return "list";
   if (/(?:^|_)(?:capability_set|syscall_filter|syscall_log)(?:_|$)/u.test(normalized)) {

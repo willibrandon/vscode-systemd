@@ -8,6 +8,7 @@ const registry = JSON.parse(
 const stableDelta = JSON.parse(
   await readFile(resolve(root, "packages/language-core/src/generated/stable-delta.json"), "utf8"),
 );
+registry.directives = (registry.directives ?? []).map(hydrateDirective);
 const upstreamLock = JSON.parse(await readFile(resolve(root, "data/upstream.lock.json"), "utf8"));
 const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
 const failures = [];
@@ -86,8 +87,11 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
     failures.push(name + " does not have a pinned 40-character Git revision");
   }
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 10) {
-  failures.push("upstream lock must use schema version 1 and adapter version 10");
+if (registry.schemaVersion !== 2) {
+  failures.push("generated registry must use schema version 2");
+}
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 11) {
+  failures.push("upstream lock must use schema version 1 and adapter version 11");
 }
 if ((registry.hwdbProperties?.length ?? 0) < 80) {
   failures.push("generated hwdb property coverage is incomplete");
@@ -119,7 +123,7 @@ for (const name of ["systemd", "podman", "mkosi"]) {
   }
 }
 if (
-  stableDelta.schemaVersion !== 1 ||
+  stableDelta.schemaVersion !== 2 ||
   !Array.isArray(stableDelta.remove) ||
   !Array.isArray(stableDelta.directives) ||
   !Array.isArray(stableDelta.hwdbPropertyRemove) ||
@@ -274,3 +278,25 @@ console.log(
       .join(", ") +
     ").",
 );
+
+function hydrateDirective(raw) {
+  const [dialect, section, name, valueKind, since, deprecated, documentation, summary, choices, x] =
+    raw;
+  return {
+    dialect,
+    section,
+    name,
+    valueKind,
+    since,
+    deprecated: deprecated === 1,
+    documentation,
+    summary,
+    choices,
+    ...(x?.k === undefined ? {} : { documentKinds: x.k }),
+    ...(x?.a === undefined ? {} : { assignmentMode: x.a }),
+    ...(x?.s === undefined ? {} : { mkosiScope: x.s }),
+    ...(x?.t === undefined ? {} : { mkosiTarget: { section: x.t[0], name: x.t[1] } }),
+    ...(x?.r === undefined ? {} : { resetGroup: x.r }),
+    ...(x?.x === undefined ? {} : { exclusiveChoices: x.x }),
+  };
+}

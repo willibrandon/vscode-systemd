@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "1970-01-01T00:00:00.000Z",
   "upstream": {
     "systemd": "102d5065bc82a875cfa0f6fcae6a5bda651cbf0a",
@@ -80,48 +80,52 @@
     "systemd-unit\u0000Socket\u0000XAttrListen"
   ],
   "directives": [
-    {
-      "dialect": "mkosi",
-      "section": "Build",
-      "name": "CacheOnly",
-      "valueKind": "boolean",
-      "since": "25",
-      "deprecated": false,
-      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "summary": "Only use the package cache when installing packages.",
-      "choices": [
+    [
+      "mkosi",
+      "Build",
+      "CacheOnly",
+      "boolean",
+      "25",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Only use the package cache when installing packages.",
+      [
         "always",
         "auto",
         "metadata",
         "never",
         ""
       ],
-      "mkosiScope": "multiversal",
-      "exclusiveChoices": true
-    },
-    {
-      "dialect": "mkosi",
-      "section": "Build",
-      "name": "ExtraSearchPaths",
-      "valueKind": "list",
-      "since": "25",
-      "deprecated": false,
-      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "summary": "List of comma-separated paths to look for programs before looking in PATH.",
-      "choices": [],
-      "assignmentMode": "append",
-      "mkosiScope": "universal"
-    },
-    {
-      "dialect": "mkosi",
-      "section": "Runtime",
-      "name": "Firmware",
-      "valueKind": "string",
-      "since": "25",
-      "deprecated": false,
-      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "summary": "Select the virtual machine firmware to use.",
-      "choices": [
+      {
+        "s": "multiversal",
+        "x": true
+      }
+    ],
+    [
+      "mkosi",
+      "Build",
+      "ExtraSearchPaths",
+      "list",
+      "25",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "List of comma-separated paths to look for programs before looking in PATH.",
+      [],
+      {
+        "a": "append",
+        "s": "universal"
+      }
+    ],
+    [
+      "mkosi",
+      "Runtime",
+      "Firmware",
+      "string",
+      "25",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Select the virtual machine firmware to use.",
+      [
         "auto",
         "linux",
         "linux-noinitrd",
@@ -130,19 +134,21 @@
         "bios",
         ""
       ],
-      "mkosiScope": "main",
-      "exclusiveChoices": true
-    },
-    {
-      "dialect": "mkosi",
-      "section": "Runtime",
-      "name": "QemuFirmware",
-      "valueKind": "string",
-      "since": "25",
-      "deprecated": true,
-      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "summary": "Compatibility alias for Firmware.",
-      "choices": [
+      {
+        "s": "main",
+        "x": true
+      }
+    ],
+    [
+      "mkosi",
+      "Runtime",
+      "QemuFirmware",
+      "string",
+      "25",
+      1,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Compatibility alias for Firmware.",
+      [
         "auto",
         "linux",
         "linux-noinitrd",
@@ -151,76 +157,84 @@
         "bios",
         ""
       ],
-      "mkosiScope": "main",
-      "exclusiveChoices": true
-    },
-    {
-      "dialect": "mkosi",
-      "section": "Runtime",
-      "name": "UnitProperties",
-      "valueKind": "list",
-      "since": "25",
-      "deprecated": false,
-      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "summary": "Set properties on the scopes spawned by systemd-nspawn or systemd-run.",
-      "choices": [],
-      "assignmentMode": "append",
-      "mkosiScope": "main"
-    },
-    {
-      "dialect": "podman-quadlet",
-      "section": "Container",
-      "name": "ImageVolume",
-      "valueKind": "string",
-      "since": "6.1.0",
-      "deprecated": false,
-      "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "ImageVolume in [Container]. Defaults to bind.",
-      "choices": []
-    },
-    {
-      "dialect": "systemd-config",
-      "section": "*",
-      "name": "systemd.firstboot",
-      "valueKind": "string",
-      "since": "233",
-      "deprecated": false,
-      "documentation": "https://www.freedesktop.org/software/systemd/man/latest/homectl.html#systemd.firstboot=",
-      "summary": "systemd.firstboot in [*].",
-      "choices": [
+      {
+        "s": "main",
+        "x": true
+      }
+    ],
+    [
+      "mkosi",
+      "Runtime",
+      "UnitProperties",
+      "list",
+      "25",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set properties on the scopes spawned by systemd-nspawn or systemd-run.",
+      [],
+      {
+        "a": "append",
+        "s": "main"
+      }
+    ],
+    [
+      "podman-quadlet",
+      "Container",
+      "ImageVolume",
+      "string",
+      "6.1.0",
+      0,
+      "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
+      "ImageVolume in [Container]. Defaults to bind.",
+      []
+    ],
+    [
+      "systemd-config",
+      "*",
+      "systemd.firstboot",
+      "string",
+      "233",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/homectl.html#systemd.firstboot=",
+      "systemd.firstboot in [*].",
+      [
         "yes",
         "no"
       ],
-      "exclusiveChoices": false
-    },
-    {
-      "dialect": "systemd-unit",
-      "section": "*",
-      "name": "NUMAPolicy",
-      "valueKind": "string",
-      "since": "243",
-      "deprecated": false,
-      "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#NUMAPolicy=",
-      "summary": "NUMAPolicy in [*].",
-      "choices": [
+      {
+        "x": false
+      }
+    ],
+    [
+      "systemd-unit",
+      "*",
+      "NUMAPolicy",
+      "string",
+      "243",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#NUMAPolicy=",
+      "NUMAPolicy in [*].",
+      [
         "default",
         "preferred",
         "bind",
         "interleave",
         "local"
       ],
-      "exclusiveChoices": false
-    },
-    {
-      "dialect": "systemd-unit",
-      "section": "*",
-      "name": "SecureBits",
-      "valueKind": "command",
-      "since": null,
-      "deprecated": false,
-      "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#SecureBits=",
-      "summary": "SecureBits in [*].",
-      "choices": [
+      {
+        "x": false
+      }
+    ],
+    [
+      "systemd-unit",
+      "*",
+      "SecureBits",
+      "command",
+      null,
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#SecureBits=",
+      "SecureBits in [*].",
+      [
         "keep-caps",
         "keep-caps-locked",
         "no-setuid-fixup",
@@ -228,18 +242,20 @@
         "noroot",
         "noroot-locked"
       ],
-      "exclusiveChoices": false
-    },
-    {
-      "dialect": "systemd-unit",
-      "section": "Socket",
-      "name": "MessageQueueMessageSize",
-      "valueKind": "string",
-      "since": null,
-      "deprecated": false,
-      "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#MessageQueueMessageSize=",
-      "summary": "MessageQueueMessageSize in [Socket].",
-      "choices": []
-    }
+      {
+        "x": false
+      }
+    ],
+    [
+      "systemd-unit",
+      "Socket",
+      "MessageQueueMessageSize",
+      "string",
+      null,
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#MessageQueueMessageSize=",
+      "MessageQueueMessageSize in [Socket].",
+      []
+    ]
   ]
 }

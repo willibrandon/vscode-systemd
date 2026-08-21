@@ -19,11 +19,33 @@ type RawHwdbProperty = readonly [
   pattern?: string,
 ];
 
+interface RawDirectiveExtras {
+  readonly k?: DirectiveDefinition["documentKinds"];
+  readonly a?: DirectiveDefinition["assignmentMode"];
+  readonly s?: DirectiveDefinition["mkosiScope"];
+  readonly t?: readonly [section: string, name: string];
+  readonly r?: string;
+  readonly x?: boolean;
+}
+
+type RawDirective = readonly [
+  dialect: DirectiveDefinition["dialect"],
+  section: string,
+  name: string,
+  valueKind: DirectiveDefinition["valueKind"],
+  since: string | null,
+  deprecated: 0 | 1,
+  documentation: string,
+  summary: string,
+  choices: readonly string[],
+  extras?: RawDirectiveExtras,
+];
+
 interface RawRegistryFile extends RegistryMetadata {
   readonly hwdbProperties: readonly RawHwdbProperty[];
   readonly hwdbMatchPrefixes: readonly string[];
   readonly quadletAppend: readonly number[];
-  readonly directives: readonly DirectiveDefinition[];
+  readonly directives: readonly RawDirective[];
 }
 
 interface RawRegistry extends RegistryMetadata {
@@ -38,7 +60,7 @@ interface RawRegistryDelta {
   readonly hwdbProperties: readonly RawHwdbProperty[];
   readonly hwdbMatchPrefixes?: readonly string[];
   readonly remove: readonly string[];
-  readonly directives: readonly DirectiveDefinition[];
+  readonly directives: readonly RawDirective[];
 }
 
 const previewRegistry = hydrateRegistry(rawRegistry as unknown as RawRegistryFile);
@@ -253,8 +275,46 @@ function hydrateRegistry(registry: RawRegistryFile): RawRegistry {
     ...registry,
     hwdbProperties: registry.hwdbProperties.map(hydrateHwdbProperty),
     directives: registry.directives.map((definition, index) =>
-      quadletAppend.has(index) ? { ...definition, assignmentMode: "append" } : definition,
+      hydrateDirective(definition, quadletAppend.has(index)),
     ),
+  };
+}
+
+function hydrateDirective(raw: RawDirective, quadletAppend = false): DirectiveDefinition {
+  const [
+    dialect,
+    section,
+    name,
+    valueKind,
+    since,
+    deprecated,
+    documentation,
+    summary,
+    choices,
+    extras,
+  ] = raw;
+  return {
+    dialect,
+    section,
+    name,
+    valueKind,
+    since,
+    deprecated: deprecated === 1,
+    documentation,
+    summary,
+    choices,
+    ...(extras?.k === undefined ? {} : { documentKinds: extras.k }),
+    ...(quadletAppend
+      ? { assignmentMode: "append" as const }
+      : extras?.a === undefined
+        ? {}
+        : { assignmentMode: extras.a }),
+    ...(extras?.s === undefined ? {} : { mkosiScope: extras.s }),
+    ...(extras?.t === undefined
+      ? {}
+      : { mkosiTarget: { section: extras.t[0], name: extras.t[1] } }),
+    ...(extras?.r === undefined ? {} : { resetGroup: extras.r }),
+    ...(extras?.x === undefined ? {} : { exclusiveChoices: extras.x }),
   };
 }
 
@@ -356,7 +416,8 @@ function applyDelta(preview: RawRegistry, delta: RawRegistryDelta): RawRegistry 
     ]),
   );
   for (const removed of delta.remove) directives.delete(removed);
-  for (const definition of delta.directives) {
+  for (const raw of delta.directives) {
+    const definition = hydrateDirective(raw);
     directives.set(key(definition.dialect, definition.section, definition.name), definition);
   }
   const hwdbProperties = new Map(

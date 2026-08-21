@@ -101,6 +101,12 @@ exports.run = async function run() {
     vscode.Uri.joinPath(root, "demo.container"),
   );
   assert.equal(quadlet.languageId, "podman-quadlet");
+  const pathCompletion = await vscode.commands.executeCommand(
+    "vscode.executeCompletionItemProvider",
+    quadlet.uri,
+    new vscode.Position(2, "EnvironmentFile=dep".length),
+  );
+  assert.ok(pathCompletion.items.some((item) => item.label === "deploy.env"));
 
   for (const [name, expectedLanguage] of [
     ["custom.daemon", "systemd-unit"],

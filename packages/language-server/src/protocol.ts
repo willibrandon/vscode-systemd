@@ -9,6 +9,11 @@ export interface ReadDirectoryParams {
   readonly uri: string;
 }
 
+export interface DirectoryEntry {
+  readonly name: string;
+  readonly type: "file" | "directory" | "other";
+}
+
 export interface FileStat {
   readonly type: "file" | "directory" | "other";
   readonly size: number;
@@ -92,8 +97,13 @@ export const readFileRequest: RequestType<ReadFileParams, string, void> = new Re
   string,
   void
 >("systemd/fs/readFile");
-export const readDirectoryRequest: RequestType<ReadDirectoryParams, readonly string[], void> =
-  new RequestType<ReadDirectoryParams, readonly string[], void>("systemd/fs/readDirectory");
+export const readDirectoryRequest: RequestType<
+  ReadDirectoryParams,
+  readonly DirectoryEntry[],
+  void
+> = new RequestType<ReadDirectoryParams, readonly DirectoryEntry[], void>(
+  "systemd/fs/readDirectory",
+);
 export const statRequest: RequestType<ReadFileParams, FileStat, void> = new RequestType<
   ReadFileParams,
   FileStat,

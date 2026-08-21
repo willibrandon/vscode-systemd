@@ -97,6 +97,7 @@ import {
   detectDialectRequest,
   effectiveConfigurationRequest,
   indexedDocumentsNotification,
+  readDirectoryRequest,
   refreshDiagnosticsNotification,
   workspaceSnapshotRequest,
 } from "./protocol.js";
@@ -360,7 +361,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     const assignment = assignmentAt(tree, offset);
     if (assignment !== undefined && offset >= assignment.valueSpan.start) {
-      return valueCompletions(tree, assignment, allParsed(), offset);
+      return valueCompletions(connection, tree, assignment, allParsed(), offset);
     }
     const settings = await settingsFor(document.uri);
     return definitionsFor(tree.dialect, sectionAt(tree, offset), tree.kind)
@@ -635,7 +636,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         continue;
       for (const match of node.value.matchAll(/%(?<specifier>[%A-Za-z])/gu)) {
         const specifier = match.groups?.["specifier"] ?? "";
-        const meaning = specifierMeaning(specifier);
+        const meaning = specifierMeaning(tree.dialect, specifier);
         if (meaning === undefined) continue;
         const offset = node.valueSpan.start + match.index + 2;
         result.push({
@@ -643,7 +644,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
           label: " = " + meaning,
           kind: InlayHintKind.Type,
           paddingLeft: true,
-          tooltip: "systemd %" + specifier + " specifier",
+          tooltip:
+            (tree.dialect === "mkosi" ? "mkosi" : "systemd") + " %" + specifier + " specifier",
         });
         if (result.length >= 100) return result;
       }
@@ -1527,31 +1529,32 @@ function lineSettingMarkdown(definition: LineSettingDefinition): string {
   );
 }
 
-function valueCompletions(
+async function valueCompletions(
+  connection: Connection,
   tree: ParsedDocument,
   assignment: AssignmentNode,
   documents: readonly ParsedDocument[],
   offset: number,
-): CompletionItem[] {
+): Promise<CompletionItem[]> {
   const definition = assignment.definition;
   if (definition === undefined) return [];
   const valuePrefix = tree.source.slice(assignment.valueSpan.start, offset);
-  if (tree.dialect === "systemd-unit" && valuePrefix.endsWith("%")) {
-    return Object.entries(specifierMeanings).map(([specifier, meaning]): CompletionItem => ({
+  const specifiers = specifierMeaningsFor(tree.dialect);
+  if (specifiers !== undefined && valuePrefix.endsWith("%")) {
+    return Object.entries(specifiers).map(([specifier, meaning]): CompletionItem => ({
       label: "%" + specifier,
       kind: CompletionItemKind.Value,
-      detail: meaning,
+      detail: (tree.dialect === "mkosi" ? "mkosi" : "systemd") + " · " + meaning,
       insertText: specifier,
       documentation: {
         kind: MarkupKind.Markdown,
-        value:
-          "systemd unit specifier `%" +
-          specifier +
-          "` — " +
-          meaning +
-          "\n\n[Official documentation](https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Specifiers)",
+        value: specifierMarkdown(tree.dialect, specifier, meaning),
       },
     }));
+  }
+  if (definition.valueKind === "path") {
+    const paths = await pathCompletions(connection, tree, valuePrefix);
+    if (paths.length > 0) return paths;
   }
   const values =
     definition.choices.length > 0
@@ -1571,6 +1574,71 @@ function valueCompletions(
     kind: CompletionItemKind.Value,
     detail: definition.name + "= value",
   }));
+}
+
+async function pathCompletions(
+  connection: Connection,
+  tree: ParsedDocument,
+  valuePrefix: string,
+): Promise<CompletionItem[]> {
+  const token = pathToken(valuePrefix);
+  if (token === undefined || /[%$\0{}]/u.test(token)) return [];
+  const slash = token.lastIndexOf("/");
+  const directoryPart = slash < 0 ? "" : token.slice(0, slash + 1);
+  const namePrefix = slash < 0 ? token : token.slice(slash + 1);
+  const source = URI.parse(tree.uri);
+  if (source.path === "" || !source.path.includes("/")) return [];
+  const sourceDirectory = source.path.slice(0, source.path.lastIndexOf("/") + 1);
+  const directoryPath = normalizeUriPath(
+    directoryPart.startsWith("/") ? directoryPart : sourceDirectory + directoryPart,
+  );
+  try {
+    const entries = await connection.sendRequest(readDirectoryRequest, {
+      uri: source.with({ path: directoryPath, query: "", fragment: "" }).toString(),
+    });
+    return entries
+      .filter(({ name }) => name.startsWith(namePrefix))
+      .sort((left, right) => {
+        if (left.type !== right.type) return left.type === "directory" ? -1 : 1;
+        return left.name.localeCompare(right.name);
+      })
+      .slice(0, 200)
+      .map(({ name, type }): CompletionItem => ({
+        label: name + (type === "directory" ? "/" : ""),
+        kind:
+          type === "directory"
+            ? CompletionItemKind.Folder
+            : type === "file"
+              ? CompletionItemKind.File
+              : CompletionItemKind.Reference,
+        insertText: name + (type === "directory" ? "/" : ""),
+        detail: "Workspace " + type,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function pathToken(valuePrefix: string): string | undefined {
+  const trimmed = valuePrefix.trimStart();
+  const candidate = trimmed.slice(
+    Math.max(trimmed.lastIndexOf(" "), trimmed.lastIndexOf("\t")) + 1,
+  );
+  const withoutPrefix = candidate.startsWith("-") ? candidate.slice(1) : candidate;
+  const quote = withoutPrefix[0];
+  const token = quote === '"' || quote === "'" ? withoutPrefix.slice(1) : withoutPrefix;
+  return token.includes("\\ ") ? undefined : token;
+}
+
+function normalizeUriPath(path: string): string {
+  const absolute = path.startsWith("/");
+  const parts = [];
+  for (const part of path.split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") parts.pop();
+    else parts.push(part);
+  }
+  return (absolute ? "/" : "") + parts.join("/");
 }
 
 function commonValueCompletions(valueKind: DirectiveDefinition["valueKind"]): readonly string[] {
@@ -1691,11 +1759,35 @@ function completionData(value: unknown): CompletionData | undefined {
     : undefined;
 }
 
-function specifierMeaning(specifier: string): string | undefined {
-  return specifierMeanings[specifier];
+function specifierMeaning(dialect: DialectId, specifier: string): string | undefined {
+  return specifierMeaningsFor(dialect)?.[specifier];
 }
 
-const specifierMeanings: Readonly<Record<string, string>> = {
+function specifierMeaningsFor(dialect: DialectId): Readonly<Record<string, string>> | undefined {
+  if (dialect === "systemd-unit" || dialect === "podman-quadlet") {
+    return unitSpecifierMeanings;
+  }
+  if (dialect === "mkosi") return mkosiSpecifierMeanings;
+  return undefined;
+}
+
+function specifierMarkdown(dialect: DialectId, specifier: string, meaning: string): string {
+  const mkosi = dialect === "mkosi";
+  return (
+    (mkosi ? "mkosi" : "systemd unit") +
+    " specifier `%" +
+    specifier +
+    "` — " +
+    meaning +
+    "\n\n[Official documentation](" +
+    (mkosi
+      ? "https://www.freedesktop.org/software/mkosi/man/mkosi.html#Specifiers"
+      : "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Specifiers") +
+    ")"
+  );
+}
+
+const unitSpecifierMeanings: Readonly<Record<string, string>> = {
   a: "architecture",
   A: "operating system image version",
   b: "boot ID",
@@ -1735,6 +1827,23 @@ const specifierMeanings: Readonly<Record<string, string>> = {
   W: "operating system variant ID",
   y: "unit fragment path",
   Y: "unit fragment directory",
+  "%": "literal %",
+};
+
+const mkosiSpecifierMeanings: Readonly<Record<string, string>> = {
+  d: "distribution",
+  r: "release",
+  a: "architecture",
+  t: "output format",
+  o: "output path",
+  O: "output directory",
+  i: "image ID",
+  v: "image version",
+  C: "current configuration file directory",
+  P: "current working directory",
+  D: "mkosi invocation directory",
+  I: "current subimage name",
+  F: "default distribution filesystem",
   "%": "literal %",
 };
 

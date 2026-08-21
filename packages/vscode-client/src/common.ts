@@ -3,7 +3,10 @@ import type { BaseLanguageClient, LanguageClientOptions } from "vscode-languagec
 import type { DialectId } from "@systemd/language-core";
 import {
   dataChannelNotification,
+  readDirectoryRequest,
+  readFileRequest,
   refreshDiagnosticsNotification,
+  statRequest,
 } from "@systemd/language-server/protocol";
 import { registerSystemdExplorer } from "./explorer.js";
 import type { DropInTarget } from "./explorer.js";
@@ -68,6 +71,7 @@ export function registerCommonFeatures(
   runtime: ClientRuntime,
   hostIndexing?: HostIndexingOptions,
 ): { readonly refreshIndex: () => Promise<void> } {
+  registerWorkspaceFileSystemBridge(context, runtime.client);
   const explorer = registerSystemdExplorer(context, runtime.client, runtime.output);
   const virtualDocuments = registerVirtualDocuments(context, runtime.client);
   const indexer = createWorkspaceIndexer(
@@ -204,6 +208,46 @@ export function registerCommonFeatures(
     }),
   );
   return { refreshIndex };
+}
+
+function registerWorkspaceFileSystemBridge(
+  context: vscode.ExtensionContext,
+  client: BaseLanguageClient,
+): void {
+  const workspaceUri = (value: string): vscode.Uri => {
+    const uri = vscode.Uri.parse(value, true);
+    if (vscode.workspace.getWorkspaceFolder(uri) === undefined) {
+      throw new Error("Filesystem requests are restricted to workspace-owned paths.");
+    }
+    return uri;
+  };
+  const fileType = (type: vscode.FileType): "file" | "directory" | "other" =>
+    (type & vscode.FileType.Directory) !== 0
+      ? "directory"
+      : (type & vscode.FileType.File) !== 0
+        ? "file"
+        : "other";
+  context.subscriptions.push(
+    client.onRequest(readDirectoryRequest, async ({ uri }) => {
+      const entries = await vscode.workspace.fs.readDirectory(workspaceUri(uri));
+      return entries
+        .slice(0, 500)
+        .map(([name, type]) => ({ name, type: fileType(type) }))
+        .sort((left, right) => left.name.localeCompare(right.name));
+    }),
+    client.onRequest(readFileRequest, async ({ uri }) => {
+      const target = workspaceUri(uri);
+      const metadata = await vscode.workspace.fs.stat(target);
+      if (metadata.size > 2 * 1024 * 1024) {
+        throw new Error("Filesystem reads are limited to 2 MiB.");
+      }
+      return new TextDecoder().decode(await vscode.workspace.fs.readFile(target));
+    }),
+    client.onRequest(statRequest, async ({ uri }) => {
+      const metadata = await vscode.workspace.fs.stat(workspaceUri(uri));
+      return { type: fileType(metadata.type), size: metadata.size, mtime: metadata.mtime };
+    }),
+  );
 }
 
 async function persistDialectAssociation(

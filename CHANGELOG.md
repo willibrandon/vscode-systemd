@@ -119,6 +119,12 @@ All notable changes to this project will be documented here. The format follows
   defaults, and conservative closed or extensible value choices from each pinned Podman source and
   manual. Hover labels availability as Podman rather than systemd, and conformance covers basic
   generator fixtures for every available type in every non-prerelease Podman release since 4.4.
+- Path-valued settings now complete workspace-owned files and directories through a bounded VS Code
+  filesystem bridge on desktop, remote, and browser hosts. Quadlet receives systemd specifier help,
+  while mkosi completion and inlay hints use mkosi's own meanings instead of unit-file meanings.
+- Generated directives now use a versioned tuple wire format that hydrates to the same typed runtime
+  definitions, reducing the four packaged language bundles by about one megabyte without removing
+  metadata or weakening the 5 MiB package ceiling.
 - Documentation image popups now fit every included screenshot within compact laptop and
   split-screen viewports without internal or background-page scrolling.
 

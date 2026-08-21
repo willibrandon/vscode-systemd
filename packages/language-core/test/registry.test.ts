@@ -178,6 +178,10 @@ describe("registry queries", () => {
       expect.arrayContaining(["AF_UNIX", "AF_INET", "AF_INET6"]),
     );
     expect(definitionFor("systemd-unit", "Service", "MemoryMax")?.valueKind).toBe("size");
+    expect(definitionFor("systemd-unit", "Service", "EnvironmentFile")?.valueKind).toBe("path");
+    expect(definitionFor("systemd-unit", "Service", "ExtensionImagePolicy")?.valueKind).toBe(
+      "string",
+    );
     expect(definitionFor("podman-quadlet", "Container", "CgroupsMode")).toBeDefined();
     expect(definitionFor("podman-quadlet", "Build", "ImageTag")).toBeDefined();
     expect(definitionFor("systemd-unit", "Install", "ExecStart")).toBeUndefined();

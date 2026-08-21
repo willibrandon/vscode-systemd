@@ -46,6 +46,18 @@ export async function run(): Promise<void> {
     definitions[0]?.uri.toString() === referencedUri.toString(),
     "cross-file definitions were unavailable in the virtual workspace",
   );
+  const quadletUri = vscode.Uri.joinPath(folder.uri, "demo.container");
+  const quadlet = await vscode.workspace.openTextDocument(quadletUri);
+  assert(quadlet.languageId === "podman-quadlet", "demo.container did not receive the language id");
+  const pathCompletion = await vscode.commands.executeCommand<vscode.CompletionList>(
+    "vscode.executeCompletionItemProvider",
+    quadletUri,
+    new vscode.Position(2, "EnvironmentFile=dep".length),
+  );
+  assert(
+    pathCompletion.items.some(({ label }) => label === "deploy.env"),
+    "workspace path completion was unavailable in the virtual workspace",
+  );
 
   await vscode.commands.executeCommand("systemd.showEffectiveConfiguration", unitUri);
   const effective = vscode.window.activeTextEditor?.document;

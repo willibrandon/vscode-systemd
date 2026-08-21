@@ -21,6 +21,10 @@ also read standard systemd configuration locations and paths explicitly listed i
 `systemd.index.extraPaths`. Restricted, browser, and virtual workspaces do not perform host
 indexing.
 
+Path completion reads directory entries through Visual Studio Code only when the requested URI is
+inside an open workspace folder. Directory results are capped at 500 entries, optional file reads at
+2 MiB, and arbitrary host paths are rejected even in a trusted desktop workspace.
+
 The **Create Drop-in** command writes only inside the current workspace. Host configuration remains
 read-only.
 

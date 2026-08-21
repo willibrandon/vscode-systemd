@@ -15,6 +15,8 @@ into the desktop and browser extension.
 - Built-in, error-tolerant parsing and validation for 18 configuration dialects.
 - Section, directive, indexed-reference, and value completion from 2,804 stable and 2,858 preview
   generated upstream records, with lazily resolved official documentation.
+- Workspace-file and directory completion for path-valued settings on desktop, remote, and browser
+  hosts through a bounded workspace-only filesystem bridge.
 - Source-generated completion for systemd signals, Linux capabilities, syscall groups, address
   families, unit specifiers, durations, sizes, and documented closed enums.
 - Podman-source-derived Quadlet booleans, numbers, repeat behavior, defaults, and closed or
@@ -22,6 +24,7 @@ into the desktop and browser extension.
 - Offline stable and preview metadata channels, with stable-release defaults and a compact bundled
   default-branch delta.
 - Hover documentation with direct links to official manuals.
+- Ecosystem-correct systemd/Quadlet and mkosi specifier completion and inlay hints.
 - Document and workspace symbols, folding, selection ranges, semantic tokens, and formatting.
 - Unknown-section, unknown-directive, value-type, required-section, version, and deprecation
   diagnostics.

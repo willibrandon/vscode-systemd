@@ -17,6 +17,12 @@ official manual. Signature help presents the expected value shape. Document and 
 folding, selection ranges, semantic tokens, and specifier inlay hints use the parsed configuration
 rather than text-only guesses.
 
+Path-valued settings complete files and directories relative to the configuration file. The same
+behavior works in local, remote, and virtual browser workspaces because reads go through VS Code's
+filesystem API; requests are restricted to workspace-owned paths, 500 directory entries, and 2 MiB
+files. Unit files and Quadlet use systemd `%` specifiers, while mkosi completion and inlay hints use
+mkosi's distinct setting, directory, and subimage specifiers.
+
 The bundled registry is generated from pinned systemd, Podman, and mkosi source revisions. Normal
 language help does not require a network request or a host executable. Its parser is additionally
 checked against successful fixtures from those same pinned upstream trees, including mkosi's
@@ -29,6 +35,10 @@ choice such as `ExitCodePropagation=all|any|none` from extensible values such as
 Basic generator fixtures for every Quadlet type are checked across every non-prerelease Podman
 release from 4.4 onward, alongside current templates, resource references, service-name overrides,
 and merged configurations.
+
+The generated registry is stored as a deterministic tuple schema and hydrated into typed definitions
+at startup. This avoids duplicating descriptive field names into every desktop and browser bundle
+while preserving identical stable and preview behavior.
 
 udev rules receive key, attribute, operator, and value completion. Hardware database files receive
 match-prefix and property completion, including typed values for systemd's shipped properties and

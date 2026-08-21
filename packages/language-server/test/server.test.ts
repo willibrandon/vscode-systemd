@@ -6,6 +6,7 @@ import {
 } from "vscode-jsonrpc/node";
 import type { MessageConnection } from "vscode-jsonrpc/node";
 import { createConnection } from "vscode-languageserver/node";
+import { CompletionItemKind } from "vscode-languageserver";
 import type {
   CodeAction,
   CodeLens,
@@ -30,6 +31,7 @@ import type {
 } from "vscode-languageserver";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { startLanguageServer } from "../src/server.js";
+import { readDirectoryRequest } from "../src/protocol.js";
 
 const uri = "file:///workspace/demo.service";
 const source = [
@@ -50,6 +52,11 @@ describe("language server JSON-RPC contract", () => {
   let clientInput: PassThrough;
   let server: Connection;
   let serverInput: PassThrough;
+  let workspaceDirectories: Map<
+    string,
+    readonly { readonly name: string; readonly type: "file" | "directory" | "other" }[]
+  >;
+  let directoryRequests: string[];
 
   beforeEach(async () => {
     clientInput = new PassThrough();
@@ -71,6 +78,12 @@ describe("language server JSON-RPC contract", () => {
       new StreamMessageWriter(serverInput),
     );
     client.listen();
+    workspaceDirectories = new Map();
+    directoryRequests = [];
+    client.onRequest(readDirectoryRequest, ({ uri: requestedUri }) => {
+      directoryRequests.push(requestedUri);
+      return workspaceDirectories.get(requestedUri) ?? [];
+    });
     const initialization = await client.sendRequest<InitializeResult>("initialize", {
       processId: null,
       rootUri: "file:///workspace",
@@ -896,6 +909,87 @@ describe("language server JSON-RPC contract", () => {
     expect(JSON.stringify(hover)).toContain("`all`, `any`, `none`");
     await client.sendNotification("textDocument/didClose", {
       textDocument: { uri: quadletUri },
+    });
+  });
+
+  it("completes workspace paths through the bounded filesystem bridge", async () => {
+    const quadletUri = "file:///workspace/image.build";
+    workspaceDirectories.set("file:///workspace/config", [
+      { name: "nested", type: "directory" },
+      { name: "Containerfile", type: "file" },
+      { name: "ignore.txt", type: "file" },
+    ]);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: quadletUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: "[Build]\nImageTag=demo\nSetWorkingDirectory=unit\nFile=config/\n",
+      },
+    });
+    const completions = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: quadletUri },
+      position: { line: 3, character: "File=config/".length },
+    });
+    expect(directoryRequests).toEqual(["file:///workspace/config"]);
+    expect(completions.map(({ label }) => label)).toEqual([
+      "nested/",
+      "Containerfile",
+      "ignore.txt",
+    ]);
+    expect(completions.map(({ kind }) => kind)).toEqual([
+      CompletionItemKind.Folder,
+      CompletionItemKind.File,
+      CompletionItemKind.File,
+    ]);
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: quadletUri },
+    });
+  });
+
+  it("uses ecosystem-correct specifiers for Quadlet and mkosi", async () => {
+    const quadletUri = "file:///workspace/specifier.container";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: quadletUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: "[Container]\nImage=alpine\nEnvironmentFile=%n\n",
+      },
+    });
+    const quadlet = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: quadletUri },
+      position: { line: 2, character: "EnvironmentFile=%".length },
+    });
+    expect(quadlet.some(({ label }) => label === "%n")).toBe(true);
+    expect(quadlet.find(({ label }) => label === "%n")?.detail).toContain("systemd");
+
+    const mkosiUri = "file:///workspace/mkosi.conf";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: mkosiUri,
+        languageId: "mkosi",
+        version: 1,
+        text: "[Output]\nOutput=%d/image.raw\n",
+      },
+    });
+    const mkosi = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 1, character: "Output=%".length },
+    });
+    expect(mkosi.some(({ label }) => label === "%d")).toBe(true);
+    expect(mkosi.some(({ label }) => label === "%n")).toBe(false);
+    const hints = await request<InlayHint[]>(client, "textDocument/inlayHint", {
+      textDocument: { uri: mkosiUri },
+      range: { start: { line: 0, character: 0 }, end: { line: 2, character: 0 } },
+    });
+    expect(hints.map(({ label }) => label)).toEqual([" = distribution"]);
+    expect(hints[0]?.tooltip).toBe("mkosi %d specifier");
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: quadletUri },
+    });
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: mkosiUri },
     });
   });
 
