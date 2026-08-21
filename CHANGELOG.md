@@ -42,6 +42,9 @@ All notable changes to this project will be documented here. The format follows
 - Typed mkosi graph intelligence for comma-separated includes, profiles, subimage dependencies, and
   UKI profiles, with compatible completion, exact navigation and rename, and unresolved-reference
   diagnostics.
+- Source-ordered mkosi effective configurations for includes, local overrides, lexical drop-ins,
+  selected profiles, subimages, tools trees, and the default initrd, including generated setting
+  remapping and inheritance semantics.
 
 ### Fixed
 
@@ -75,6 +78,8 @@ All notable changes to this project will be documented here. The format follows
 - Workspace indexing now discovers unit and resource drop-ins, directory-based systemd formats,
   namespaced journal configuration, kernel-install configuration, and nested mkosi profiles,
   subimages, local overrides, tools trees, UKI profiles, and repart definitions.
+- Workspace indexing now follows arbitrary mkosi `Include=` files as mkosi configuration, recognizes
+  `mkosi.initrd.conf`, and accepts only the regular `*.conf` subimage files supported by upstream.
 - Section, directive, completion, and quick-fix lookup is now constrained by the concrete unit,
   network, systemd configuration, Quadlet, or mkosi file kind; `mkosi.version` is parsed as a
   version record, and the `.link` snippet now uses link-file settings only.

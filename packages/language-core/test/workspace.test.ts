@@ -7,9 +7,11 @@ import {
   findOrderingDependencyCycles,
   mergeConfigurations,
   parse,
+  mkosiIncludePath,
   relativeMkosiPath,
   renderEffectiveConfiguration,
   resolveConfigurationDocuments,
+  resolveMkosiConfiguration,
   resolveMkosiReferenceDocuments,
 } from "../src/index.js";
 import type { ParsedDocument } from "../src/index.js";
@@ -524,6 +526,24 @@ describe("mkosi configuration references", () => {
     ]);
     expect(analyzeWorkspaceReferences(main, documents)).toEqual([]);
     expect(relativeMkosiPath(main.uri, secure.uri)).toBe("mkosi.uki-profiles/secure.conf");
+    expect(mkosiIncludePath(main.uri, "config/../config/common.conf")).toBe(
+      "/workspace/config/common.conf",
+    );
+    expect(mkosiIncludePath(main.uri, "mkosi-tools")).toBeUndefined();
+    expect(mkosiIncludePath(main.uri, "config/%D.conf")).toBeUndefined();
+
+    const nested = {
+      ...mkosi("file:///workspace/config/common.conf", "[Include]\nInclude=nested.conf\n"),
+      mkosiWorkingDirectory: "/workspace",
+    };
+    const nestedTarget = mkosi("file:///workspace/nested.conf");
+    const nestedReference = extractReferences(nested)[0];
+    expect(nestedReference).toBeDefined();
+    expect(
+      nestedReference === undefined
+        ? []
+        : resolveMkosiReferenceDocuments(nested, nestedReference, [nested, nestedTarget]),
+    ).toEqual([nestedTarget]);
   });
 
   it("resolves profiles within a subimage but dependencies from the project image directory", () => {
@@ -563,5 +583,175 @@ describe("mkosi configuration references", () => {
         expect.objectContaining({ code: "missing-mkosi-uki-profile", severity: "warning" }),
       ]),
     );
+  });
+
+  it("merges includes at their assignment position, sorted drop-ins, profiles, and local overrides", () => {
+    const main = mkosi(
+      "file:///workspace/mkosi.conf",
+      "[Distribution]\nDistribution=fedora\nRelease=main-before\n[Content]\nPackages=base\n[Include]\nInclude=config/include.conf\n[Distribution]\nRelease=main-after\n[Config]\nProfiles=debug\n",
+    );
+    const include = mkosi(
+      "file:///workspace/config/include.conf",
+      "[Distribution]\nRelease=include\n[Content]\nPackages=included\n",
+    );
+    const firstDropIn = mkosi(
+      "file:///workspace/mkosi.conf.d/10-packages.conf",
+      "[Content]\nPackages=\nPackages=drop-10\n",
+    );
+    const secondDropIn = mkosi(
+      "file:///workspace/mkosi.conf.d/20-packages.conf",
+      "[Content]\nPackages=drop-20\n",
+    );
+    const profile = mkosi(
+      "file:///workspace/mkosi.profiles/debug.conf",
+      "[Content]\nPackages=profile\n",
+    );
+    const localFile = mkosi(
+      "file:///workspace/mkosi.local.conf",
+      "[Distribution]\nDistribution=arch\n[Content]\nPackages=local-file\n",
+    );
+    const localDirectory = mkosi(
+      "file:///workspace/mkosi.local/mkosi.conf",
+      "[Distribution]\nDistribution=debian\n[Content]\nPackages=local-directory\n",
+    );
+
+    const resolution = resolveMkosiConfiguration(main.uri, [
+      localDirectory,
+      profile,
+      secondDropIn,
+      include,
+      main,
+      localFile,
+      firstDropIn,
+    ]);
+    expect(resolution.identity).toBe("main");
+    expect(resolution.baseUri).toBe(main.uri);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Distribution")
+        .map(({ value }) => value),
+    ).toEqual(["debian"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Release")
+        .map(({ value }) => value),
+    ).toEqual(["main-after"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Packages")
+        .map(({ value }) => value),
+    ).toEqual(["drop-10", "drop-20", "profile", "local-file", "local-directory"]);
+    expect(resolution.configuration.sources).toEqual([
+      main.uri,
+      include.uri,
+      main.uri,
+      firstDropIn.uri,
+      secondDropIn.uri,
+      profile.uri,
+      localFile.uri,
+      localDirectory.uri,
+    ]);
+  });
+
+  it("applies inherited settings below a subimage and universal settings above it", () => {
+    const main = mkosi(
+      "file:///workspace/mkosi.conf",
+      "[Distribution]\nDistribution=fedora\n[Output]\nImageId=main-id\n[Config]\nProfiles=debug\n",
+    );
+    const mainProfile = mkosi(
+      "file:///workspace/mkosi.profiles/debug.conf",
+      "[Output]\nImageId=main-profile\n",
+    );
+    const image = mkosi(
+      "file:///workspace/mkosi.images/application/mkosi.conf",
+      "[Distribution]\nDistribution=arch\n[Output]\nImageId=image\n",
+    );
+    const imageProfile = mkosi(
+      "file:///workspace/mkosi.images/application/mkosi.profiles/debug.conf",
+      "[Output]\nImageId=image-profile\n",
+    );
+
+    const resolution = resolveMkosiConfiguration(image.uri, [
+      imageProfile,
+      mainProfile,
+      image,
+      main,
+    ]);
+    expect(resolution.identity).toBe("application");
+    expect(resolution.baseUri).toBe(image.uri);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Distribution")
+        .map(({ value }) => value),
+    ).toEqual(["fedora"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "ImageId")
+        .map(({ value }) => value),
+    ).toEqual(["image-profile"]);
+  });
+
+  it("resolves tools-tree settings into their target directives with local and multiversal priority", () => {
+    const main = mkosi(
+      "file:///workspace/mkosi.conf",
+      "[Build]\nToolsTreeDistribution=fedora\nToolsTreePackages=main\nWorkspaceDirectory=/main-workspace\n",
+    );
+    const local = mkosi(
+      "file:///workspace/mkosi.local.conf",
+      "[Build]\nToolsTreeDistribution=ubuntu\nToolsTreePackages=local\n",
+    );
+    const tools = mkosi(
+      "file:///workspace/mkosi.tools.conf/mkosi.conf",
+      "[Distribution]\nDistribution=debian\n[Content]\nPackages=tools\n",
+    );
+
+    const resolution = resolveMkosiConfiguration(tools.uri, [tools, local, main]);
+    expect(resolution.identity).toBe("tools");
+    expect(resolution.baseUri).toBe(tools.uri);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Distribution")
+        .map(({ value }) => value),
+    ).toEqual(["ubuntu"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Packages")
+        .map(({ value }) => value),
+    ).toEqual(["tools", "main", "local"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "WorkspaceDirectory")
+        .map(({ value }) => value),
+    ).toEqual(["/main-workspace"]);
+  });
+
+  it("resolves default-initrd inheritance and remaps Initrd settings", () => {
+    const main = mkosi(
+      "file:///workspace/mkosi.conf",
+      "[Distribution]\nDistribution=fedora\n[Content]\nHostname=main\nInitrdPackages=main-initrd\n",
+    );
+    const initrd = mkosi(
+      "file:///workspace/mkosi.initrd.conf/mkosi.conf",
+      "[Distribution]\nDistribution=debian\n[Content]\nHostname=initrd\nPackages=initrd-package\n",
+    );
+
+    const resolution = resolveMkosiConfiguration(initrd.uri, [initrd, main]);
+    expect(resolution.identity).toBe("default-initrd");
+    expect(resolution.baseUri).toBe(initrd.uri);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Distribution")
+        .map(({ value }) => value),
+    ).toEqual(["fedora"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Hostname")
+        .map(({ value }) => value),
+    ).toEqual(["initrd"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Packages")
+        .map(({ value }) => value),
+    ).toEqual(["main-initrd", "initrd-package"]);
   });
 });

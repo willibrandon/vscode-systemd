@@ -632,7 +632,11 @@ describe("language server JSON-RPC contract", () => {
   it("provides type-aware mkosi graph completion, navigation, and rename", async () => {
     const mkosiUri = "file:///workspace/mkosi.conf";
     const indexed = [
-      ["config/common.conf", "[Distribution]\nDistribution=fedora\n"],
+      [
+        "config/common.conf",
+        "[Include]\nInclude=nested.conf\n[Distribution]\nDistribution=fedora\n",
+      ],
+      ["nested.conf", "[Content]\nPackages=nested\n"],
       ["mkosi.profiles/development.conf", "[Content]\nPackages=debugger\n"],
       ["mkosi.profiles/release/mkosi.conf", "[Output]\nFormat=disk\n"],
       ["mkosi.images/base.conf", "[Distribution]\nDistribution=fedora\n"],
@@ -646,6 +650,7 @@ describe("language server JSON-RPC contract", () => {
         source: text,
         mtime: index + 1,
         workspaceOwned: true,
+        ...(name === "config/common.conf" ? { mkosiWorkingDirectory: "/workspace" } : {}),
       })),
     });
     const emptySource = [
@@ -708,6 +713,20 @@ describe("language server JSON-RPC contract", () => {
         position: { line: 1, character: 15 },
       }),
     ).toEqual([expect.objectContaining({ uri: "file:///workspace/config/common.conf" })]);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: "file:///workspace/config/common.conf",
+        languageId: "mkosi",
+        version: 1,
+        text: indexed[0][1],
+      },
+    });
+    expect(
+      await request<Location[]>(client, "textDocument/definition", {
+        textDocument: { uri: "file:///workspace/config/common.conf" },
+        position: { line: 1, character: 12 },
+      }),
+    ).toEqual([expect.objectContaining({ uri: "file:///workspace/nested.conf" })]);
     expect(
       await request<Location[]>(client, "textDocument/definition", {
         textDocument: { uri: mkosiUri },
@@ -732,6 +751,16 @@ describe("language server JSON-RPC contract", () => {
     expect(rename.changes?.[mkosiUri]).toEqual([
       expect.objectContaining({ range: prepare, newText: "staging" }),
     ]);
+    const effective = await request<string>(client, "systemd/effectiveConfiguration", {
+      uri: mkosiUri,
+    });
+    expect(effective).toContain("Distribution=fedora");
+    expect(effective).toContain("Packages=nested");
+    expect(effective).toContain("Packages=debugger");
+    expect(effective).toContain("Format=disk");
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: "file:///workspace/config/common.conf" },
+    });
     await client.sendNotification("textDocument/didClose", { textDocument: { uri: mkosiUri } });
   });
 

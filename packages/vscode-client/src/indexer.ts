@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { BaseLanguageClient } from "vscode-languageclient";
 import { minimatch } from "minimatch";
+import { extractReferences, mkosiIncludePath, parse } from "@systemd/language-core";
 import type { DialectId } from "@systemd/language-core";
 import {
   detectDialectRequest,
@@ -160,7 +161,8 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
     const uris = [
       ...new Map([...workspaceUris, ...externalUris].map((uri) => [uri.toString(), uri])).values(),
     ].slice(0, maximumFiles);
-    const documents = await this.indexDocuments(uris, controller.signal);
+    const initiallyIndexed = await this.indexDocuments(uris, controller.signal);
+    const documents = await this.expandMkosiIncludes(initiallyIndexed, controller.signal);
     if (this.isCancelled(controller)) return false;
     await this.client.sendNotification(indexedDocumentsNotification, {
       documents,
@@ -291,9 +293,150 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
     return result.sort((left, right) => left.uri.localeCompare(right.uri));
   }
 
+  private async expandMkosiIncludes(
+    initiallyIndexed: readonly IndexedDocument[],
+    signal: AbortSignal,
+  ): Promise<readonly IndexedDocument[]> {
+    const documents = new Map(initiallyIndexed.map((document) => [document.uri, document]));
+    const pending = initiallyIndexed
+      .filter(({ languageId }) => languageId === "mkosi")
+      .filter((document) => parse(document.source, "mkosi", document.uri).kind !== "mkosi:generic")
+      .map((document) => ({
+        document,
+        workingDirectory:
+          document.mkosiWorkingDirectory ?? mkosiIncludePath(document.uri, ".") ?? "/",
+      }));
+    const analyzed = new Set<string>();
+    const resolvedTargets = new Set<string>();
+
+    while (!isAborted(signal) && pending.length > 0 && documents.size < maximumFiles) {
+      const queued = pending.shift();
+      const analysisKey =
+        queued === undefined ? undefined : queued.document.uri + "\0" + queued.workingDirectory;
+      if (queued === undefined || analysisKey === undefined || analyzed.has(analysisKey)) continue;
+      const indexed = queued.document;
+      analyzed.add(analysisKey);
+      const parsed = {
+        ...parse(indexed.source, "mkosi", indexed.uri),
+        mkosiWorkingDirectory: queued.workingDirectory,
+      };
+      const sourceUri = vscode.Uri.parse(indexed.uri);
+      for (const reference of extractReferences(parsed)) {
+        if (reference.kind !== "mkosi-include") continue;
+        const path = mkosiIncludePath(indexed.uri, reference.target, queued.workingDirectory);
+        if (path === undefined) continue;
+        const target = sourceUri.with({ path, query: "", fragment: "" });
+        if (!this.mayReadInclude(target)) continue;
+        const canonical = (await this.host?.canonicalUri(target)) ?? target;
+        const targetKey = canonical.toString();
+        if (resolvedTargets.has(targetKey)) continue;
+        resolvedTargets.add(targetKey);
+
+        const selection = await this.mkosiIncludeCandidates(
+          target,
+          queued.workingDirectory,
+          signal,
+        );
+        for (const candidate of selection.uris) {
+          if (isAborted(signal) || documents.size >= maximumFiles) break;
+          const existing = documents.get(candidate.toString());
+          if (existing?.languageId === "mkosi") {
+            const withContext: IndexedDocument = {
+              ...existing,
+              mkosiWorkingDirectory: selection.workingDirectory,
+            };
+            documents.set(existing.uri, withContext);
+            pending.push({
+              document: withContext,
+              workingDirectory: selection.workingDirectory,
+            });
+            continue;
+          }
+          const document = await this.indexDocument(
+            candidate,
+            signal,
+            "mkosi",
+            selection.workingDirectory,
+          );
+          if (document === undefined) continue;
+          documents.set(document.uri, document);
+          pending.push({ document, workingDirectory: selection.workingDirectory });
+        }
+      }
+    }
+
+    return [...documents.values()].sort((left, right) => left.uri.localeCompare(right.uri));
+  }
+
+  private mayReadInclude(uri: vscode.Uri): boolean {
+    return vscode.workspace.getWorkspaceFolder(uri) !== undefined || this.hostIndexingEnabled();
+  }
+
+  private async mkosiIncludeCandidates(
+    target: vscode.Uri,
+    callerWorkingDirectory: string,
+    signal: AbortSignal,
+  ): Promise<{ readonly uris: readonly vscode.Uri[]; readonly workingDirectory: string }> {
+    let stat: vscode.FileStat;
+    try {
+      stat = await vscode.workspace.fs.stat(target);
+    } catch {
+      return { uris: [], workingDirectory: callerWorkingDirectory };
+    }
+    if ((stat.type & vscode.FileType.Directory) === 0) {
+      return { uris: [target], workingDirectory: callerWorkingDirectory };
+    }
+
+    type DirectoryMode = "root" | "drop-ins" | "profiles";
+    const pending: {
+      readonly uri: vscode.Uri;
+      readonly mode: DirectoryMode;
+      readonly depth: number;
+    }[] = [{ uri: target, mode: "root", depth: 0 }];
+    const result: vscode.Uri[] = [];
+    const seen = new Set<string>();
+    while (pending.length > 0 && !isAborted(signal) && result.length < maximumFiles) {
+      const current = pending.shift();
+      if (current === undefined || current.depth > 12) continue;
+      let entries: readonly [string, vscode.FileType][];
+      try {
+        entries = await vscode.workspace.fs.readDirectory(current.uri);
+      } catch {
+        continue;
+      }
+      for (const [name, type] of [...entries].sort(([left], [right]) =>
+        left.localeCompare(right),
+      )) {
+        if (isAborted(signal) || result.length >= maximumFiles) break;
+        const uri = vscode.Uri.joinPath(current.uri, name);
+        const directory = (type & vscode.FileType.Directory) !== 0;
+        if (directory) {
+          if (current.mode === "root" && name === "mkosi.conf.d") {
+            pending.push({ uri, mode: "drop-ins", depth: current.depth + 1 });
+          } else if (current.mode === "root" && name === "mkosi.profiles") {
+            pending.push({ uri, mode: "profiles", depth: current.depth + 1 });
+          } else if (current.mode !== "root") {
+            pending.push({ uri, mode: "root", depth: current.depth + 1 });
+          }
+          continue;
+        }
+        const accepted =
+          (current.mode === "root" && name === "mkosi.conf") ||
+          (current.mode === "drop-ins" && name.endsWith(".conf")) ||
+          current.mode === "profiles";
+        if (!accepted || seen.has(uri.toString())) continue;
+        seen.add(uri.toString());
+        result.push(uri);
+      }
+    }
+    return { uris: result, workingDirectory: target.path };
+  }
+
   private async indexDocument(
     uri: vscode.Uri,
     signal: AbortSignal,
+    forcedLanguageId?: DialectId,
+    mkosiWorkingDirectory?: string,
   ): Promise<IndexedDocument | undefined> {
     try {
       const bytes = await vscode.workspace.fs.readFile(uri);
@@ -305,6 +448,7 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
       const configuration = configurationFor(uri, this.languageIds);
       const configured = configuredDialect(uri, configuration.associations);
       const languageId =
+        forcedLanguageId ??
         configured ??
         (this.languageIds.has(open?.languageId as DialectId)
           ? (open?.languageId as DialectId)
@@ -320,6 +464,7 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
         ...(canonicalUri === undefined || canonicalUri.toString() === uri.toString()
           ? {}
           : { canonicalUri: canonicalUri.toString() }),
+        ...(mkosiWorkingDirectory === undefined ? {} : { mkosiWorkingDirectory }),
         languageId,
         source,
         mtime: stat.mtime,

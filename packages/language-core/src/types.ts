@@ -75,6 +75,7 @@ export type MkosiDocumentType =
   | "subimage"
   | "local"
   | "tools"
+  | "initrd"
   | "uki-profile"
   | "version"
   | "generic";
@@ -135,6 +136,10 @@ export interface DirectiveDefinition {
   readonly valueKind: ValueKind;
   readonly assignmentMode?: AssignmentMode;
   readonly mkosiScope?: MkosiSettingScope;
+  readonly mkosiTarget?: {
+    readonly section: string;
+    readonly name: string;
+  };
   readonly resetGroup?: string;
   readonly since: string | null;
   readonly deprecated: boolean;
@@ -251,6 +256,7 @@ export interface ParseResult {
 export interface ParsedDocument extends ParseResult {
   readonly uri: string;
   readonly canonicalUri?: string;
+  readonly mkosiWorkingDirectory?: string;
   readonly dialect: DialectId;
   readonly kind: DocumentKind;
 }

@@ -419,8 +419,10 @@ function configurationRoot(kind: ValidationKind, configurationPath: string): str
 const mkosiConfigurationDirectories = new Set([
   "mkosi.conf.d",
   "mkosi.images",
+  "mkosi.initrd.conf",
   "mkosi.local",
   "mkosi.profiles",
+  "mkosi.tools.conf",
   "mkosi.uki-profiles",
 ]);
 

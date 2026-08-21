@@ -24,10 +24,11 @@ describe("workspace index coverage", () => {
     "mkosi.conf.d/10-base.conf",
     "mkosi.profiles/debug",
     "mkosi.profiles/release/mkosi.conf.d/20-packages.conf",
-    "mkosi.images/initrd",
+    "mkosi.images/initrd.conf",
     "mkosi.images/base/mkosi.conf",
     "mkosi.local/mkosi.conf.d/99-local.conf",
     "mkosi.tools.conf/mkosi.conf",
+    "mkosi.initrd.conf/mkosi.conf",
     "mkosi.uki-profiles/secure.conf",
     "mkosi.repart/10-root.conf",
   ])("indexes %s", (path) => {
@@ -45,5 +46,6 @@ describe("workspace index coverage", () => {
   it("does not mistake mkosi content trees for configuration", () => {
     expect(matches("mkosi.extra/usr/lib/systemd/system/demo.service")).toBe(true);
     expect(matches("mkosi.extra/etc/arbitrary.conf")).toBe(false);
+    expect(matches("mkosi.images/not-a-regular-subimage")).toBe(false);
   });
 });

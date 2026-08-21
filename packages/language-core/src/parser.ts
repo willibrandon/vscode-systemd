@@ -679,8 +679,10 @@ function isQuadletPath(normalized: string, effective: string, source: string): b
 
 function isMkosiPath(normalized: string, effective: string): boolean {
   return (
-    /^mkosi\.(?:conf|local\.conf|tools\.conf|version)$/u.test(effective) ||
-    /\/mkosi\.(?:conf\.d|profiles|images|local|tools\.conf|uki-profiles)\//u.test(normalized)
+    /^mkosi\.(?:conf|local\.conf|tools\.conf|initrd\.conf|version)$/u.test(effective) ||
+    /\/mkosi\.(?:conf\.d|profiles|images|local|tools\.conf|initrd\.conf|uki-profiles)\//u.test(
+      normalized,
+    )
   );
 }
 

@@ -28,9 +28,10 @@ describe("complete dialect recognition", () => {
     ["file:///etc/containers/systemd/app.volume", "", "podman-quadlet"],
     ["file:///workspace/mkosi.profiles/server/mkosi.conf", "", "mkosi"],
     ["file:///workspace/mkosi.profiles/debug", "", "mkosi"],
-    ["file:///workspace/mkosi.images/initrd", "", "mkosi"],
+    ["file:///workspace/mkosi.images/initrd.conf", "", "mkosi"],
     ["file:///workspace/mkosi.local/mkosi.conf.d/local.conf", "", "mkosi"],
     ["file:///workspace/mkosi.tools.conf/mkosi.conf", "", "mkosi"],
+    ["file:///workspace/mkosi.initrd.conf/mkosi.conf", "", "mkosi"],
     ["file:///workspace/mkosi.uki-profiles/secure.conf", "", "mkosi"],
     ["file:///workspace/mkosi.repart/10-root.conf", "", "systemd-config"],
   ] as const)("recognizes %s", (uri, source, expected) => {
@@ -71,6 +72,7 @@ describe("lossless parsers", () => {
     ],
     ["file:///workspace/app.container.d/local.conf", "podman-quadlet", "podman-quadlet:container"],
     ["file:///workspace/mkosi.images/initrd/mkosi.conf", "mkosi", "mkosi:subimage"],
+    ["file:///workspace/mkosi.initrd.conf/mkosi.conf", "mkosi", "mkosi:initrd"],
     ["file:///workspace/mkosi.uki-profiles/secure.conf", "mkosi", "mkosi:uki-profile"],
     ["file:///etc/pcrlock.d/app.pcrlock", "systemd-json", "systemd-json:pcrlock"],
   ] as const)("classifies %s as %s", (uri, dialect, expected) => {

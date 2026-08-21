@@ -12,7 +12,7 @@ export function configurationWorkspaceGlobs(suffixes: readonly string[]): readon
   const exactNames =
     "fstab,crypttab,veritytab,integritytab,clonetab,loader.conf,install.conf,hostname," +
     "os-release,initrd-release,machine-info,locale.conf,vconsole.conf,cmdline,entry-token," +
-    "mkosi.conf,mkosi.local.conf,mkosi.tools.conf,mkosi.version";
+    "mkosi.conf,mkosi.local.conf,mkosi.tools.conf,mkosi.initrd.conf,mkosi.version";
   const globs = [
     `**/*.{${typedExtensions}}`,
     `**/*.{${dropInExtensions}}.d/*.conf`,
@@ -25,9 +25,9 @@ export function configurationWorkspaceGlobs(suffixes: readonly string[]): readon
     "**/loader/entries/*.conf",
     "**/kernel/install.conf.d/*.conf",
     `**/{${exactNames}}`,
-    "**/{mkosi.conf.d,mkosi.local,mkosi.tools.conf,mkosi.profiles,mkosi.images}/**/*.conf",
+    "**/{mkosi.conf.d,mkosi.local,mkosi.tools.conf,mkosi.initrd.conf,mkosi.profiles,mkosi.images}/**/*.conf",
     "**/mkosi.profiles/*",
-    "**/mkosi.images/*",
+    "**/mkosi.images/*.conf",
     "**/mkosi.uki-profiles/*.conf",
     "**/mkosi.repart/**/*.conf",
     "**/extension-release.d/extension-release.*",
@@ -45,7 +45,7 @@ export function configurationWorkspaceGlobs(suffixes: readonly string[]): readon
     `**/{portable/profile,loader/entries,kernel/install.conf.d,mkosi.repart}/**/*.conf.${suffixPattern}`,
     `**/journald@*.conf.${suffixPattern}`,
     `**/journald@*.conf.d/*.conf.${suffixPattern}`,
-    `**/{mkosi.conf,mkosi.local.conf,mkosi.tools.conf}.${suffixPattern}`,
-    `**/{mkosi.conf.d,mkosi.local,mkosi.tools.conf,mkosi.profiles,mkosi.images}/**/*.conf.${suffixPattern}`,
+    `**/{mkosi.conf,mkosi.local.conf,mkosi.tools.conf,mkosi.initrd.conf}.${suffixPattern}`,
+    `**/{mkosi.conf.d,mkosi.local,mkosi.tools.conf,mkosi.initrd.conf,mkosi.profiles,mkosi.images}/**/*.conf.${suffixPattern}`,
   ];
 }

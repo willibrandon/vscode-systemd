@@ -22,6 +22,7 @@ import {
   recordFormatFor,
   relativeMkosiPath,
   resolveConfigurationDocuments,
+  resolveMkosiConfiguration,
   resolveMkosiReferenceDocuments,
   resolveUnitConfigurations,
   renderEffectiveConfiguration,
@@ -158,7 +159,12 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
 
   const parsed = (document: TextDocument): ParsedDocument | undefined => {
     const dialect = dialectFor(document);
-    return dialect === undefined ? undefined : parse(document.getText(), dialect, document.uri);
+    if (dialect === undefined) return undefined;
+    const tree = parse(document.getText(), dialect, document.uri);
+    const stored = indexed.get(document.uri);
+    return stored?.mkosiWorkingDirectory === undefined
+      ? tree
+      : { ...tree, mkosiWorkingDirectory: stored.mkosiWorkingDirectory };
   };
   const settingsFor = (uri: string): Promise<ServerSettings> => {
     if (!supportsConfiguration) return Promise.resolve(fallbackSettings);
@@ -221,7 +227,15 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const result = new Map(indexed);
     for (const document of documents.all()) {
       const tree = parsed(document);
-      if (tree !== undefined) result.set(document.uri, tree);
+      if (tree !== undefined) {
+        const stored = indexed.get(document.uri);
+        result.set(
+          document.uri,
+          stored?.mkosiWorkingDirectory === undefined
+            ? tree
+            : { ...tree, mkosiWorkingDirectory: stored.mkosiWorkingDirectory },
+        );
+      }
     }
     return [...result.values()];
   };
@@ -236,12 +250,13 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     configureRegistryChannel(channel);
     for (const [uri, document] of indexed) {
       const reparsed = parse(document.source, document.dialect, document.uri);
-      indexed.set(
-        uri,
-        document.canonicalUri === undefined
-          ? reparsed
-          : { ...reparsed, canonicalUri: document.canonicalUri },
-      );
+      indexed.set(uri, {
+        ...reparsed,
+        ...(document.canonicalUri === undefined ? {} : { canonicalUri: document.canonicalUri }),
+        ...(document.mkosiWorkingDirectory === undefined
+          ? {}
+          : { mkosiWorkingDirectory: document.mkosiWorkingDirectory }),
+      });
     }
     settingsCache.clear();
     invalidateGraph();
@@ -752,7 +767,12 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     ({ uri, source }): DialectId | null => detectDialect(uri, source) ?? null,
   );
   connection.onRequest(effectiveConfigurationRequest, ({ uri }): string => {
-    const resolution = resolveConfigurationDocuments(uri, allParsed());
+    const available = allParsed();
+    const selected = available.find((document) => document.uri === uri);
+    if (selected?.dialect === "mkosi") {
+      return renderEffectiveConfiguration(resolveMkosiConfiguration(uri, available).configuration);
+    }
+    const resolution = resolveConfigurationDocuments(uri, available);
     const rendered = renderEffectiveConfiguration(mergeConfigurations(resolution.documents));
     return resolution.masked
       ? "# Unit is masked by " + (resolution.baseUri ?? "an empty unit file") + "\n" + rendered
@@ -819,12 +839,13 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       }
       for (const candidate of candidates) {
         const document = parse(candidate.source, candidate.languageId, candidate.uri);
-        indexed.set(
-          candidate.uri,
-          candidate.canonicalUri === undefined
-            ? document
-            : { ...document, canonicalUri: candidate.canonicalUri },
-        );
+        indexed.set(candidate.uri, {
+          ...document,
+          ...(candidate.canonicalUri === undefined ? {} : { canonicalUri: candidate.canonicalUri }),
+          ...(candidate.mkosiWorkingDirectory === undefined
+            ? {}
+            : { mkosiWorkingDirectory: candidate.mkosiWorkingDirectory }),
+        });
         if (candidate.workspaceOwned) indexedWorkspaceOwned.add(candidate.uri);
         else indexedWorkspaceOwned.delete(candidate.uri);
       }
@@ -1312,13 +1333,15 @@ function mkosiCompletionValues(
         "mkosi-vm",
         ...mkosi
           .filter((candidate) => candidate.uri !== tree.uri && candidate.kind !== "mkosi:version")
-          .map((candidate) => relativeMkosiPath(tree.uri, candidate.uri))
+          .map((candidate) =>
+            relativeMkosiPath(tree.uri, candidate.uri, tree.mkosiWorkingDirectory),
+          )
           .filter(isString),
       ];
     case "mkosi-uki-profile":
       return mkosi
         .filter(({ kind: candidateKind }) => candidateKind === "mkosi:uki-profile")
-        .map((candidate) => relativeMkosiPath(tree.uri, candidate.uri))
+        .map((candidate) => relativeMkosiPath(tree.uri, candidate.uri, tree.mkosiWorkingDirectory))
         .filter(isString);
     default:
       return [];

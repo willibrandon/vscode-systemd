@@ -382,6 +382,7 @@ function add(candidate) {
   if (candidate.mkosiScope !== undefined && candidate.mkosiScope !== "local") {
     value.mkosiScope = candidate.mkosiScope;
   }
+  if (candidate.mkosiTarget !== undefined) value.mkosiTarget = candidate.mkosiTarget;
   if (candidate.resetGroup !== undefined) value.resetGroup = candidate.resetGroup;
   if (candidate.exclusiveChoices !== undefined && value.choices.length > 0) {
     value.exclusiveChoices = candidate.exclusiveChoices;
@@ -411,6 +412,9 @@ function add(candidate) {
   }
   if (merged.mkosiScope === undefined && value.mkosiScope !== undefined) {
     merged.mkosiScope = value.mkosiScope;
+  }
+  if (merged.mkosiTarget === undefined && value.mkosiTarget !== undefined) {
+    merged.mkosiTarget = value.mkosiTarget;
   }
   if (merged.resetGroup === undefined && value.resetGroup !== undefined) {
     merged.resetGroup = value.resetGroup;
@@ -747,6 +751,7 @@ async function extractMkosi(source) {
       exclusiveChoices: setting.exclusiveChoices ?? setting.choices.length > 0,
       assignmentMode: setting.assignmentMode,
       mkosiScope: setting.mkosiScope,
+      mkosiTarget: setting.mkosiTarget,
     });
   }
 }
@@ -774,6 +779,7 @@ function mkosiSettings(text, enumChoices = new Map()) {
     const help = /\bhelp="([^"]+)"/su.exec(block.text)?.[1];
     const choices = configChoices(block.text, enumChoices);
     const setting = {
+      dest,
       section,
       name,
       parser,
@@ -789,6 +795,7 @@ function mkosiSettings(text, enumChoices = new Map()) {
     const aliases = /\bcompat_names=\(([^)]*)\)/su.exec(block.text)?.[1] ?? "";
     for (const alias of aliases.matchAll(/"([^"]+)"/gu)) {
       const compatibilitySetting = {
+        dest,
         section,
         name: alias[1],
         parser,
@@ -810,6 +817,20 @@ function mkosiSettings(text, enumChoices = new Map()) {
       parser: "",
       choices: [],
     });
+  }
+  const byDestination = new Map(
+    result
+      .filter((setting) => !matchSections.includes(setting.section) && !setting.deprecated)
+      .map((setting) => [setting.dest, setting]),
+  );
+  for (const setting of result) {
+    if (matchSections.includes(setting.section)) continue;
+    const prefix = setting.mkosiScope === "tools" ? "tools_tree_" : "initrd_";
+    if (!setting.dest?.startsWith(prefix)) continue;
+    const target = byDestination.get(setting.dest.slice(prefix.length));
+    if (target !== undefined) {
+      setting.mkosiTarget = { section: target.section, name: target.name };
+    }
   }
   return result;
 }

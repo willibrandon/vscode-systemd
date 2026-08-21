@@ -706,6 +706,10 @@
         ""
       ],
       "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Distribution",
+        "name": "Distribution"
+      },
       "exclusiveChoices": true
     },
     {
@@ -718,7 +722,11 @@
       "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "summary": "Set the mirror to use for the default tools tree.",
       "choices": [],
-      "mkosiScope": "tools"
+      "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Distribution",
+        "name": "Mirror"
+      }
     },
     {
       "dialect": "mkosi",
@@ -731,7 +739,11 @@
       "summary": "Specify a directory containing extra tools tree packages.",
       "choices": [],
       "assignmentMode": "append",
-      "mkosiScope": "tools"
+      "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Content",
+        "name": "PackageDirectories"
+      }
     },
     {
       "dialect": "mkosi",
@@ -744,7 +756,11 @@
       "summary": "Compatibility alias for ToolsTreeSandboxTrees.",
       "choices": [],
       "assignmentMode": "append",
-      "mkosiScope": "tools"
+      "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Build",
+        "name": "SandboxTrees"
+      }
     },
     {
       "dialect": "mkosi",
@@ -757,7 +773,11 @@
       "summary": "Add additional packages to the default tools tree.",
       "choices": [],
       "assignmentMode": "append",
-      "mkosiScope": "tools"
+      "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Content",
+        "name": "Packages"
+      }
     },
     {
       "dialect": "mkosi",
@@ -776,6 +796,10 @@
       ],
       "assignmentMode": "append",
       "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Config",
+        "name": "Profiles"
+      },
       "exclusiveChoices": true
     },
     {
@@ -788,7 +812,11 @@
       "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "summary": "Set the release to use for the default tools tree.",
       "choices": [],
-      "mkosiScope": "tools"
+      "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Distribution",
+        "name": "Release"
+      }
     },
     {
       "dialect": "mkosi",
@@ -801,7 +829,11 @@
       "summary": "Repositories to use for the default tools tree.",
       "choices": [],
       "assignmentMode": "append",
-      "mkosiScope": "tools"
+      "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Distribution",
+        "name": "Repositories"
+      }
     },
     {
       "dialect": "mkosi",
@@ -814,7 +846,11 @@
       "summary": "Sandbox trees for the default tools tree.",
       "choices": [],
       "assignmentMode": "append",
-      "mkosiScope": "tools"
+      "mkosiScope": "tools",
+      "mkosiTarget": {
+        "section": "Build",
+        "name": "SandboxTrees"
+      }
     },
     {
       "dialect": "mkosi",
@@ -1176,7 +1212,11 @@
       "summary": "Add additional packages to the default initrd.",
       "choices": [],
       "assignmentMode": "append",
-      "mkosiScope": "initrd"
+      "mkosiScope": "initrd",
+      "mkosiTarget": {
+        "section": "Content",
+        "name": "Packages"
+      }
     },
     {
       "dialect": "mkosi",
@@ -1197,6 +1237,10 @@
       ],
       "assignmentMode": "append",
       "mkosiScope": "initrd",
+      "mkosiTarget": {
+        "section": "Config",
+        "name": "Profiles"
+      },
       "exclusiveChoices": true
     },
     {
@@ -1222,7 +1266,11 @@
       "summary": "Packages to install in the initrd that are not cached.",
       "choices": [],
       "assignmentMode": "append",
-      "mkosiScope": "initrd"
+      "mkosiScope": "initrd",
+      "mkosiTarget": {
+        "section": "Content",
+        "name": "VolatilePackages"
+      }
     },
     {
       "dialect": "mkosi",

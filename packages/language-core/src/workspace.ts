@@ -10,6 +10,7 @@ import type {
   SemanticModel,
   TextSpan,
 } from "./types.js";
+import { definitionFor } from "./registry.js";
 
 const unitReferenceSettings = new Set([
   "After",
@@ -124,6 +125,13 @@ export interface OrderingDependencyEdge {
 export interface OrderingDependencyCycle {
   readonly nodes: readonly string[];
   readonly edges: readonly OrderingDependencyEdge[];
+}
+
+export interface MkosiConfigurationResolution {
+  readonly identity: string;
+  readonly documents: readonly ParsedDocument[];
+  readonly configuration: EffectiveConfiguration;
+  readonly baseUri?: string;
 }
 
 export function resolveConfigurationDocuments(
@@ -386,6 +394,16 @@ export function mkosiImageName(uri: string): string | undefined {
   return mkosiCollectionName(uri, "mkosi.images");
 }
 
+/** Resolve a user-authored mkosi Include= value to the absolute path used by mkosi. */
+export function mkosiIncludePath(
+  sourceUri: string,
+  target: string,
+  workingDirectory?: string,
+): string | undefined {
+  if (mkosiBuiltInIncludes.has(target) || target.includes("%")) return undefined;
+  return resolvedMkosiPath(sourceUri, target, workingDirectory);
+}
+
 export function mkosiReferenceKey(document: ParsedDocument, reference: Reference): string {
   const location = uriLocation(document.uri);
   switch (reference.kind) {
@@ -402,12 +420,19 @@ export function mkosiReferenceKey(document: ParsedDocument, reference: Reference
         normalizeAbsolutePath(mkosiImagesDirectory(location.path) + "/" + reference.target)
       );
     case "mkosi-include":
-      return mkosiBuiltInIncludes.has(reference.target)
-        ? "builtin:" + reference.target
-        : "include:" + (resolvedMkosiPath(document.uri, reference.target) ?? reference.target);
+      if (mkosiBuiltInIncludes.has(reference.target)) return "builtin:" + reference.target;
+      return (
+        "include:" +
+        location.origin +
+        (resolvedMkosiPath(document.uri, reference.target, document.mkosiWorkingDirectory) ??
+          reference.target)
+      );
     case "mkosi-uki-profile":
       return (
-        "uki-profile:" + (resolvedMkosiPath(document.uri, reference.target) ?? reference.target)
+        "uki-profile:" +
+        location.origin +
+        (resolvedMkosiPath(document.uri, reference.target, document.mkosiWorkingDirectory) ??
+          reference.target)
       );
     default:
       return reference.kind + ":" + reference.target;
@@ -437,19 +462,23 @@ export function resolveMkosiReferenceDocuments(
       );
     case "mkosi-include":
       if (mkosiBuiltInIncludes.has(reference.target)) return [];
-      return documentsAtMkosiPath(document.uri, reference.target, candidates);
+      return documentsAtMkosiPath(document, reference.target, candidates);
     case "mkosi-uki-profile":
-      return documentsAtMkosiPath(document.uri, reference.target, candidates);
+      return documentsAtMkosiPath(document, reference.target, candidates);
     default:
       return [];
   }
 }
 
-export function relativeMkosiPath(sourceUri: string, targetUri: string): string | undefined {
+export function relativeMkosiPath(
+  sourceUri: string,
+  targetUri: string,
+  workingDirectory?: string,
+): string | undefined {
   const source = uriLocation(sourceUri);
   const target = uriLocation(targetUri);
   if (source.origin !== target.origin) return undefined;
-  const from = mkosiWorkingDirectory(source.path);
+  const from = workingDirectory ?? mkosiWorkingDirectory(source.path);
   const fromParts = pathParts(from);
   const targetParts = pathParts(target.path);
   let shared = 0;
@@ -537,48 +566,370 @@ export function buildReferenceGraph(documents: readonly ParsedDocument[]): Refer
 export function mergeConfigurations(
   documentsInPrecedenceOrder: readonly ParsedDocument[],
 ): EffectiveConfiguration {
+  return mergeConfigurationEvents(
+    documentsInPrecedenceOrder.flatMap((document) =>
+      document.nodes
+        .filter((node): node is AssignmentNode => node.kind === "assignment")
+        .map((node) => ({ document, node })),
+    ),
+    documentsInPrecedenceOrder.map(({ uri }) => uri),
+  );
+}
+
+interface ConfigurationEvent {
+  readonly document: ParsedDocument;
+  readonly node: AssignmentNode;
+}
+
+function mergeConfigurationEvents(
+  events: readonly ConfigurationEvent[],
+  sources: readonly string[],
+): EffectiveConfiguration {
   const selected = new Map<string, EffectiveEntry[]>();
   const resetGroups = new Map<string, string>();
-  for (const document of documentsInPrecedenceOrder) {
-    for (const node of document.nodes) {
-      if (node.kind !== "assignment" || node.section === null) continue;
-      const key = node.section + "\0" + node.name;
-      const assignmentMode = node.definition?.assignmentMode ?? "replace";
-      const resetGroup = node.definition?.resetGroup;
-      if (resetGroup !== undefined) resetGroups.set(key, resetGroup);
-      if (node.value === "" && assignmentMode === "append-no-reset") continue;
-      if (node.value === "" && assignmentMode === "first") continue;
-      if (node.value === "" && assignmentMode === "append") {
-        if (resetGroup === undefined) {
-          selected.set(key, []);
-        } else {
-          for (const [selectedKey, selectedGroup] of resetGroups) {
-            if (selectedGroup === resetGroup) selected.set(selectedKey, []);
-          }
+  for (const { document, node } of events) {
+    if (node.section === null) continue;
+    const key = node.section + "\0" + node.name;
+    const assignmentMode = node.definition?.assignmentMode ?? "replace";
+    const resetGroup = node.definition?.resetGroup;
+    if (resetGroup !== undefined) resetGroups.set(key, resetGroup);
+    if (node.value === "" && assignmentMode === "append-no-reset") continue;
+    if (node.value === "" && assignmentMode === "first") continue;
+    if (node.value === "" && assignmentMode === "append") {
+      if (resetGroup === undefined) {
+        selected.set(key, []);
+      } else {
+        for (const [selectedKey, selectedGroup] of resetGroups) {
+          if (selectedGroup === resetGroup) selected.set(selectedKey, []);
         }
-        continue;
       }
-      const entry: EffectiveEntry = {
-        section: node.section,
-        name: node.name,
-        value: node.value,
-        sourceUri: document.uri,
-        sourceLine: node.line + 1,
-        span: node.span,
-      };
-      if (assignmentMode === "replace") {
-        selected.set(key, [entry]);
-        continue;
-      }
-      if (assignmentMode === "first" && selected.has(key)) continue;
-      const existing = selected.get(key) ?? [];
-      selected.set(key, [...existing, entry]);
+      continue;
     }
+    const entry: EffectiveEntry = {
+      section: node.section,
+      name: node.name,
+      value: node.value,
+      sourceUri: document.uri,
+      sourceLine: node.line + 1,
+      span: node.span,
+    };
+    if (assignmentMode === "replace") {
+      selected.set(key, [entry]);
+      continue;
+    }
+    if (assignmentMode === "first" && selected.has(key)) continue;
+    const existing = selected.get(key) ?? [];
+    selected.set(key, [...existing, entry]);
   }
   return {
     entries: [...selected.values()].flat(),
-    sources: documentsInPrecedenceOrder.map((document) => document.uri),
+    sources,
   };
+}
+
+export function resolveMkosiConfiguration(
+  uri: string,
+  documents: readonly ParsedDocument[],
+): MkosiConfigurationResolution {
+  const available = uniqueDocuments(documents).filter(
+    (document) =>
+      document.dialect === "mkosi" &&
+      document.kind !== "mkosi:uki-profile" &&
+      document.kind !== "mkosi:version",
+  );
+  const requested = uriLocation(uri);
+  const rootPath = mkosiProjectRoot(requested.path);
+  const mainTraversal = createMkosiTraversal(available, requested.origin);
+  const mainEvents = mainTraversal.directory(rootPath, true, true);
+  const mainBase = mainTraversal.document(rootPath + "/mkosi.conf");
+  const image = mkosiImageName(uri);
+  let identity = "main";
+  let baseUri = mainBase?.uri;
+  let events = mainEvents;
+
+  const special = mkosiSpecialConfiguration(requested.path, rootPath);
+  if (special !== undefined) {
+    identity = special === "tools" ? "tools" : "default-initrd";
+    const marker = special === "tools" ? "mkosi.tools.conf" : "mkosi.initrd.conf";
+    const specialPath = rootPath + "/" + marker;
+    const traversal = createMkosiTraversal(available, requested.origin);
+    const direct = traversal.document(specialPath);
+    const inherited = mkosiSpecialInheritedEvents(mainEvents, special);
+    const specialEvents =
+      direct === undefined
+        ? traversal.directory(specialPath, true, true, inherited.base)
+        : traversal.file(direct, rootPath);
+    baseUri = direct?.uri ?? traversal.document(specialPath + "/mkosi.conf")?.uri;
+    events = [...inherited.base, ...specialEvents, ...inherited.override];
+  }
+
+  if (special === undefined && image !== undefined) {
+    identity = image;
+    const inherited = mainEvents.filter(({ node }) => node.definition?.mkosiScope === "inherit");
+    const universal = mainEvents.filter(({ node }) =>
+      ["universal", "multiversal"].includes(node.definition?.mkosiScope ?? ""),
+    );
+    const imageTraversal = createMkosiTraversal(available, requested.origin);
+    const imageDirectory = rootPath + "/mkosi.images/" + image;
+    const direct = imageTraversal.document(imageDirectory + ".conf");
+    let imageEvents: readonly ConfigurationEvent[];
+    if (
+      requested.path === normalizeAbsolutePath(imageDirectory + ".conf") &&
+      direct !== undefined
+    ) {
+      imageEvents = imageTraversal.file(direct, rootPath);
+      baseUri = direct.uri;
+    } else {
+      imageEvents = imageTraversal.directory(imageDirectory, true, true, inherited);
+      baseUri = imageTraversal.document(imageDirectory + "/mkosi.conf")?.uri;
+    }
+    events = [...inherited, ...imageEvents, ...universal];
+  }
+
+  const sources = eventSourceSequence(events);
+  const resolvedDocuments = uniqueStrings(sources)
+    .map((source) => available.find(({ uri: candidate }) => candidate === source))
+    .filter((document): document is ParsedDocument => document !== undefined);
+  return {
+    identity,
+    documents: resolvedDocuments,
+    configuration: mergeConfigurationEvents(events, sources),
+    ...(baseUri === undefined ? {} : { baseUri }),
+  };
+}
+
+function mkosiSpecialConfiguration(path: string, rootPath: string): "tools" | "initrd" | undefined {
+  const relative = normalizeAbsolutePath(path).slice(normalizeAbsolutePath(rootPath).length + 1);
+  if (relative === "mkosi.tools.conf" || relative.startsWith("mkosi.tools.conf/")) return "tools";
+  if (relative === "mkosi.initrd.conf" || relative.startsWith("mkosi.initrd.conf/"))
+    return "initrd";
+  return undefined;
+}
+
+function mkosiSpecialInheritedEvents(
+  mainEvents: readonly ConfigurationEvent[],
+  target: "tools" | "initrd",
+): {
+  readonly base: readonly ConfigurationEvent[];
+  readonly override: readonly ConfigurationEvent[];
+} {
+  const mappedScope = target === "tools" ? "tools" : "initrd";
+  const mapped = retargetMkosiEvents(
+    mainEvents.filter(({ node }) => node.definition?.mkosiScope === mappedScope),
+  );
+  const mappedLocal = mapped.filter(({ document }) => document.kind === "mkosi:local");
+  const mappedRegular = mapped.filter(({ document }) => document.kind !== "mkosi:local");
+  const mappedBase = mappedLocal.length === 0 ? mappedRegular : [];
+  const mappedOverride = mappedLocal.length === 0 ? [] : mapped;
+  const baseScopes = new Set<string>(target === "tools" ? [] : ["inherit", "initrd-inherit"]);
+  const overrideScopes = new Set<string>(
+    target === "tools" ? ["multiversal"] : ["universal", "multiversal"],
+  );
+  return {
+    base: [
+      ...mainEvents.filter(({ node }) => baseScopes.has(node.definition?.mkosiScope ?? "")),
+      ...mappedBase,
+    ],
+    override: [
+      ...mappedOverride,
+      ...mainEvents.filter(({ node }) => overrideScopes.has(node.definition?.mkosiScope ?? "")),
+    ],
+  };
+}
+
+function retargetMkosiEvents(events: readonly ConfigurationEvent[]): readonly ConfigurationEvent[] {
+  return events.flatMap((event): ConfigurationEvent[] => {
+    const target = event.node.definition?.mkosiTarget;
+    if (target === undefined) return [];
+    const definition = definitionFor("mkosi", target.section, target.name);
+    return [
+      {
+        document: event.document,
+        node: {
+          ...event.node,
+          section: target.section,
+          name: target.name,
+          ...(definition === undefined ? {} : { definition }),
+        },
+      },
+    ];
+  });
+}
+
+interface MkosiTraversal {
+  document(path: string): ParsedDocument | undefined;
+  directory(
+    path: string,
+    parseProfiles: boolean,
+    parseLocal: boolean,
+    seed?: readonly ConfigurationEvent[],
+  ): readonly ConfigurationEvent[];
+  file(document: ParsedDocument, workingDirectory: string): readonly ConfigurationEvent[];
+}
+
+function createMkosiTraversal(
+  documents: readonly ParsedDocument[],
+  origin: string,
+): MkosiTraversal {
+  const byPath = new Map(
+    documents.flatMap((document) => {
+      const location = uriLocation(document.uri);
+      return location.origin === origin ? ([[location.path, document]] as const) : [];
+    }),
+  );
+  const includeSeen = new Set<string>();
+
+  const document = (path: string): ParsedDocument | undefined =>
+    byPath.get(normalizeAbsolutePath(path));
+
+  const hasDirectory = (path: string): boolean => {
+    const prefix = normalizeAbsolutePath(path) + "/";
+    return [...byPath.keys()].some((candidate) => candidate.startsWith(prefix));
+  };
+
+  const file = (
+    selected: ParsedDocument,
+    workingDirectory: string,
+  ): readonly ConfigurationEvent[] => {
+    const result: ConfigurationEvent[] = [];
+    appendFile(selected, normalizeAbsolutePath(workingDirectory), result, []);
+    return result;
+  };
+
+  const appendFile = (
+    selected: ParsedDocument,
+    workingDirectory: string,
+    result: ConfigurationEvent[],
+    ambient: readonly ConfigurationEvent[],
+  ): void => {
+    for (const node of selected.nodes) {
+      if (
+        node.kind !== "assignment" ||
+        node.section === null ||
+        ["Assert", "Match", "TriggerAssert", "TriggerMatch"].includes(node.section)
+      ) {
+        continue;
+      }
+      result.push({ document: selected, node });
+      if (node.section !== "Include" || node.name !== "Include") continue;
+      for (const { target } of splitMkosiValues(node.value, node.valueSpan.start)) {
+        appendInclude(target, workingDirectory, result, ambient);
+      }
+    }
+  };
+
+  const appendInclude = (
+    target: string,
+    workingDirectory: string,
+    result: ConfigurationEvent[],
+    ambient: readonly ConfigurationEvent[],
+  ): void => {
+    if (mkosiBuiltInIncludes.has(target) || target.includes("%")) return;
+    const path = resolvePathFromDirectory(workingDirectory, target);
+    if (path === undefined || includeSeen.has(path)) return;
+    includeSeen.add(path);
+    const included = document(path);
+    if (included !== undefined) {
+      appendFile(included, workingDirectory, result, ambient);
+    } else if (hasDirectory(path)) {
+      result.push(...directory(path, true, false, [...ambient, ...result]));
+    }
+  };
+
+  const directory = (
+    rawPath: string,
+    parseProfiles: boolean,
+    parseLocal: boolean,
+    seed: readonly ConfigurationEvent[] = [],
+  ): readonly ConfigurationEvent[] => {
+    const path = normalizeAbsolutePath(rawPath);
+    const regular: ConfigurationEvent[] = [];
+    const localDirectory: ConfigurationEvent[] = [];
+    const localFile: ConfigurationEvent[] = [];
+
+    if (parseLocal && hasDirectory(path + "/mkosi.local")) {
+      localDirectory.push(...directory(path + "/mkosi.local", false, false, seed));
+    }
+    const local = parseLocal ? document(path + "/mkosi.local.conf") : undefined;
+    if (local !== undefined) appendFile(local, path, localFile, [...seed, ...localDirectory]);
+
+    const localPriority = [...localFile, ...localDirectory];
+
+    const main = document(path + "/mkosi.conf");
+    if (main !== undefined) appendFile(main, path, regular, [...seed, ...localPriority]);
+
+    const confd = path + "/mkosi.conf.d";
+    for (const entry of immediateChildren(confd, byPath.keys())) {
+      const child = confd + "/" + entry;
+      const dropIn = document(child);
+      if (dropIn !== undefined && entry.endsWith(".conf")) {
+        appendFile(dropIn, path, regular, [...seed, ...localPriority]);
+      } else if (hasDirectory(child)) {
+        regular.push(...directory(child, false, false, [...seed, ...regular]));
+      }
+    }
+
+    if (parseProfiles) {
+      const profiles = effectiveMkosiList([...seed, ...regular, ...localPriority], "Profiles");
+      for (const profile of profiles) {
+        const profilePath = path + "/mkosi.profiles/" + profile;
+        const directProfile = document(profilePath);
+        if (directProfile !== undefined) {
+          appendFile(directProfile, path, regular, [...seed, ...localPriority]);
+        } else if (hasDirectory(profilePath)) {
+          regular.push(...directory(profilePath, false, false, [...seed, ...regular]));
+        }
+        const profileFile = document(profilePath + ".conf");
+        if (profileFile !== undefined) {
+          appendFile(profileFile, path, regular, [...seed, ...localPriority]);
+        }
+      }
+    }
+    return [...regular, ...localPriority];
+  };
+
+  return { document, directory, file };
+}
+
+function immediateChildren(directory: string, paths: Iterable<string>): readonly string[] {
+  const prefix = normalizeAbsolutePath(directory) + "/";
+  const result = new Set<string>();
+  for (const path of paths) {
+    if (!path.startsWith(prefix)) continue;
+    const child = path.slice(prefix.length).split("/")[0];
+    if (child !== undefined && child !== "") result.add(child);
+  }
+  return [...result].sort();
+}
+
+function effectiveMkosiList(
+  events: readonly ConfigurationEvent[],
+  name: string,
+): readonly string[] {
+  let result: string[] = [];
+  for (const { node } of events) {
+    if (node.section !== "Config" || node.name !== name) continue;
+    const values = splitMkosiValues(node.value, node.valueSpan.start).map(({ target }) => target);
+    result = node.value === "" ? [] : [...result, ...values];
+  }
+  return result;
+}
+
+function resolvePathFromDirectory(directory: string, target: string): string | undefined {
+  if (target === "" || /^[A-Za-z][A-Za-z0-9+.-]*:/u.test(target)) return undefined;
+  return normalizeAbsolutePath(target.startsWith("/") ? target : directory + "/" + target);
+}
+
+function uniqueStrings(values: readonly string[]): readonly string[] {
+  return values.filter((value, index) => values.indexOf(value) === index);
+}
+
+function eventSourceSequence(events: readonly ConfigurationEvent[]): readonly string[] {
+  const result: string[] = [];
+  for (const { document } of events) {
+    if (result.at(-1) !== document.uri) result.push(document.uri);
+  }
+  return result;
 }
 
 export function renderEffectiveConfiguration(configuration: EffectiveConfiguration): string {
@@ -1022,13 +1373,17 @@ function preferredMkosiEntry(
 }
 
 function documentsAtMkosiPath(
-  sourceUri: string,
+  sourceDocument: ParsedDocument,
   target: string,
   documents: readonly ParsedDocument[],
 ): readonly ParsedDocument[] {
-  const resolved = resolvedMkosiPath(sourceUri, target);
+  const resolved = resolvedMkosiPath(
+    sourceDocument.uri,
+    target,
+    sourceDocument.mkosiWorkingDirectory,
+  );
   if (resolved === undefined) return [];
-  const sourceOrigin = uriLocation(sourceUri).origin;
+  const sourceOrigin = uriLocation(sourceDocument.uri).origin;
   const exact = documents.filter((document) => {
     const location = uriLocation(document.uri);
     return location.origin === sourceOrigin && location.path === resolved;
@@ -1070,11 +1425,17 @@ function uriLocation(uri: string): UriLocation {
   return { origin: "", path: normalizeAbsolutePath(normalizeUriPath(uri)) };
 }
 
-function resolvedMkosiPath(sourceUri: string, target: string): string | undefined {
+function resolvedMkosiPath(
+  sourceUri: string,
+  target: string,
+  workingDirectory?: string,
+): string | undefined {
   if (target === "" || /^(?:[A-Za-z][A-Za-z0-9+.-]*:|%)/u.test(target)) return undefined;
   if (target.startsWith("/")) return normalizeAbsolutePath(target);
   const source = uriLocation(sourceUri);
-  return normalizeAbsolutePath(mkosiWorkingDirectory(source.path) + "/" + target);
+  return normalizeAbsolutePath(
+    (workingDirectory ?? mkosiWorkingDirectory(source.path)) + "/" + target,
+  );
 }
 
 function mkosiWorkingDirectory(path: string): string {

@@ -23,6 +23,7 @@ export {
   findOrderingDependencyCycles,
   mergeConfigurations,
   mkosiImageName,
+  mkosiIncludePath,
   mkosiProfileName,
   mkosiReferenceKey,
   mkosiReferenceKindFor,
@@ -31,11 +32,13 @@ export {
   relatedConfiguration,
   renderEffectiveConfiguration,
   resolveConfigurationDocuments,
+  resolveMkosiConfiguration,
   resolveMkosiReferenceDocuments,
   resolveUnitConfigurations,
 } from "./workspace.js";
 export type {
   ConfigurationResolution,
+  MkosiConfigurationResolution,
   OrderingDependencyCycle,
   OrderingDependencyEdge,
 } from "./workspace.js";
