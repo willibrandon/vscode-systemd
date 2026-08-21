@@ -28,7 +28,7 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
       const open = (image: HTMLImageElement) => {
         expandedImage.src = image.src;
         expandedImage.srcset = image.srcset;
-        expandedImage.sizes = "(max-width: 58rem) calc(100vw - 4rem), 54rem";
+        expandedImage.sizes = "(max-width: 50rem) calc(100vw - 4rem), 46rem";
         expandedImage.alt = image.alt;
         caption.textContent = image.alt;
         dialog.showModal();
@@ -72,9 +72,9 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
 
   dialog {
     box-sizing: border-box;
-    width: min(calc(100vw - 4rem), 54rem);
-    max-height: 76vh;
-    max-height: min(76dvh, 42rem);
+    width: min(calc(100vw - 4rem), 46rem);
+    max-height: 68vh;
+    max-height: min(68dvh, 36rem);
     margin: auto;
     border: 1px solid var(--sl-color-gray-5);
     border-radius: 0.5rem;
@@ -93,8 +93,8 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 0.75rem;
-    max-height: calc(76vh - 2px);
-    max-height: calc(min(76dvh, 42rem) - 2px);
+    max-height: calc(68vh - 2px);
+    max-height: calc(min(68dvh, 36rem) - 2px);
     padding: 0.75rem;
   }
 
@@ -113,8 +113,8 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: calc(76vh - 7rem);
-    max-height: min(calc(76dvh - 7rem), 35rem);
+    max-height: calc(68vh - 7rem);
+    max-height: min(calc(68dvh - 7rem), 29rem);
     margin: auto;
     object-fit: contain;
   }
