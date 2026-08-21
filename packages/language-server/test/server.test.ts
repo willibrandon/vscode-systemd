@@ -1021,7 +1021,7 @@ describe("language server JSON-RPC contract", () => {
         uri: mkosiUri,
         languageId: "mkosi",
         version: 1,
-        text: "[Output]\nOutput=%d/image.raw\n",
+        text: "[Output]\nOutput=%d/image.raw\nImageId=%a-image\n",
       },
     });
     const mkosi = await request<CompletionItem[]>(client, "textDocument/completion", {
@@ -1030,11 +1030,16 @@ describe("language server JSON-RPC contract", () => {
     });
     expect(mkosi.some(({ label }) => label === "%d")).toBe(true);
     expect(mkosi.some(({ label }) => label === "%n")).toBe(false);
+    const architecture = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 2, character: "ImageId=%".length },
+    });
+    expect(architecture.some(({ label }) => label === "%a")).toBe(true);
     const hints = await request<InlayHint[]>(client, "textDocument/inlayHint", {
       textDocument: { uri: mkosiUri },
-      range: { start: { line: 0, character: 0 }, end: { line: 2, character: 0 } },
+      range: { start: { line: 0, character: 0 }, end: { line: 3, character: 0 } },
     });
-    expect(hints.map(({ label }) => label)).toEqual([" = distribution"]);
+    expect(hints.map(({ label }) => label)).toEqual([" = distribution", " = architecture"]);
     expect(hints[0]?.tooltip).toBe("mkosi %d specifier");
     await client.sendNotification("textDocument/didClose", {
       textDocument: { uri: quadletUri },

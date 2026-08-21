@@ -36,6 +36,8 @@ All notable changes to this project will be documented here. The format follows
   through v261, analyzed against each fixture's matching target release.
 - Historical mkosi metadata with introduction and removal bounds, plus differential conformance
   against every maintained mkosi configuration found across releases v16 through v26.
+- A dated acceptance ledger for all 36 predecessor-extension issues and the 19 upstream systemd,
+  Podman, and mkosi issues that directly constrain parser, validator, and configuration behavior.
 - Byte-reproducible VSIX, checksum, and CycloneDX SBOM release artifacts with canonical ZIP
   metadata.
 - Bundled JSON schemas and source-aligned semantic diagnostics for PCR measurement components and
@@ -137,5 +139,7 @@ All notable changes to this project will be documented here. The format follows
 - LSP cancellation now propagates through nested workspace-filesystem completion requests, and
   bounded cross-workspace symbol, reference, rename, graph, effective-configuration, and explorer
   snapshot scans stop returning stale work after cancellation.
+- Documentation code blocks are build-gated to the exact TextMate grammars contributed by the
+  packaged extension.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

@@ -6,6 +6,27 @@ import { chromium } from "playwright";
 const root = resolve(import.meta.dirname, "..");
 const site = resolve(root, "docs-site/dist");
 const base = "/vscode-systemd";
+const docsConfiguration = await readFile(resolve(root, "docs-site/astro.config.mjs"), "utf8");
+const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
+const contributedGrammars = new Map(
+  manifest.contributes.grammars
+    .filter(({ language }) => language !== undefined)
+    .map(({ language, path }) => [language, path.replace(/^\.\//u, "")]),
+);
+for (const [language, grammar] of [
+  ["systemd-unit", "syntaxes/systemd.tmLanguage.json"],
+  ["podman-quadlet", "syntaxes/quadlet.tmLanguage.json"],
+  ["mkosi", "syntaxes/mkosi.tmLanguage.json"],
+]) {
+  assert(
+    contributedGrammars.get(language) === grammar,
+    language + " does not contribute the expected packaged grammar",
+  );
+  assert(
+    docsConfiguration.includes('from "../' + grammar + '"'),
+    language + " documentation examples do not import the packaged grammar directly",
+  );
+}
 const server = createServer((request, response) => {
   void serve(request.url ?? "/", response);
 });
@@ -149,7 +170,9 @@ try {
       await page.close();
     }
   }
-  console.log("Every documentation image popup fits laptop viewports without scrolling.");
+  console.log(
+    "Documentation examples use the exact packaged grammars, and every image popup fits laptop viewports without scrolling.",
+  );
 } finally {
   await browser.close();
   await new Promise((resolvePromise, rejectPromise) => {

@@ -4,7 +4,9 @@ description: Use completion, hover, diagnostics, navigation, semantic features, 
 ---
 
 Syntax highlighting is theme-neutral and works before extension activation. The language server is
-error tolerant, so editing help remains available while a file is incomplete.
+error tolerant, so editing help remains available while a file is incomplete. The systemd, Quadlet,
+and mkosi examples on this site load the same committed TextMate grammar files contributed by the
+packaged extension; the documentation build rejects a separate or copied grammar.
 
 ## Language help
 

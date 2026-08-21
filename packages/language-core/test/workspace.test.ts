@@ -690,7 +690,7 @@ describe("mkosi configuration references", () => {
   it("evaluates settled mkosi match logic and labels host-dependent branches", () => {
     const main = mkosi(
       "file:///workspace/mkosi.conf",
-      "[Distribution]\nDistribution=fedora\nRelease=stable\n[Include]\nInclude=config/conditional\n",
+      "[Distribution]\nDistribution=fedora\nRelease=stable\n[Output]\nFormat=disk\n[Include]\nInclude=config/conditional\n",
     );
     const skipped = mkosi(
       "file:///workspace/mkosi.conf.d/10-skipped.conf",
@@ -708,6 +708,10 @@ describe("mkosi configuration references", () => {
       "file:///workspace/mkosi.conf.d/40-conditional.conf",
       "[Match]\nPathExists=/host-dependent\n[Distribution]\nRelease=conditional\n",
     );
+    const outputSelected = mkosi(
+      "file:///workspace/mkosi.conf.d/35-output.conf",
+      "[Match]\nFormat=disk\n[Content]\nPackages=output-selected\n",
+    );
     const skippedDirectory = mkosi(
       "file:///workspace/config/conditional/mkosi.conf",
       "[Match]\nDistribution=ubuntu\n[Content]\nPackages=directory-main\n",
@@ -722,6 +726,7 @@ describe("mkosi configuration references", () => {
       skipped,
       selected,
       triggered,
+      outputSelected,
       conditional,
       skippedDirectory,
       skippedDirectoryDropIn,
@@ -730,7 +735,7 @@ describe("mkosi configuration references", () => {
       resolution.configuration.entries
         .filter(({ name }) => name === "Packages")
         .map(({ value }) => value),
-    ).toEqual(["selected", "triggered"]);
+    ).toEqual(["selected", "triggered", "output-selected"]);
     expect(
       resolution.configuration.entries
         .filter(({ name, conditional: uncertain }) => name === "Release" && uncertain !== true)
@@ -765,8 +770,13 @@ describe("mkosi configuration references", () => {
       "file:///workspace/mkosi.images/application/mkosi.profiles/debug.conf",
       "[Output]\nImageId=image-profile\n",
     );
+    const imageMatch = mkosi(
+      "file:///workspace/mkosi.images/application/mkosi.conf.d/10-match.conf",
+      "[Match]\nImage=application\n[Content]\nPackages=matched-subimage\n",
+    );
 
     const resolution = resolveMkosiConfiguration(image.uri, [
+      imageMatch,
       imageProfile,
       mainProfile,
       image,
@@ -784,6 +794,11 @@ describe("mkosi configuration references", () => {
         .filter(({ name }) => name === "ImageId")
         .map(({ value }) => value),
     ).toEqual(["image-profile"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Packages")
+        .map(({ value }) => value),
+    ).toEqual(["matched-subimage"]);
   });
 
   it("resolves tools-tree settings into their target directives with local and multiversal priority", () => {
