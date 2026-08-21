@@ -1,0 +1,7 @@
+{
+  "systemd.dialectAssociations": {
+    "**/*.daemon": "systemd-unit"
+  },
+  "systemd.index.scope": "workspace",
+  "systemd.templateSuffixes": [".rendered"]
+}

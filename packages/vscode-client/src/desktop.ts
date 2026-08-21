@@ -1,7 +1,11 @@
 import * as vscode from "vscode";
+import { homedir } from "node:os";
+import { isAbsolute, join } from "node:path";
+import process from "node:process";
 import { LanguageClient, TransportKind } from "vscode-languageclient/node";
 import type { ServerOptions } from "vscode-languageclient/node";
 import { clientOptions, registerCommonFeatures, systemdLanguageIds } from "./common.js";
+import type { ExternalIndexRoot, HostIndexingOptions } from "./indexer.js";
 import { runValidator, validationInvocation } from "./external-validator.js";
 import type { ValidationResult } from "./external-validator.js";
 
@@ -19,7 +23,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   const languageClient = client;
   context.subscriptions.push(output, languageClient);
-  const features = registerCommonFeatures(context, { client: languageClient, output });
+  await languageClient.start();
+  const features = registerCommonFeatures(
+    context,
+    { client: languageClient, output },
+    hostIndexingOptions(),
+  );
   const diagnostics = vscode.languages.createDiagnosticCollection("systemd-installed");
   const active = new Map<string, AbortController>();
   context.subscriptions.push(diagnostics, {
@@ -114,7 +123,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.workspace.onDidGrantWorkspaceTrust(updateContext),
   );
 
-  await languageClient.start();
   await features.refreshIndex();
   await updateContext();
   output.info("systemd language server started.");
@@ -182,4 +190,60 @@ function validationSummary(result: ValidationResult): string {
 function safeMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   return message.replace(/[\r\n\0]+/gu, " ").slice(0, 500);
+}
+
+function hostIndexingOptions(): HostIndexingOptions {
+  const roots: ExternalIndexRoot[] = [];
+  const add = (path: string, maximumDepth: number): void => {
+    roots.push({ uri: vscode.Uri.file(path), maximumDepth });
+  };
+  for (const root of [
+    "/etc/systemd",
+    "/run/systemd",
+    "/usr/local/lib/systemd",
+    "/usr/local/share/systemd",
+    "/usr/lib/systemd",
+    "/usr/share/systemd",
+    "/lib/systemd",
+  ]) {
+    add(root, 3);
+  }
+  for (const prefix of ["/etc", "/run", "/usr/local/lib", "/usr/lib", "/lib"]) {
+    for (const directory of [
+      "tmpfiles.d",
+      "sysusers.d",
+      "sysctl.d",
+      "modules-load.d",
+      "binfmt.d",
+      "udev/rules.d",
+      "udev/hwdb.d",
+    ]) {
+      add(join(prefix, directory), 1);
+    }
+  }
+  for (const root of [
+    "/etc/containers/systemd",
+    "/run/containers/systemd",
+    "/usr/share/containers/systemd",
+    "/etc/kernel",
+    "/usr/lib/kernel",
+  ]) {
+    add(root, 4);
+  }
+  const configHome = process.env["XDG_CONFIG_HOME"] ?? join(homedir(), ".config");
+  add(join(configHome, "systemd/user"), 4);
+  add(join(configHome, "containers/systemd"), 4);
+  const runtimeDirectory = process.env["XDG_RUNTIME_DIR"];
+  if (runtimeDirectory !== undefined && isAbsolute(runtimeDirectory)) {
+    add(join(runtimeDirectory, "systemd/user"), 4);
+    add(join(runtimeDirectory, "containers/systemd"), 4);
+  }
+  const unique = new Map(roots.map((root) => [root.uri.toString(), root]));
+  return {
+    supported: process.platform === "linux",
+    standardRoots: [...unique.values()],
+    resolveExtraPath(path): vscode.Uri | undefined {
+      return isAbsolute(path) ? vscode.Uri.file(path) : undefined;
+    },
+  };
 }

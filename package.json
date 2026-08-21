@@ -737,6 +737,7 @@
     "yauzl": "3.4.0"
   },
   "dependencies": {
+    "minimatch": "10.2.6",
     "vscode-languageclient": "10.1.0",
     "vscode-languageserver": "10.1.0",
     "vscode-languageserver-textdocument": "1.0.12"

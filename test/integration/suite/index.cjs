@@ -91,6 +91,20 @@ exports.run = async function run() {
   );
   assert.equal(quadlet.languageId, "podman-quadlet");
 
+  for (const [name, expectedLanguage] of [
+    ["custom.daemon", "systemd-unit"],
+    ["templated.service.rendered", "systemd-unit"],
+  ]) {
+    const configuredDocument = await vscode.workspace.openTextDocument(
+      vscode.Uri.joinPath(root, name),
+    );
+    await waitFor(
+      () => configuredDocument.languageId,
+      (languageId) => languageId === expectedLanguage,
+      name + " language detection",
+    );
+  }
+
   const commands = await vscode.commands.getCommands(true);
   for (const command of [
     "systemd.refreshIndex",

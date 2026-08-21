@@ -13,6 +13,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   client = new LanguageClient("systemd", "systemd Language Server", worker, clientOptions(output));
   const languageClient = client;
   context.subscriptions.push(output, languageClient);
+  await languageClient.start();
   const features = registerCommonFeatures(context, { client: languageClient, output });
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -24,7 +25,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
     ),
   );
-  await languageClient.start();
   await features.refreshIndex();
   await vscode.commands.executeCommand("setContext", "systemd.externalValidationAvailable", false);
   output.info("systemd language server started in a Web Worker.");

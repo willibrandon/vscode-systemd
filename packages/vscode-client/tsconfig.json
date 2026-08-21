@@ -7,7 +7,7 @@
     "tsBuildInfoFile": "../../node_modules/.cache/vscode-client.tsbuildinfo",
     "types": ["vscode"]
   },
-  "include": ["src/common.ts", "src/explorer.ts", "src/virtual-documents.ts"],
+  "include": ["src/common.ts", "src/explorer.ts", "src/indexer.ts", "src/virtual-documents.ts"],
   "references": [
     {
       "path": "../language-core"

@@ -1,13 +1,11 @@
 import * as vscode from "vscode";
 import type { BaseLanguageClient, LanguageClientOptions } from "vscode-languageclient";
 import type { DialectId } from "@systemd/language-core";
-import {
-  detectDialectRequest,
-  indexedDocumentsNotification,
-  refreshDiagnosticsNotification,
-} from "@systemd/language-server/protocol";
+import { refreshDiagnosticsNotification } from "@systemd/language-server/protocol";
 import { registerSystemdExplorer } from "./explorer.js";
 import type { DropInTarget } from "./explorer.js";
+import { createWorkspaceIndexer, registerLanguageDetection } from "./indexer.js";
+import type { HostIndexingOptions } from "./indexer.js";
 import { registerVirtualDocuments } from "./virtual-documents.js";
 
 export const systemdLanguageIds: readonly DialectId[] = [
@@ -48,12 +46,20 @@ export function clientOptions(output: vscode.LogOutputChannel): LanguageClientOp
 export function registerCommonFeatures(
   context: vscode.ExtensionContext,
   runtime: ClientRuntime,
+  hostIndexing?: HostIndexingOptions,
 ): { readonly refreshIndex: () => Promise<void> } {
   const explorer = registerSystemdExplorer(context, runtime.client, runtime.output);
   const virtualDocuments = registerVirtualDocuments(context, runtime.client);
-  const indexWorkspace = createWorkspaceIndexer(runtime);
+  const indexer = createWorkspaceIndexer(
+    runtime.client,
+    runtime.output,
+    systemdLanguageIds,
+    hostIndexing,
+  );
+  registerLanguageDetection(context, runtime.client, systemdLanguageIds);
+  context.subscriptions.push(indexer);
   const refreshIndex = async (): Promise<void> => {
-    await indexWorkspace();
+    if (!(await indexer.refresh())) return;
     await explorer.refresh();
     await virtualDocuments.refreshEffectiveDocuments();
   };
@@ -118,7 +124,7 @@ export function registerCommonFeatures(
     }),
   );
 
-  const watcher = vscode.workspace.createFileSystemWatcher(systemdWorkspaceGlob());
+  let watchers: vscode.FileSystemWatcher[] = [];
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   const scheduleRefresh = (): void => {
     if (refreshTimer !== undefined) clearTimeout(refreshTimer);
@@ -127,9 +133,17 @@ export function registerCommonFeatures(
       void refreshIndex();
     }, 300);
   };
-  watcher.onDidCreate(scheduleRefresh);
-  watcher.onDidChange(scheduleRefresh);
-  watcher.onDidDelete(scheduleRefresh);
+  const createWatcher = (): void => {
+    for (const current of watchers) current.dispose();
+    watchers = indexer.workspaceGlobs().map((pattern) => {
+      const current = vscode.workspace.createFileSystemWatcher(pattern);
+      current.onDidCreate(scheduleRefresh);
+      current.onDidChange(scheduleRefresh);
+      current.onDidDelete(scheduleRefresh);
+      return current;
+    });
+  };
+  createWatcher();
   let virtualRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   const scheduleVirtualRefresh = (): void => {
     if (virtualRefreshTimer !== undefined) clearTimeout(virtualRefreshTimer);
@@ -139,54 +153,27 @@ export function registerCommonFeatures(
     }, 150);
   };
   context.subscriptions.push(
-    watcher,
     {
       dispose(): void {
+        for (const current of watchers) current.dispose();
+        watchers = [];
         if (refreshTimer !== undefined) clearTimeout(refreshTimer);
         if (virtualRefreshTimer !== undefined) clearTimeout(virtualRefreshTimer);
       },
     },
     vscode.workspace.onDidChangeTextDocument(scheduleVirtualRefresh),
+    vscode.workspace.onDidChangeConfiguration((event): void => {
+      if (
+        event.affectsConfiguration("systemd.index") ||
+        event.affectsConfiguration("systemd.dialectAssociations") ||
+        event.affectsConfiguration("systemd.templateSuffixes")
+      ) {
+        createWatcher();
+        scheduleRefresh();
+      }
+    }),
   );
   return { refreshIndex };
-}
-
-function createWorkspaceIndexer(runtime: ClientRuntime): () => Promise<void> {
-  return async (): Promise<void> => {
-    const uris = await vscode.workspace.findFiles(
-      systemdWorkspaceGlob(),
-      "**/{.git,node_modules,dist,out,coverage}/**",
-      20_000,
-    );
-    const documents = [];
-    for (const uri of uris) {
-      try {
-        const bytes = await vscode.workspace.fs.readFile(uri);
-        if (bytes.byteLength > 2 * 1024 * 1024) continue;
-        const source = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-        const open = vscode.workspace.textDocuments.find(
-          (candidate) => candidate.uri.toString() === uri.toString(),
-        );
-        const associated = open?.languageId;
-        const languageId = systemdLanguageIds.includes(associated as DialectId)
-          ? (associated as DialectId)
-          : await runtime.client.sendRequest(detectDialectRequest, {
-              uri: uri.toString(),
-              source,
-            });
-        if (languageId === null) continue;
-        const stat = await vscode.workspace.fs.stat(uri);
-        documents.push({ uri: uri.toString(), languageId, source, mtime: stat.mtime });
-      } catch (error) {
-        runtime.output.warn("Unable to index " + uri.toString() + ": " + safeMessage(error));
-      }
-    }
-    await runtime.client.sendNotification(indexedDocumentsNotification, {
-      documents,
-      replace: true,
-    });
-    runtime.output.info("Indexed " + String(documents.length) + " systemd configuration files.");
-  };
 }
 
 function activeSystemdDocument(showMessage = true): vscode.TextDocument | undefined {
@@ -268,18 +255,6 @@ function documentationUri(languageId: string | undefined): vscode.Uri {
   }
   return vscode.Uri.parse(
     "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html",
-  );
-}
-
-function systemdWorkspaceGlob(): string {
-  return (
-    "**/{*.service,*.socket,*.timer,*.path,*.mount,*.automount,*.swap,*.target," +
-    "*.device,*.slice,*.scope,*.network,*.netdev,*.link,*.nspawn,*.dnssd," +
-    "*.dns-delegate,*.container,*.volume,*.pod,*.kube,*.image,*.build,*.artifact," +
-    "*.rules,*.hwdb,*.preset,*.pcrlock,*.rr,mkosi.conf,mkosi.conf.d/*.conf," +
-    "mkosi.default.d/*.conf,mkosi.extra.d/*.conf,*.positive,*.negative," +
-    "fstab,crypttab,veritytab,integritytab,clonetab,loader.conf,install.conf," +
-    "os-release,initrd-release,machine-info,locale.conf,vconsole.conf}"
   );
 }
 

@@ -1,0 +1,6 @@
+[Unit]
+Description=Custom template suffix fixture
+
+[Service]
+Type=oneshot
+ExecStart=/bin/true

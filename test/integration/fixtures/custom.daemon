@@ -1,0 +1,6 @@
+[Unit]
+Description=Custom association fixture
+
+[Service]
+Type=oneshot
+ExecStart=/bin/true
