@@ -57,11 +57,16 @@ exports.run = async function run() {
     ["[Unit]", "[Service]"],
   );
 
-  const dropInActions = await vscode.commands.executeCommand(
-    "vscode.executeCodeActionProvider",
-    uri,
-    new vscode.Range(0, 0, 0, 0),
-    vscode.CodeActionKind.RefactorRewrite.value,
+  const dropInActions = await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeCodeActionProvider",
+        uri,
+        new vscode.Range(0, 0, 0, 0),
+        vscode.CodeActionKind.RefactorRewrite.value,
+      ),
+    (actions) => actions.some((action) => action.title === "Create workspace unit drop-in"),
+    "workspace unit drop-in code action",
   );
   const dropInAction = dropInActions.find(
     (action) => action.title === "Create workspace unit drop-in",

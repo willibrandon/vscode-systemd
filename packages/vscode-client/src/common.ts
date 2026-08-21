@@ -206,6 +206,10 @@ export function registerCommonFeatures(
     vscode.workspace.onDidDeleteFiles(({ files }): void => {
       if (files.some((uri) => indexer.isCandidate(uri))) scheduleRefresh();
     }),
+    vscode.workspace.onDidChangeWorkspaceFolders((): void => {
+      createWatcher();
+      scheduleRefresh();
+    }),
     vscode.workspace.onDidChangeTextDocument(scheduleVirtualRefresh),
     vscode.workspace.onDidSaveTextDocument(scheduleVirtualRefresh),
     vscode.workspace.onDidChangeConfiguration((event): void => {

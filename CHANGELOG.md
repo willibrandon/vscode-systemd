@@ -12,6 +12,8 @@ Notable changes are listed here. Releases follow semantic versioning.
   does not create a duplicate folder icon or reorder other icons.
 - Split Explorer results into an expanded Workspace section and a collapsed Host section so project
   files are not buried by system units on Linux and WSL.
+- Refreshes the index when workspace folders are added or removed so early Explorer activation does
+  not leave a host-only index.
 - Stopped unresolved Explorer references from opening a dead link. Sources that are unavailable on
   the current host are labeled `not indexed` instead.
 
