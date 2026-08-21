@@ -23,8 +23,8 @@ actual configuration grammar.
 
 Quadlet recognizes `.artifact`, `.build`, `.container`, `.image`, `.kube`, `.network`, `.pod`, and
 `.volume`, plus their drop-ins. A `.network` file is treated as Quadlet when it is under a
-recognized `containers/systemd` or Quadlet path; ordinary `.network` files remain systemd-networkd
-files.
+recognized `containers/systemd` or Quadlet path or contains Quadlet-only network settings; ordinary
+`.network` files remain systemd-networkd files.
 
 mkosi recognizes `mkosi.conf`, local, tools, initrd, version, drop-in, historical `mkosi.presets/`,
 profile, image, and UKI-profile configuration paths.

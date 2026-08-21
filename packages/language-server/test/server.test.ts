@@ -364,7 +364,17 @@ describe("language server JSON-RPC contract", () => {
       range: diagnostics.find((item) => item.code === "unknown-setting")?.range,
       context: { diagnostics },
     });
-    expect(quickFixes.length).toBeGreaterThan(0);
+    expect(
+      quickFixes.some(
+        ({ title, kind, command }) =>
+          title === "Create workspace unit drop-in" &&
+          kind === "refactor.rewrite" &&
+          command?.command === "systemd.createDropIn",
+      ),
+    ).toBe(true);
+    expect(
+      quickFixes.some(({ title, kind }) => title === "Change to Restart=" && kind === "quickfix"),
+    ).toBe(true);
 
     const missing = { textDocument: { uri: "file:///workspace/missing.service" } };
     expect(
@@ -693,7 +703,46 @@ describe("language server JSON-RPC contract", () => {
         text: "[Container]\nImage=quay.io/example/app:latest\nNetwork=refresh.network\n",
       },
     });
-    expect((await missing).map(({ code }) => code)).toContain("missing-quadlet-reference");
+    const missingDiagnostics = await missing;
+    expect(missingDiagnostics.map(({ code }) => code)).toContain("missing-quadlet-reference");
+    const referenceDiagnostic = missingDiagnostics.find(
+      ({ code }) => code === "missing-quadlet-reference",
+    );
+    if (referenceDiagnostic === undefined) throw new Error("Expected a missing reference.");
+    const actions = await request<CodeAction[]>(client, "textDocument/codeAction", {
+      textDocument: { uri: containerUri },
+      range: referenceDiagnostic.range,
+      context: {
+        diagnostics: [
+          referenceDiagnostic,
+          referenceDiagnostic,
+          {
+            ...referenceDiagnostic,
+            code: "missing-without-reference",
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 0 },
+            },
+          },
+        ],
+      },
+    });
+    expect(actions.filter(({ title }) => title === "Create refresh.network")).toHaveLength(1);
+    const createNetwork = actions.find(({ title }) => title === "Create refresh.network");
+    expect(createNetwork?.kind).toBe("quickfix");
+    expect(createNetwork?.command).toEqual({
+      title: "Create refresh.network",
+      command: "systemd.createReferencedFile",
+      arguments: [
+        {
+          sourceUri: containerUri,
+          targetUri: networkUri,
+          languageId: "podman-quadlet",
+          contents: "[Network]\nDisableDNS=false\n",
+          label: "refresh.network",
+        },
+      ],
+    });
 
     const resolved = nextDiagnostics(client, containerUri);
     await client.sendNotification("textDocument/didOpen", {
@@ -710,6 +759,58 @@ describe("language server JSON-RPC contract", () => {
     await client.sendNotification("textDocument/didClose", { textDocument: { uri: networkUri } });
     expect((await missingAgain).map(({ code }) => code)).toContain("missing-quadlet-reference");
     await client.sendNotification("textDocument/didClose", { textDocument: { uri: containerUri } });
+
+    const volumeContainerUri = "file:///workspace/refresh-volume.container";
+    const volumeDiagnostics = nextDiagnostics(client, volumeContainerUri);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: volumeContainerUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: "[Container]\nImage=quay.io/example/app:latest\nVolume=refresh.volume:/data\n",
+      },
+    });
+    const missingVolume = (await volumeDiagnostics).find(
+      ({ code }) => code === "missing-quadlet-reference",
+    );
+    if (missingVolume === undefined) throw new Error("Expected a missing volume diagnostic.");
+    const volumeActions = await request<CodeAction[]>(client, "textDocument/codeAction", {
+      textDocument: { uri: volumeContainerUri },
+      range: missingVolume.range,
+      context: { diagnostics: [missingVolume] },
+    });
+    expect(volumeActions.find(({ title }) => title === "Create refresh.volume")?.command).toEqual(
+      expect.objectContaining({
+        arguments: [expect.objectContaining({ contents: "[Volume]\n" })],
+      }),
+    );
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: volumeContainerUri },
+    });
+
+    const outsideUri = "file:///outside/unsafe.container";
+    const outsideDiagnostics = nextDiagnostics(client, outsideUri);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: outsideUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: "[Container]\nImage=quay.io/example/app:latest\nNetwork=unsafe.network\n",
+      },
+    });
+    const outsideMissing = (await outsideDiagnostics).find(
+      ({ code }) => code === "missing-quadlet-reference",
+    );
+    if (outsideMissing === undefined) throw new Error("Expected an outside-workspace diagnostic.");
+    const outsideActions = await request<CodeAction[]>(client, "textDocument/codeAction", {
+      textDocument: { uri: outsideUri },
+      range: outsideMissing.range,
+      context: { diagnostics: [outsideMissing] },
+    });
+    expect(
+      outsideActions.some(({ command }) => command?.command === "systemd.createReferencedFile"),
+    ).toBe(false);
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: outsideUri } });
   });
 
   it("provides type-aware mkosi graph completion, navigation, and rename", async () => {
@@ -858,6 +959,61 @@ describe("language server JSON-RPC contract", () => {
     expect(effective).toContain("Packages=nested");
     expect(effective).toContain("Packages=debugger");
     expect(effective).toContain("Format=disk");
+    const missingPresetUri = "file:///workspace/missing-preset.conf";
+    const missingPresetDiagnostics = nextDiagnostics(client, missingPresetUri);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: missingPresetUri,
+        languageId: "mkosi",
+        version: 1,
+        text:
+          "[Preset]\nDependencies=unavailable\n" +
+          "[Config]\nProfiles=missing-profile\n" +
+          "[Content]\nUnifiedKernelImageProfiles=missing-uki.conf\n",
+      },
+    });
+    const missingGraphDiagnostics = await missingPresetDiagnostics;
+    const presetDiagnostic = missingGraphDiagnostics.find(
+      ({ code }) => code === "missing-mkosi-preset",
+    );
+    if (presetDiagnostic === undefined) throw new Error("Expected a missing preset diagnostic.");
+    const presetActions = await request<CodeAction[]>(client, "textDocument/codeAction", {
+      textDocument: { uri: missingPresetUri },
+      range: presetDiagnostic.range,
+      context: { diagnostics: missingGraphDiagnostics },
+    });
+    const createPreset = presetActions.find(({ title }) => title === "Create unavailable");
+    expect(createPreset?.command?.command).toBe("systemd.createReferencedFile");
+    expect(createPreset?.command?.arguments?.[0]).toEqual(
+      expect.objectContaining({
+        targetUri: "file:///workspace/mkosi.presets/unavailable.conf",
+        languageId: "mkosi",
+        contents: "[Preset]\n",
+      }),
+    );
+    expect(presetActions.find(({ title }) => title === "Create missing-profile")?.command).toEqual(
+      expect.objectContaining({
+        arguments: [
+          expect.objectContaining({
+            targetUri: "file:///workspace/mkosi.profiles/missing-profile.conf",
+            contents: "[Distribution]\n",
+          }),
+        ],
+      }),
+    );
+    expect(presetActions.find(({ title }) => title === "Create missing-uki.conf")?.command).toEqual(
+      expect.objectContaining({
+        arguments: [
+          expect.objectContaining({
+            targetUri: "file:///workspace/missing-uki.conf",
+            contents: "[UKIProfile]\n",
+          }),
+        ],
+      }),
+    );
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: missingPresetUri },
+    });
     await client.sendNotification("textDocument/didClose", {
       textDocument: { uri: "file:///workspace/config/common.conf" },
     });

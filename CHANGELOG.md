@@ -54,6 +54,8 @@ All notable changes to this project will be documented here. The format follows
 - Source-ordered mkosi effective configurations for includes, local overrides, lexical drop-ins,
   selected profiles, subimages, tools trees, and the default initrd, including generated setting
   remapping and inheritance semantics.
+- Workspace-confined code actions that create unit drop-ins and safe missing Quadlet or mkosi
+  reference skeletons without overwriting existing files.
 
 ### Fixed
 
@@ -146,5 +148,8 @@ All notable changes to this project will be documented here. The format follows
   packaged extension.
 - Bundle inspection now checks size and content from one immutable read, and Quadlet CSV parsing no
   longer probes one character beyond the input boundary while preserving trailing empty fields.
+- Workspace indexing now refreshes through VS Code create, save, rename, and delete events as well
+  as filesystem watchers, and generated Quadlet `.network` skeletons remain unambiguously Quadlet
+  after close and re-indexing.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

@@ -76,7 +76,10 @@ required sections and settings, version availability, deprecations, and unit ord
 Quadlet, this includes the inputs required by Podman's converter, such as `Image=`, `Yaml=`,
 `Artifact=`, and build tags and contexts. Related locations connect a cycle or cross-file reference
 to the other indexed configuration involved. Close directive misspellings offer conservative quick
-fixes.
+fixes. Missing workspace-owned Quadlet resources and mkosi presets, profiles, images, includes, or
+UKI profiles offer a quick fix that creates a safe starter file without overwriting an existing
+file. Unit files also offer a refactor action that creates or opens their workspace-owned
+`override.conf` drop-in.
 
 ![An unknown systemd directive diagnostic with quick-fix actions](../../assets/diagnostic.png)
 

@@ -42,7 +42,8 @@ into the desktop and browser extension.
   points.
 - Canonical unit-symlink and alias resolution, including drop-ins attached to either name and
   `/dev/null` masks.
-- Unit drop-in creation.
+- Code actions for workspace-owned unit drop-ins and safe skeletons for missing Quadlet and mkosi
+  references.
 - Identical language analysis on desktop, Remote Development hosts, virtual workspaces, and
   vscode.dev-compatible browser hosts.
 - Optional, trust-gated validation with a generator-disabled `systemd-analyze verify`, the Podman

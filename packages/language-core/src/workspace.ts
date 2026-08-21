@@ -455,6 +455,34 @@ export function mkosiReferenceKey(document: ParsedDocument, reference: Reference
   }
 }
 
+/** Return the canonical workspace file a missing mkosi reference can safely create. */
+export function mkosiReferenceTargetUri(
+  document: ParsedDocument,
+  reference: Reference,
+): string | undefined {
+  const location = uriLocation(document.uri);
+  let path: string | undefined;
+  switch (reference.kind) {
+    case "mkosi-preset":
+      path = mkosiCollectionFile(mkosiPresetsDirectory(location.path), reference.target);
+      break;
+    case "mkosi-profile":
+      path = mkosiCollectionFile(mkosiProfilesDirectory(location.path), reference.target);
+      break;
+    case "mkosi-image":
+      path = mkosiCollectionFile(mkosiImagesDirectory(location.path), reference.target);
+      break;
+    case "mkosi-include":
+    case "mkosi-uki-profile":
+      if (!reference.target.endsWith(".conf")) return undefined;
+      path = resolvedMkosiPath(document.uri, reference.target, document.mkosiWorkingDirectory);
+      break;
+    default:
+      return undefined;
+  }
+  return path === undefined ? undefined : uriForLocation(location.origin, path);
+}
+
 export function resolveMkosiReferenceDocuments(
   document: ParsedDocument,
   reference: Reference,
@@ -1768,6 +1796,20 @@ function mkosiPresetsDirectory(path: string): string {
   return normalizeAbsolutePath(mkosiProjectRoot(path) + "/mkosi.presets");
 }
 
+function mkosiCollectionFile(directory: string, name: string): string | undefined {
+  if (
+    name === "" ||
+    name === "." ||
+    name === ".." ||
+    name.includes("/") ||
+    name.includes("\\") ||
+    !/^[A-Za-z0-9_@+.=-]+$/u.test(name)
+  ) {
+    return undefined;
+  }
+  return normalizeAbsolutePath(directory + "/" + name + (name.endsWith(".conf") ? "" : ".conf"));
+}
+
 function mkosiImagesDirectory(path: string): string {
   return normalizeAbsolutePath(mkosiProjectRoot(path) + "/mkosi.images");
 }
@@ -1801,6 +1843,17 @@ function normalizeAbsolutePath(path: string): string {
 
 function pathParts(path: string): readonly string[] {
   return normalizeAbsolutePath(path).split("/").filter(Boolean);
+}
+
+function uriForLocation(origin: string, path: string): string {
+  if (origin === "") return path;
+  return (
+    origin +
+    path
+      .split("/")
+      .map((part) => encodeURIComponent(part))
+      .join("/")
+  );
 }
 
 function extractQuadletReferences(

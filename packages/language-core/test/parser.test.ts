@@ -47,6 +47,9 @@ describe("complete dialect recognition", () => {
     ).toBe("systemd-unit");
     expect(detectDialect("untitled:unit", "[Service]\nExecStart=/bin/true\n")).toBe("systemd-unit");
     expect(detectDialect("untitled:network", "[DHCPv6]\nUseDNS=yes\n")).toBe("systemd-network");
+    expect(detectDialect("file:///workspace/demo.network", "[Network]\nDisableDNS=false\n")).toBe(
+      "podman-quadlet",
+    );
     expect(detectDialect("untitled:quadlet", "[Pod]\nPodName=demo\n")).toBe("podman-quadlet");
     expect(detectDialect("untitled:mkosi", "[Output]\nFormat=disk\n")).toBe("mkosi");
     expect(detectDialect("untitled:unknown", "plain text\n")).toBeUndefined();

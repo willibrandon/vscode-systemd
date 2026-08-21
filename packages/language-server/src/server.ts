@@ -21,6 +21,7 @@ import {
   mkosiProfileName,
   mkosiReferenceKey,
   mkosiReferenceKindFor,
+  mkosiReferenceTargetUri,
   parse,
   quadletReferenceExtensionsFor,
   recordFormatFor,
@@ -314,7 +315,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
           legend: { tokenTypes: [...tokenTypes], tokenModifiers: [...tokenModifiers] },
           full: true,
         },
-        codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
+        codeActionProvider: {
+          codeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.RefactorRewrite],
+        },
         codeLensProvider: { resolveProvider: false },
         inlayHintProvider: true,
       },
@@ -703,7 +706,37 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const tree = document === undefined ? undefined : parsed(document);
     if (document === undefined || tree === undefined) return [];
     const result: CodeAction[] = [];
+    if (tree.dialect === "systemd-unit" && workspaceOwns(tree.uri)) {
+      result.push({
+        title: "Create workspace unit drop-in",
+        kind: CodeActionKind.RefactorRewrite,
+        command: {
+          title: "Create workspace unit drop-in",
+          command: "systemd.createDropIn",
+          arguments: [tree.uri],
+        },
+      });
+    }
+    const creationTargets = new Set<string>();
     for (const diagnostic of params.context.diagnostics) {
+      if (typeof diagnostic.code === "string" && diagnostic.code.startsWith("missing-")) {
+        const reference = referenceAt(tree, document.offsetAt(diagnostic.range.start));
+        const creation =
+          reference === undefined ? undefined : referenceCreation(tree, reference, workspaceOwns);
+        if (creation !== undefined && !creationTargets.has(creation.targetUri)) {
+          creationTargets.add(creation.targetUri);
+          result.push({
+            title: "Create " + creation.label,
+            kind: CodeActionKind.QuickFix,
+            diagnostics: [diagnostic],
+            command: {
+              title: "Create " + creation.label,
+              command: "systemd.createReferencedFile",
+              arguments: [creation],
+            },
+          });
+        }
+      }
       if (diagnostic.code !== "unknown-setting") continue;
       const node = assignmentAt(tree, document.offsetAt(diagnostic.range.start));
       if (node === undefined) continue;
@@ -2067,6 +2100,59 @@ function wordRangeAt(document: TextDocument, position: Position): Range | null {
 function wordAt(document: TextDocument, position: Position): string {
   const range = wordRangeAt(document, position);
   return range === null ? "" : document.getText(range);
+}
+
+interface ReferenceCreation {
+  readonly sourceUri: string;
+  readonly targetUri: string;
+  readonly languageId: DialectId;
+  readonly contents: string;
+  readonly label: string;
+}
+
+function referenceCreation(
+  tree: ParsedDocument,
+  reference: Reference,
+  workspaceOwns: (uri: string) => boolean,
+): ReferenceCreation | undefined {
+  if (!workspaceOwns(tree.uri)) return undefined;
+  if (reference.kind === "quadlet") {
+    if (!isQuadletIdentity(reference.target) || /[/\\]/u.test(reference.target)) return undefined;
+    const source = URI.parse(tree.uri);
+    const slash = source.path.lastIndexOf("/");
+    const target = source.with({ path: source.path.slice(0, slash + 1) + reference.target });
+    const targetUri = target.toString();
+    if (!workspaceOwns(targetUri)) return undefined;
+    return {
+      sourceUri: tree.uri,
+      targetUri,
+      languageId: "podman-quadlet",
+      contents: quadletFileTemplate(reference.target),
+      label: reference.target,
+    };
+  }
+  if (!reference.kind.startsWith("mkosi-")) return undefined;
+  const targetUri = mkosiReferenceTargetUri(tree, reference);
+  if (targetUri === undefined || !workspaceOwns(targetUri)) return undefined;
+  return {
+    sourceUri: tree.uri,
+    targetUri,
+    languageId: "mkosi",
+    contents: mkosiFileTemplate(reference.kind),
+    label: reference.target,
+  };
+}
+
+function quadletFileTemplate(target: string): string {
+  const extension = identityExtension(target).slice(1);
+  const section = extension.slice(0, 1).toUpperCase() + extension.slice(1);
+  return "[" + section + "]\n" + (extension === "network" ? "DisableDNS=false\n" : "");
+}
+
+function mkosiFileTemplate(kind: Reference["kind"]): string {
+  if (kind === "mkosi-preset") return "[Preset]\n";
+  if (kind === "mkosi-uki-profile") return "[UKIProfile]\n";
+  return "[Distribution]\n";
 }
 
 function renameReferenceAt(tree: ParsedDocument, offset: number): Reference | undefined {

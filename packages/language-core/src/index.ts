@@ -32,6 +32,7 @@ export {
   mkosiProfileName,
   mkosiReferenceKey,
   mkosiReferenceKindFor,
+  mkosiReferenceTargetUri,
   quadletReferenceExtensionsFor,
   relativeMkosiPath,
   relatedConfiguration,

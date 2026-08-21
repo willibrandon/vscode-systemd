@@ -8,6 +8,7 @@ import {
   mergeConfigurations,
   parse,
   mkosiIncludePath,
+  mkosiReferenceTargetUri,
   relativeMkosiPath,
   renderEffectiveConfiguration,
   resolveConfigurationDocuments,
@@ -526,9 +527,15 @@ describe("mkosi configuration references", () => {
     expect(
       resolveMkosiReferenceDocuments(main, mainReference, documents).map(({ uri }) => uri),
     ).toEqual([server.uri]);
+    expect(mkosiReferenceTargetUri(main, mainReference)).toBe(
+      "file:///workspace/mkosi.presets/server.conf",
+    );
     expect(
       resolveMkosiReferenceDocuments(server, serverReference, documents).map(({ uri }) => uri),
     ).toEqual([base.uri]);
+    expect(mkosiReferenceTargetUri(server, serverReference)).toBe(
+      "file:///workspace/mkosi.presets/base.conf",
+    );
     expect(analyzeWorkspaceReferences(main, documents)).toEqual([]);
     expect(analyzeWorkspaceReferences(server, documents)).toEqual([]);
 
@@ -558,6 +565,11 @@ describe("mkosi configuration references", () => {
     expect(analyzeWorkspaceReferences(missing, documents)).toEqual([
       expect.objectContaining({ code: "missing-mkosi-preset", severity: "error" }),
     ]);
+    const missingReference = extractReferences(missing)[0];
+    if (missingReference === undefined) throw new Error("Expected a missing preset reference.");
+    expect(mkosiReferenceTargetUri(missing, missingReference)).toBe(
+      "file:///workspace/mkosi.presets/unavailable.conf",
+    );
   });
 
   it("classifies comma-separated includes, profiles, subimages, and UKI profiles", () => {

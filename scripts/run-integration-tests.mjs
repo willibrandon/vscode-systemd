@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import process from "node:process";
@@ -26,6 +26,9 @@ if (process.platform === "linux" && process.env.SYSTEMD_TEST_XVFB !== "1") {
 const temporaryUserData = installedSmoke
   ? undefined
   : await mkdtemp(resolve(tmpdir(), "vscode-systemd-integration-"));
+const temporaryWorkspaceRoot = await mkdtemp(resolve(tmpdir(), "vscode-systemd-workspace-"));
+const temporaryWorkspace = resolve(temporaryWorkspaceRoot, "fixtures");
+await cp(resolve(root, "test/integration/fixtures"), temporaryWorkspace, { recursive: true });
 const userData = installedUserData ?? temporaryUserData;
 if (userData === undefined) throw new Error("Unable to create an integration-test profile.");
 
@@ -35,7 +38,7 @@ try {
     extensionDevelopmentPath: installedSmoke ? resolve(root, "test/package/host") : root,
     extensionTestsPath: resolve(root, "test/integration/suite/index.cjs"),
     launchArgs: [
-      resolve(root, "test/integration/fixtures"),
+      temporaryWorkspace,
       ...(installedSmoke ? [] : ["--disable-extensions"]),
       "--disable-workspace-trust",
       "--skip-release-notes",
@@ -51,4 +54,5 @@ try {
   if (temporaryUserData !== undefined) {
     await rm(temporaryUserData, { recursive: true, force: true });
   }
+  await rm(temporaryWorkspaceRoot, { recursive: true, force: true });
 }

@@ -125,6 +125,10 @@ export function registerCommonFeatures(
       "systemd.createDropIn",
       async (selected?: unknown): Promise<void> => createDropIn(explorer.dropInTargetFor(selected)),
     ),
+    vscode.commands.registerCommand(
+      "systemd.createReferencedFile",
+      async (candidate: unknown): Promise<void> => createReferencedFile(candidate),
+    ),
     vscode.commands.registerCommand("systemd.selectDialect", async (): Promise<void> => {
       const document = vscode.window.activeTextEditor?.document;
       if (document === undefined) {
@@ -186,6 +190,24 @@ export function registerCommonFeatures(
         if (virtualRefreshTimer !== undefined) clearTimeout(virtualRefreshTimer);
       },
     },
+    vscode.workspace.onDidCreateFiles(({ files }): void => {
+      if (files.some((uri) => indexer.isCandidate(uri))) scheduleRefresh();
+    }),
+    vscode.workspace.onDidSaveTextDocument((document): void => {
+      if (indexer.isCandidate(document.uri)) scheduleRefresh();
+    }),
+    vscode.workspace.onDidRenameFiles(({ files }): void => {
+      if (
+        files.some(
+          ({ oldUri, newUri }) => indexer.isCandidate(oldUri) || indexer.isCandidate(newUri),
+        )
+      ) {
+        scheduleRefresh();
+      }
+    }),
+    vscode.workspace.onDidDeleteFiles(({ files }): void => {
+      if (files.some((uri) => indexer.isCandidate(uri))) scheduleRefresh();
+    }),
     vscode.workspace.onDidChangeTextDocument(scheduleVirtualRefresh),
     vscode.workspace.onDidChangeConfiguration((event): void => {
       if (event.affectsConfiguration("systemd.dataChannel")) {
@@ -337,6 +359,94 @@ async function createDropIn(selected?: DropInTarget): Promise<void> {
   } catch (error) {
     await vscode.window.showErrorMessage("Unable to create drop-in: " + safeMessage(error));
   }
+}
+
+interface ReferencedFileCreation {
+  readonly sourceUri: string;
+  readonly targetUri: string;
+  readonly languageId: DialectId;
+  readonly contents: string;
+  readonly label: string;
+}
+
+async function createReferencedFile(candidate: unknown): Promise<void> {
+  const creation = referencedFileCreation(candidate);
+  if (creation === undefined) {
+    await vscode.window.showErrorMessage("The referenced-file action was not valid.");
+    return;
+  }
+  const source = vscode.Uri.parse(creation.sourceUri, true);
+  const target = vscode.Uri.parse(creation.targetUri, true);
+  const sourceFolder = vscode.workspace.getWorkspaceFolder(source);
+  const targetFolder = vscode.workspace.getWorkspaceFolder(target);
+  if (
+    sourceFolder === undefined ||
+    targetFolder?.uri.toString() !== sourceFolder.uri.toString() ||
+    source.scheme !== target.scheme ||
+    target.query !== "" ||
+    target.fragment !== ""
+  ) {
+    await vscode.window.showErrorMessage(
+      "Referenced files can only be created inside the source workspace folder.",
+    );
+    return;
+  }
+  try {
+    let exists = false;
+    try {
+      const metadata = await vscode.workspace.fs.stat(target);
+      if ((metadata.type & vscode.FileType.Directory) !== 0) {
+        throw new Error("The referenced target is an existing directory.");
+      }
+      exists = true;
+    } catch (error) {
+      if (!isFileNotFound(error)) throw error;
+    }
+    if (!exists) {
+      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(target, ".."));
+      await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(creation.contents));
+    }
+    const opened = await vscode.workspace.openTextDocument(target);
+    const document =
+      opened.languageId === creation.languageId
+        ? opened
+        : await vscode.languages.setTextDocumentLanguage(opened, creation.languageId);
+    await vscode.window.showTextDocument(document, { preview: false });
+  } catch (error) {
+    await vscode.window.showErrorMessage(
+      "Unable to create " + creation.label + ": " + safeMessage(error),
+    );
+  }
+}
+
+function referencedFileCreation(candidate: unknown): ReferencedFileCreation | undefined {
+  if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return undefined;
+  }
+  const value = candidate as Readonly<Record<string, unknown>>;
+  if (
+    typeof value["sourceUri"] !== "string" ||
+    typeof value["targetUri"] !== "string" ||
+    typeof value["languageId"] !== "string" ||
+    !systemdLanguageIds.includes(value["languageId"] as DialectId) ||
+    typeof value["contents"] !== "string" ||
+    value["contents"].length > 4096 ||
+    typeof value["label"] !== "string" ||
+    value["label"].length > 255
+  ) {
+    return undefined;
+  }
+  return {
+    sourceUri: value["sourceUri"],
+    targetUri: value["targetUri"],
+    languageId: value["languageId"] as DialectId,
+    contents: value["contents"],
+    label: value["label"],
+  };
+}
+
+function isFileNotFound(error: unknown): boolean {
+  return error instanceof vscode.FileSystemError && error.code === "FileNotFound";
 }
 
 function basename(path: string): string {
