@@ -8,6 +8,7 @@ import type { MessageConnection } from "vscode-jsonrpc/node";
 import { createConnection } from "vscode-languageserver/node";
 import type {
   CodeAction,
+  CodeLens,
   CompletionItem,
   Connection,
   Diagnostic,
@@ -16,6 +17,7 @@ import type {
   DocumentSymbol,
   FoldingRange,
   Hover,
+  InlayHint,
   InitializeResult,
   Location,
   SelectionRange,
@@ -36,7 +38,7 @@ const source = [
   "Documentation=file:/etc/demo.conf https://example.test/help",
   "",
   "[Service]",
-  "ExecStart=/bin/true",
+  "ExecStart=/bin/echo %n %x %% %i",
   "DynamicUser=",
   "Restar=yes",
   "",
@@ -74,9 +76,13 @@ describe("language server JSON-RPC contract", () => {
       capabilities: {},
       clientInfo: { name: "contract test" },
     });
-    expect(initialization.capabilities.completionProvider).toBeTruthy();
+    expect(initialization.capabilities.completionProvider).toMatchObject({
+      resolveProvider: true,
+    });
     expect(initialization.capabilities.hoverProvider).toBe(true);
     expect(initialization.capabilities.renameProvider).toEqual({ prepareProvider: true });
+    expect(initialization.capabilities.codeLensProvider).toEqual({ resolveProvider: false });
+    expect(initialization.capabilities.inlayHintProvider).toBe(true);
     await client.sendNotification("initialized", {});
     await client.sendNotification("systemd/index/documents", {
       replace: true,
@@ -113,6 +119,27 @@ describe("language server JSON-RPC contract", () => {
       position: { line: 9, character: 0 },
     });
     expect(completion.some((item) => item.label === "Restart")).toBe(true);
+    const restart = completion.find((item) => item.label === "Restart");
+    expect(restart?.documentation).toBeUndefined();
+    const resolvedRestart = await request<CompletionItem>(
+      client,
+      "completionItem/resolve",
+      restart,
+    );
+    expect(JSON.stringify(resolvedRestart.documentation)).toContain("Official documentation");
+    await expect(
+      request<CompletionItem>(client, "completionItem/resolve", { label: "unresolved" }),
+    ).resolves.toEqual({ label: "unresolved" });
+    const missingResolution = await request<CompletionItem>(client, "completionItem/resolve", {
+      label: "Missing",
+      data: {
+        kind: "directive",
+        dialect: "systemd-unit",
+        section: "Service",
+        name: "DefinitelyMissing",
+      },
+    });
+    expect(missingResolution.documentation).toBeUndefined();
 
     const sectionCompletion = await request<CompletionItem[]>(client, "textDocument/completion", {
       textDocument: { uri },
@@ -125,6 +152,12 @@ describe("language server JSON-RPC contract", () => {
       position: { line: 7, character: 12 },
     });
     expect(valueCompletion.map(({ label }) => label)).toEqual(["yes", "no"]);
+
+    const referenceCompletion = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri },
+      position: { line: 2, character: 6 },
+    });
+    expect(referenceCompletion.map(({ label }) => label)).toContain("other.service");
 
     const mkosiUri = "file:///workspace/mkosi.conf";
     await client.sendNotification("textDocument/didOpen", {
@@ -143,6 +176,12 @@ describe("language server JSON-RPC contract", () => {
       expect.arrayContaining(["fedora", "debian", "arch", "rhel-ubi"]),
     );
     expect(mkosiValues.some(({ label }) => label === "")).toBe(false);
+    const mkosiLenses = await request<CodeLens[]>(client, "textDocument/codeLens", {
+      textDocument: { uri: mkosiUri },
+    });
+    expect(mkosiLenses.map(({ command }) => command?.command)).toEqual([
+      "systemd.showEffectiveConfiguration",
+    ]);
     await client.sendNotification("textDocument/didClose", { textDocument: { uri: mkosiUri } });
 
     const hover = await request<Hover | null>(client, "textDocument/hover", {
@@ -222,6 +261,78 @@ describe("language server JSON-RPC contract", () => {
       textDocument: { uri },
     });
     expect(tokens.data.length).toBeGreaterThan(0);
+
+    const hints = await request<InlayHint[]>(client, "textDocument/inlayHint", {
+      textDocument: { uri },
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 9, character: 0 },
+      },
+    });
+    expect(hints.map(({ label }) => label)).toEqual([
+      " = full unit name",
+      " = literal %",
+      " = instance name",
+    ]);
+    expect(
+      await request<InlayHint[]>(client, "textDocument/inlayHint", {
+        textDocument: { uri: "file:///workspace/missing.service" },
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 1, character: 0 },
+        },
+      }),
+    ).toEqual([]);
+    expect(
+      await request<InlayHint[]>(client, "textDocument/inlayHint", {
+        textDocument: { uri },
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 1, character: 0 },
+        },
+      }),
+    ).toEqual([]);
+
+    const lenses = await request<CodeLens[]>(client, "textDocument/codeLens", {
+      textDocument: { uri },
+    });
+    expect(lenses.map(({ command }) => command?.command)).toEqual([
+      "systemd.showEffectiveConfiguration",
+      "systemd.showDependencyGraph",
+    ]);
+
+    const otherUri = "file:///workspace/other.service";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: otherUri,
+        languageId: "systemd-unit",
+        version: 1,
+        text: "[Unit]\nDescription=Other\n[Service]\nExecStart=/bin/true\n",
+      },
+    });
+    const otherLenses = await request<CodeLens[]>(client, "textDocument/codeLens", {
+      textDocument: { uri: otherUri },
+    });
+    expect(otherLenses[1]?.command?.title).toContain("1 incoming reference");
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: otherUri } });
+
+    const tmpfilesUri = "file:///workspace/tmpfiles.d/demo.conf";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: tmpfilesUri,
+        languageId: "systemd-tmpfiles",
+        version: 1,
+        text: "d /run/demo 0755 root root -\n",
+      },
+    });
+    expect(
+      await request<CodeLens[]>(client, "textDocument/codeLens", {
+        textDocument: { uri: tmpfilesUri },
+      }),
+    ).toEqual([]);
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: tmpfilesUri },
+    });
 
     const quickFixes = await request<CodeAction[]>(client, "textDocument/codeAction", {
       textDocument: { uri },
@@ -502,6 +613,40 @@ describe("language server JSON-RPC contract", () => {
       uri: "file:///workspace/masked.service",
     });
     expect(masked).toContain("Unit is masked by file:///etc/systemd/system/masked.service");
+  });
+
+  it("publishes and clears cross-file ordering-cycle diagnostics", async () => {
+    await client.sendNotification("systemd/index/documents", {
+      replace: true,
+      documents: [
+        {
+          uri: "file:///workspace/other.service",
+          languageId: "systemd-unit",
+          source: "[Unit]\nAfter=demo.service\n[Service]\nExecStart=/bin/true\n",
+          mtime: 1,
+        },
+      ],
+    });
+    const cycleDiagnostics = nextDiagnostics(client);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri,
+        languageId: "systemd-unit",
+        version: 1,
+        text: "[Unit]\nAfter=other.service\n[Service]\nExecStart=/bin/true\n",
+      },
+    });
+    const diagnostics = await cycleDiagnostics;
+    const cycle = diagnostics.find(({ code }) => code === "ordering-cycle");
+    expect(cycle?.message).toContain("demo.service, other.service");
+    expect(cycle?.relatedInformation?.[0]?.location.uri).toBe("file:///workspace/other.service");
+
+    const clearedDiagnostics = nextDiagnostics(client);
+    await client.sendNotification("textDocument/didChange", {
+      textDocument: { uri, version: 2 },
+      contentChanges: [{ text: "[Unit]\nDescription=No cycle\n[Service]\nExecStart=/bin/true\n" }],
+    });
+    expect((await clearedDiagnostics).map(({ code }) => code)).not.toContain("ordering-cycle");
   });
 });
 

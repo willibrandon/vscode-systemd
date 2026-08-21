@@ -68,7 +68,23 @@ exports.run = async function run() {
       const end = document.offsetAt(edit.range.end);
       return text.slice(0, start) + edit.newText + text.slice(end);
     }, document.getText());
-  assert.match(formatted, /^ExecStart=\/bin\/true$/mu);
+  assert.match(formatted, /^ExecStart=\/bin\/echo %n$/mu);
+
+  const inlayHints = await vscode.commands.executeCommand(
+    "vscode.executeInlayHintProvider",
+    uri,
+    new vscode.Range(0, 0, document.lineCount - 1, 1000),
+  );
+  assert.ok(inlayHints.some((hint) => hint.label === " = full unit name"));
+
+  const codeLenses = await vscode.commands.executeCommand(
+    "vscode.executeCodeLensProvider",
+    uri,
+    10,
+  );
+  assert.ok(
+    codeLenses.some((lens) => lens.command?.command === "systemd.showEffectiveConfiguration"),
+  );
 
   const quadlet = await vscode.workspace.openTextDocument(
     vscode.Uri.joinPath(root, "demo.container"),

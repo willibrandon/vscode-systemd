@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  findOrderingDependencyCycles,
   mergeConfigurations,
   parse,
   renderEffectiveConfiguration,
@@ -145,5 +146,53 @@ describe("systemd unit configuration resolution", () => {
       resolveConfigurationDocuments(ignored.uri, [base, active, ignored, unrelatedIgnored])
         .dropInUris,
     ).toEqual([ignored.uri]);
+  });
+});
+
+describe("systemd ordering dependency graph", () => {
+  it("finds multi-unit and self cycles with source provenance", () => {
+    const first = unit(
+      "file:///workspace/first.service",
+      "[Unit]\nAfter=second.service\n[Service]\nExecStart=/bin/true\n",
+    );
+    const second = unit(
+      "file:///workspace/second.service",
+      "[Unit]\nAfter=third.service\n[Service]\nExecStart=/bin/true\n",
+    );
+    const third = unit(
+      "file:///workspace/third.service",
+      "[Unit]\nAfter=first.service\n[Service]\nExecStart=/bin/true\n",
+    );
+    const self = unit(
+      "file:///workspace/self.service",
+      "[Unit]\nBefore=self.service\n[Service]\nExecStart=/bin/true\n",
+    );
+
+    const cycles = findOrderingDependencyCycles([third, self, first, second]);
+
+    expect(cycles.map(({ nodes }) => nodes)).toEqual([
+      ["first.service", "second.service", "third.service"],
+      ["self.service"],
+    ]);
+    expect(cycles[0]?.edges).toHaveLength(3);
+    expect(cycles[0]?.edges.map(({ sourceUri }) => sourceUri)).toEqual(
+      expect.arrayContaining([first.uri, second.uri, third.uri]),
+    );
+    const firstEdge = cycles[0]?.edges.find(({ sourceUri }) => sourceUri === first.uri);
+    expect(first.source.slice(firstEdge?.span.start, firstEdge?.span.end)).toBe("second.service");
+  });
+
+  it("uses effective reset semantics and ignores requirement-only loops", () => {
+    const first = unit(
+      "file:///workspace/reset-a.service",
+      "[Unit]\nAfter=reset-b.service\nRequires=reset-b.service\n",
+    );
+    const reset = unit("file:///workspace/reset-a.service.d/override.conf", "[Unit]\nAfter=\n");
+    const second = unit(
+      "file:///workspace/reset-b.service",
+      "[Unit]\nAfter=reset-a.service\nRequires=reset-a.service\n",
+    );
+
+    expect(findOrderingDependencyCycles([first, reset, second])).toEqual([]);
   });
 });

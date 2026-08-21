@@ -5,10 +5,12 @@ import {
   definitionsFor,
   detectDialect,
   extractReferences,
+  findOrderingDependencyCycles,
   format,
   mergeConfigurations,
   parse,
   resolveConfigurationDocuments,
+  resolveUnitConfigurations,
   renderEffectiveConfiguration,
   sectionsFor,
 } from "@systemd/language-core";
@@ -17,6 +19,7 @@ import type {
   CoreDiagnostic,
   DialectId,
   DirectiveDefinition,
+  OrderingDependencyCycle,
   ParsedDocument,
   SyntaxNode,
   TextSpan,
@@ -28,6 +31,7 @@ import {
   DiagnosticTag,
   DocumentHighlightKind,
   FoldingRangeKind,
+  InlayHintKind,
   MarkupKind,
   SemanticTokensBuilder,
   SymbolKind,
@@ -36,6 +40,7 @@ import {
 } from "vscode-languageserver";
 import type {
   CodeAction,
+  CodeLens,
   CompletionItem,
   Connection,
   Diagnostic,
@@ -44,6 +49,7 @@ import type {
   DocumentSymbol,
   FoldingRange,
   Hover,
+  InlayHint,
   InitializeParams,
   InitializeResult,
   Location,
@@ -112,6 +118,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   const settingsCache = new Map<string, Promise<ServerSettings>>();
   let fallbackSettings = defaultSettings;
   let supportsConfiguration = false;
+  let graphRevision = 0;
+  let cycleCacheRevision = -1;
+  let cycleCache: readonly OrderingDependencyCycle[] = [];
 
   const parsed = (document: TextDocument): ParsedDocument | undefined => {
     const dialect = dialectFor(document);
@@ -134,10 +143,13 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const diagnostics =
       tree === undefined || !settings.validation.enable
         ? []
-        : analyze(tree, {
-            maxProblems: settings.validation.maxProblems,
-            targetVersion: settings.targetVersion,
-          }).map((item) => toDiagnostic(document, item));
+        : [
+            ...analyze(tree, {
+              maxProblems: settings.validation.maxProblems,
+              targetVersion: settings.targetVersion,
+            }).map((item) => toDiagnostic(document, item)),
+            ...orderingCycleDiagnostics(document, tree, orderingCycles(), allParsed(), documents),
+          ].slice(0, settings.validation.maxProblems);
     void connection.sendDiagnostics({
       uri: document.uri,
       version: document.version,
@@ -167,13 +179,26 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     return [...result.values()];
   };
+  const invalidateGraph = (): void => {
+    graphRevision += 1;
+  };
+  const orderingCycles = (): readonly OrderingDependencyCycle[] => {
+    if (cycleCacheRevision !== graphRevision) {
+      cycleCache = findOrderingDependencyCycles(allParsed());
+      cycleCacheRevision = graphRevision;
+    }
+    return cycleCache;
+  };
 
   connection.onInitialize((params: InitializeParams): InitializeResult => {
     supportsConfiguration = params.capabilities.workspace?.configuration === true;
     return {
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
-        completionProvider: { triggerCharacters: ["[", "=", " ", ".", "/"] },
+        completionProvider: {
+          triggerCharacters: ["[", "=", " ", ".", "/"],
+          resolveProvider: true,
+        },
         hoverProvider: true,
         signatureHelpProvider: { triggerCharacters: ["=", " "] },
         documentSymbolProvider: true,
@@ -192,6 +217,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
           full: true,
         },
         codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
+        codeLensProvider: { resolveProvider: false },
+        inlayHintProvider: true,
       },
     };
   });
@@ -222,9 +249,21 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     const assignment = assignmentAt(tree, offset);
     if (assignment !== undefined && offset >= assignment.valueSpan.start) {
-      return valueCompletions(assignment.definition);
+      return valueCompletions(assignment, allParsed());
     }
     return definitionsFor(tree.dialect, sectionAt(tree, offset)).map(definitionCompletion);
+  });
+  connection.onCompletionResolve((item): CompletionItem => {
+    const data = completionData(item.data);
+    if (data === undefined) return item;
+    const definition = definitionFor(data.dialect, data.section, data.name);
+    return definition === undefined
+      ? item
+      : {
+          ...item,
+          detail: definition.name + "= · " + definition.valueKind,
+          documentation: { kind: MarkupKind.Markdown, value: directiveMarkdown(definition) },
+        };
   });
   connection.onHover((params): Hover | null => {
     const context = contextAt(documents, params.textDocument.uri, params.position, parsed);
@@ -406,6 +445,74 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     return builder.build();
   });
+  connection.languages.inlayHint.on((params): InlayHint[] => {
+    const document = documents.get(params.textDocument.uri);
+    const tree = document === undefined ? undefined : parsed(document);
+    if (document === undefined || tree === undefined) return [];
+    const rangeStart = document.offsetAt(params.range.start);
+    const rangeEnd = document.offsetAt(params.range.end);
+    const result: InlayHint[] = [];
+    for (const node of tree.nodes) {
+      if (
+        node.kind !== "assignment" ||
+        node.valueSpan.end < rangeStart ||
+        node.span.start > rangeEnd
+      )
+        continue;
+      for (const match of node.value.matchAll(/%(?<specifier>[%A-Za-z])/gu)) {
+        const specifier = match.groups?.["specifier"] ?? "";
+        const meaning = specifierMeaning(specifier);
+        if (meaning === undefined) continue;
+        const offset = node.valueSpan.start + match.index + 2;
+        result.push({
+          position: document.positionAt(offset),
+          label: " = " + meaning,
+          kind: InlayHintKind.Type,
+          paddingLeft: true,
+          tooltip: "systemd %" + specifier + " specifier",
+        });
+        if (result.length >= 100) return result;
+      }
+    }
+    return result;
+  });
+  connection.onCodeLens((params): CodeLens[] => {
+    const document = documents.get(params.textDocument.uri);
+    const tree = document === undefined ? undefined : parsed(document);
+    if (document === undefined || tree === undefined) return [];
+    const range = toRange(document, { start: 0, end: Math.min(1, tree.source.length) });
+    const result: CodeLens[] = [];
+    if (["systemd-unit", "systemd-config", "podman-quadlet", "mkosi"].includes(tree.dialect)) {
+      result.push({
+        range,
+        command: {
+          title: "Show effective configuration",
+          command: "systemd.showEffectiveConfiguration",
+          arguments: [tree.uri],
+        },
+      });
+    }
+    if (tree.dialect === "systemd-unit" || tree.dialect === "podman-quadlet") {
+      const identity = configurationIdentity(tree.uri);
+      const incoming = allParsed().reduce(
+        (count, candidate) =>
+          count + extractReferences(candidate).filter(({ target }) => target === identity).length,
+        0,
+      );
+      result.push({
+        range,
+        command: {
+          title:
+            String(incoming) +
+            (incoming === 1 ? " incoming reference" : " incoming references") +
+            " · Show dependency graph",
+          command: "systemd.showDependencyGraph",
+          arguments: [tree.uri],
+        },
+      });
+    }
+    return result;
+  });
   connection.onCodeAction((params): CodeAction[] => {
     const document = documents.get(params.textDocument.uri);
     const tree = document === undefined ? undefined : parsed(document);
@@ -494,6 +601,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   });
   connection.onRequest(workspaceSnapshotRequest, (): WorkspaceSnapshot => {
     const available = allParsed();
+    const unitResolutions = new Map(
+      resolveUnitConfigurations(available).map((resolution) => [resolution.identity, resolution]),
+    );
     const documents = available.map((tree) => ({
       uri: tree.uri,
       languageId: tree.dialect,
@@ -512,7 +622,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       const first = group[0];
       if (first === undefined) continue;
       const identity = configurationIdentity(first.uri);
-      const resolution = resolveConfigurationDocuments(identity, available);
+      const resolution =
+        unitResolutions.get(identity) ?? resolveConfigurationDocuments(identity, available);
       configurations.push({
         identity,
         languageId: first.dialect,
@@ -537,6 +648,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       for (const candidate of candidates) {
         indexed.set(candidate.uri, parse(candidate.source, candidate.languageId, candidate.uri));
       }
+      invalidateGraph();
+      for (const document of documents.all()) schedule(document, 0);
     },
   );
   connection.onNotification(refreshDiagnosticsNotification, ({ uri }): void => {
@@ -545,9 +658,16 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
   });
 
-  documents.onDidOpen(({ document }): void => schedule(document, 0));
-  documents.onDidChangeContent(({ document }): void => schedule(document));
+  documents.onDidOpen(({ document }): void => {
+    invalidateGraph();
+    schedule(document, 0);
+  });
+  documents.onDidChangeContent(({ document }): void => {
+    invalidateGraph();
+    schedule(document);
+  });
   documents.onDidClose(({ document }): void => {
+    invalidateGraph();
     const handle = pending.get(document.uri);
     if (handle !== undefined) timers.clearTimeout(handle);
     pending.delete(document.uri);
@@ -613,6 +733,55 @@ function toDiagnostic(document: TextDocument, diagnostic: CoreDiagnostic): Diagn
   };
 }
 
+function orderingCycleDiagnostics(
+  document: TextDocument,
+  tree: ParsedDocument,
+  cycles: readonly OrderingDependencyCycle[],
+  trees: readonly ParsedDocument[],
+  openDocuments: TextDocuments<TextDocument>,
+): Diagnostic[] {
+  const byUri = new Map(trees.map((candidate) => [candidate.uri, candidate]));
+  const result: Diagnostic[] = [];
+  const seen = new Set<string>();
+  for (const cycle of cycles) {
+    const message = "Ordering dependency cycle involving " + cycle.nodes.join(", ") + ".";
+    for (const edge of cycle.edges) {
+      if (edge.sourceUri !== tree.uri) continue;
+      const key = edge.sourceUri + ":" + String(edge.span.start) + ":" + message;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({
+        range: toRange(document, edge.span),
+        message,
+        severity: DiagnosticSeverity.Warning,
+        source: "systemd",
+        code: "ordering-cycle",
+        relatedInformation: cycle.edges
+          .filter((candidate) => candidate !== edge)
+          .map((candidate) => {
+            const candidateTree = byUri.get(candidate.sourceUri);
+            const candidateDocument =
+              openDocuments.get(candidate.sourceUri) ??
+              TextDocument.create(
+                candidate.sourceUri,
+                candidateTree?.dialect ?? "systemd-unit",
+                0,
+                candidateTree?.source ?? "",
+              );
+            return {
+              location: {
+                uri: candidate.sourceUri,
+                range: toRange(candidateDocument, candidate.span),
+              },
+              message: candidate.from + " is ordered before " + candidate.to + ".",
+            };
+          }),
+      });
+    }
+  }
+  return result;
+}
+
 function diagnosticSeverity(severity: CoreDiagnostic["severity"]): DiagnosticSeverity {
   switch (severity) {
     case "error":
@@ -676,26 +845,112 @@ function definitionCompletion(definition: DirectiveDefinition): CompletionItem {
     label: definition.name,
     kind: CompletionItemKind.Property,
     detail: definition.name + "= · " + definition.valueKind,
-    documentation: { kind: MarkupKind.Markdown, value: directiveMarkdown(definition) },
     insertText: definition.name + "=",
+    data: {
+      kind: "directive",
+      dialect: definition.dialect,
+      section: definition.section,
+      name: definition.name,
+    },
     ...(definition.deprecated ? { tags: [1] } : {}),
   };
 }
 
-function valueCompletions(definition: DirectiveDefinition | undefined): CompletionItem[] {
+function valueCompletions(
+  assignment: AssignmentNode,
+  documents: readonly ParsedDocument[],
+): CompletionItem[] {
+  const definition = assignment.definition;
   if (definition === undefined) return [];
   const values =
     definition.choices.length > 0
       ? definition.choices
       : definition.valueKind === "boolean"
         ? ["yes", "no"]
-        : [];
-  return values
-    .filter((value) => value !== "")
-    .map((value): CompletionItem => ({
-      label: value,
-      kind: CompletionItemKind.Value,
-    }));
+        : unitReferenceSettings.has(assignment.name)
+          ? documents
+              .map(({ uri }) => configurationIdentity(uri))
+              .filter((identity) => isUnitIdentity(identity))
+          : quadletReferenceSettings.has(assignment.name)
+            ? documents
+                .filter(({ dialect }) => dialect === "podman-quadlet")
+                .map(({ uri }) => configurationIdentity(uri))
+            : [];
+  const unique = values.filter(
+    (value, index, candidates) => value !== "" && candidates.indexOf(value) === index,
+  );
+  if (definition.choices.length === 0 && definition.valueKind !== "boolean") unique.sort();
+  return unique.map((value): CompletionItem => ({
+    label: value,
+    kind: CompletionItemKind.Value,
+    detail: definition.name + "= value",
+  }));
+}
+
+const unitReferenceSettings = new Set([
+  "After",
+  "Before",
+  "BindsTo",
+  "Conflicts",
+  "OnFailure",
+  "OnSuccess",
+  "PartOf",
+  "PropagatesReloadTo",
+  "PropagatesStopTo",
+  "ReloadPropagatedFrom",
+  "Requires",
+  "Requisite",
+  "Upholds",
+  "Wants",
+]);
+
+const quadletReferenceSettings = new Set([
+  "Artifact",
+  "Build",
+  "Image",
+  "ImageVolume",
+  "Network",
+  "Pod",
+  "Volume",
+]);
+
+interface CompletionData {
+  readonly kind: "directive";
+  readonly dialect: DialectId;
+  readonly section: string;
+  readonly name: string;
+}
+
+function completionData(value: unknown): CompletionData | undefined {
+  const candidate = object(value);
+  const dialect = candidate?.["dialect"];
+  return candidate?.["kind"] === "directive" &&
+    typeof dialect === "string" &&
+    languageIds.has(dialect as DialectId) &&
+    typeof candidate["section"] === "string" &&
+    typeof candidate["name"] === "string"
+    ? {
+        kind: "directive",
+        dialect: dialect as DialectId,
+        section: candidate["section"],
+        name: candidate["name"],
+      }
+    : undefined;
+}
+
+function specifierMeaning(specifier: string): string | undefined {
+  return {
+    "%": "literal %",
+    f: "unescaped instance filename",
+    i: "instance name",
+    I: "unescaped instance name",
+    j: "final name component",
+    J: "unescaped final name component",
+    n: "full unit name",
+    N: "unit name without suffix",
+    p: "unit name prefix",
+    P: "unescaped unit name prefix",
+  }[specifier];
 }
 
 function directiveMarkdown(definition: DirectiveDefinition): string {

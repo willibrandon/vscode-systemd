@@ -4,6 +4,7 @@ import type {
   EffectiveEntry,
   ParsedDocument,
   Reference,
+  TextSpan,
 } from "./types.js";
 
 const unitReferenceSettings = new Set([
@@ -67,6 +68,19 @@ export interface ConfigurationResolution {
   readonly baseUri?: string;
   readonly dropInUris: readonly string[];
   readonly masked: boolean;
+}
+
+export interface OrderingDependencyEdge {
+  readonly from: string;
+  readonly to: string;
+  readonly directive: "After" | "Before";
+  readonly sourceUri: string;
+  readonly span: TextSpan;
+}
+
+export interface OrderingDependencyCycle {
+  readonly nodes: readonly string[];
+  readonly edges: readonly OrderingDependencyEdge[];
 }
 
 export function resolveConfigurationDocuments(
@@ -154,6 +168,69 @@ export function configurationIdentity(uri: string): string {
 
 export function relatedConfiguration(left: string, right: string): boolean {
   return configurationIdentity(left) === configurationIdentity(right);
+}
+
+export function resolveUnitConfigurations(
+  documents: readonly ParsedDocument[],
+): readonly ConfigurationResolution[] {
+  const available = uniqueDocuments(documents);
+  const mainByIdentity = new Map<string, ParsedDocument[]>();
+  const dropInsByOwner = new Map<string, ParsedDocument[]>();
+  const identities = new Set<string>();
+  for (const document of available) {
+    const parts = configurationParts(document.uri);
+    if (parts.dropIn && parts.dropInOwner !== undefined) {
+      dropInsByOwner.set(parts.dropInOwner, [
+        ...(dropInsByOwner.get(parts.dropInOwner) ?? []),
+        document,
+      ]);
+      if (isUnitName(parts.identity)) identities.add(parts.identity);
+    } else if (isUnitName(parts.identity)) {
+      mainByIdentity.set(parts.identity, [...(mainByIdentity.get(parts.identity) ?? []), document]);
+      if (!parts.workingCopy) identities.add(parts.identity);
+    }
+  }
+  return [...identities].sort().map((identity) => {
+    const candidates = [
+      ...(mainByIdentity.get(identity) ?? []),
+      ...(mainByIdentity.get(templateName(identity)) ?? []),
+      ...dropInOwners(identity).flatMap((owner) => dropInsByOwner.get(owner) ?? []),
+    ];
+    return resolveConfigurationDocuments(identity, uniqueDocuments(candidates));
+  });
+}
+
+export function findOrderingDependencyCycles(
+  documents: readonly ParsedDocument[],
+): readonly OrderingDependencyCycle[] {
+  const byUri = new Map(documents.map((document) => [document.uri, document]));
+  const edges: OrderingDependencyEdge[] = [];
+  for (const resolution of resolveUnitConfigurations(documents)) {
+    const configuration = mergeConfigurations(resolution.documents);
+    for (const entry of configuration.entries) {
+      if (entry.name !== "After" && entry.name !== "Before") continue;
+      const document = byUri.get(entry.sourceUri);
+      if (document === undefined) continue;
+      for (const reference of extractReferences(document)) {
+        if (
+          reference.kind !== "unit" ||
+          reference.span.start < entry.span.start ||
+          reference.span.end > entry.span.end ||
+          reference.target.includes("%")
+        ) {
+          continue;
+        }
+        edges.push({
+          from: entry.name === "After" ? reference.target : resolution.identity,
+          to: entry.name === "After" ? resolution.identity : reference.target,
+          directive: entry.name,
+          sourceUri: entry.sourceUri,
+          span: reference.span,
+        });
+      }
+    }
+  }
+  return stronglyConnectedCycles(edges);
 }
 
 export function extractReferences(document: ParsedDocument): readonly Reference[] {
@@ -358,6 +435,63 @@ function normalizeUriPath(uri: string): string {
 
 function uniqueDocuments(documents: readonly ParsedDocument[]): readonly ParsedDocument[] {
   return [...new Map(documents.map((document) => [document.uri, document])).values()];
+}
+
+function stronglyConnectedCycles(
+  edges: readonly OrderingDependencyEdge[],
+): readonly OrderingDependencyCycle[] {
+  const forward = new Map<string, Set<string>>();
+  const reverse = new Map<string, Set<string>>();
+  for (const edge of edges) {
+    forward.set(edge.from, new Set([...(forward.get(edge.from) ?? []), edge.to]));
+    forward.set(edge.to, forward.get(edge.to) ?? new Set());
+    reverse.set(edge.to, new Set([...(reverse.get(edge.to) ?? []), edge.from]));
+    reverse.set(edge.from, reverse.get(edge.from) ?? new Set());
+  }
+  const visited = new Set<string>();
+  const order: string[] = [];
+  for (const node of forward.keys()) {
+    if (visited.has(node)) continue;
+    const stack: { node: string; expanded: boolean }[] = [{ node, expanded: false }];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (current === undefined) break;
+      if (current.expanded) {
+        order.push(current.node);
+        continue;
+      }
+      if (visited.has(current.node)) continue;
+      visited.add(current.node);
+      stack.push({ node: current.node, expanded: true });
+      for (const next of forward.get(current.node) ?? []) {
+        if (!visited.has(next)) stack.push({ node: next, expanded: false });
+      }
+    }
+  }
+  const assigned = new Set<string>();
+  const result: OrderingDependencyCycle[] = [];
+  for (const node of order.reverse()) {
+    if (assigned.has(node)) continue;
+    const component: string[] = [];
+    const stack = [node];
+    assigned.add(node);
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (current === undefined) break;
+      component.push(current);
+      for (const next of reverse.get(current) ?? []) {
+        if (assigned.has(next)) continue;
+        assigned.add(next);
+        stack.push(next);
+      }
+    }
+    const members = new Set(component);
+    const cycleEdges = edges.filter((edge) => members.has(edge.from) && members.has(edge.to));
+    if (component.length > 1 || cycleEdges.some((edge) => edge.from === edge.to)) {
+      result.push({ nodes: component.sort(), edges: cycleEdges });
+    }
+  }
+  return result.sort((left, right) => (left.nodes[0] ?? "").localeCompare(right.nodes[0] ?? ""));
 }
 
 function referenceKind(

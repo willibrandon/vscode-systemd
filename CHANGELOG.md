@@ -10,9 +10,12 @@ All notable changes to this project will be documented here. The format follows
 - Initial language support for the complete developer-facing systemd text-configuration surface, all
   current Podman Quadlet file types, and mkosi.
 - Generated language metadata pinned to systemd, Podman, and mkosi upstream revisions.
-- Desktop and browser language servers with validation, completion, hover, symbols, formatting,
-  semantic tokens, navigation, references, rename, and quick fixes.
-- Workspace indexing, effective drop-in configuration, dependency graphs, and drop-in creation.
+- Desktop and browser language servers with validation, completion resolution, hover, symbols,
+  formatting, semantic tokens, inlay hints, CodeLens, navigation, references, rename, and quick
+  fixes.
+- Workspace indexing, a static Systemd Explorer, exact unit/drop-in precedence, read-only virtual
+  effective configurations and dependency graphs, ordering-cycle diagnostics, and safe drop-in
+  creation.
 - Optional, workspace-trust-gated validation through `systemd-analyze verify`, the Quadlet
   generator's `-dryrun` mode, and `mkosi summary`.
 - TextMate grammars, snippets, tests, packaging checks, secret scanning, and release workflows for

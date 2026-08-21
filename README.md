@@ -13,7 +13,8 @@ into the desktop and browser extension.
 
 - TextMate highlighting before the extension activates.
 - Built-in, error-tolerant parsing and validation for 18 configuration dialects.
-- Section, directive, and value completion from 3,487 generated upstream records.
+- Section, directive, indexed-reference, and value completion from 3,487 generated upstream records,
+  with lazily resolved official documentation.
 - Hover documentation with direct links to official manuals.
 - Document and workspace symbols, folding, selection ranges, semantic tokens, and formatting.
 - Unknown-section, unknown-directive, value-type, required-section, version, and deprecation
@@ -21,7 +22,10 @@ into the desktop and browser extension.
 - Quick fixes for likely directive misspellings.
 - Go to definition, references, highlights, and safe textual rename for unit and resource
   references.
-- Workspace indexing, effective drop-in configuration, and dependency graphs.
+- Workspace indexing, a static Systemd Explorer, read-only effective-configuration documents, and
+  dependency graphs.
+- Exact unit/template/drop-in precedence, ordering-cycle diagnostics with related locations,
+  specifier inlay hints, and CodeLens entry points.
 - Unit drop-in creation.
 - Identical language analysis on desktop, Remote Development hosts, virtual workspaces, and
   vscode.dev-compatible browser hosts.

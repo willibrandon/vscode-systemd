@@ -14,12 +14,18 @@ export {
 export {
   configurationIdentity,
   extractReferences,
+  findOrderingDependencyCycles,
   mergeConfigurations,
   relatedConfiguration,
   renderEffectiveConfiguration,
   resolveConfigurationDocuments,
+  resolveUnitConfigurations,
 } from "./workspace.js";
-export type { ConfigurationResolution } from "./workspace.js";
+export type {
+  ConfigurationResolution,
+  OrderingDependencyCycle,
+  OrderingDependencyEdge,
+} from "./workspace.js";
 export type {
   AssignmentNode,
   CoreDiagnostic,

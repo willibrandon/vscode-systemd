@@ -168,6 +168,7 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
   }
 
   public sourceFor(element: unknown): vscode.Uri | undefined {
+    if (typeof element === "string") return vscode.Uri.parse(element);
     if (isUri(element)) return element;
     if (!isExplorerNode(element)) return undefined;
     switch (element.kind) {

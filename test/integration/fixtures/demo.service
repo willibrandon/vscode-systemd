@@ -3,5 +3,5 @@ Description=Integration fixture
 Wants=other.service
 
 [Service]
-ExecStart = /bin/true
+ExecStart = /bin/echo %n
 Restar=yes
