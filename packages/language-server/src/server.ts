@@ -13,10 +13,16 @@ import {
   isDefinitionAvailable,
   lineSettingsFor,
   mergeConfigurations,
+  mkosiImageName,
+  mkosiProfileName,
+  mkosiReferenceKey,
+  mkosiReferenceKindFor,
   parse,
   quadletReferenceExtensionsFor,
   recordFormatFor,
+  relativeMkosiPath,
   resolveConfigurationDocuments,
+  resolveMkosiReferenceDocuments,
   resolveUnitConfigurations,
   renderEffectiveConfiguration,
   sectionsFor,
@@ -511,7 +517,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     if (offset < context.node.valueSpan.start) return [];
     const reference = referenceAt(context.tree, offset);
     const target = reference?.target ?? wordAt(context.document, params.position);
-    return target === "" ? [] : documentLocations(target, allParsed(), documents, reference?.kind);
+    return target === ""
+      ? []
+      : documentLocations(target, allParsed(), documents, reference, context.tree);
   });
   connection.onReferences((params): Location[] => {
     const document = documents.get(params.textDocument.uri);
@@ -521,18 +529,27 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const selectedReference = referenceAt(tree, offset);
     const target = selectedReference?.target ?? wordAt(document, params.position);
     if (target === "") return [];
+    const selectedMkosiKey =
+      selectedReference?.kind.startsWith("mkosi-") === true
+        ? mkosiReferenceKey(tree, selectedReference)
+        : undefined;
     const result: Location[] = [];
     for (const tree of allParsed()) {
       const source =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
       for (const reference of extractReferences(tree)) {
         const exactIdentity =
-          selectedReference?.kind === "unit" ||
-          selectedReference?.kind === "quadlet" ||
-          selectedReference?.kind === "mkosi";
+          selectedReference?.kind === "unit" || selectedReference?.kind === "quadlet";
+        const sameMkosiReference =
+          selectedMkosiKey !== undefined &&
+          reference.kind === selectedReference?.kind &&
+          mkosiReferenceKey(tree, reference) === selectedMkosiKey;
         if (
-          reference.target === target ||
-          (!exactIdentity && basename(reference.target) === basename(target))
+          sameMkosiReference ||
+          (selectedMkosiKey === undefined && reference.target === target) ||
+          (selectedMkosiKey === undefined &&
+            !exactIdentity &&
+            basename(reference.target) === basename(target))
         ) {
           result.push({ uri: tree.uri, range: toRange(source, reference.span) });
         }
@@ -699,19 +716,27 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const changes: Record<string, TextEdit[]> = {};
     if (
       document === undefined ||
+      tree === undefined ||
       reference === undefined ||
       !workspaceOwns(document.uri) ||
       !validReferenceRename(reference, params.newName)
     ) {
       return { changes };
     }
+    const selectedKey = reference.kind.startsWith("mkosi-")
+      ? mkosiReferenceKey(tree, reference)
+      : undefined;
     for (const tree of allParsed()) {
       if (!workspaceOwns(tree.uri)) continue;
       const source =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
       const edits = extractReferences(tree)
         .filter(
-          (candidate) => candidate.kind === reference.kind && candidate.target === reference.target,
+          (candidate) =>
+            candidate.kind === reference.kind &&
+            (selectedKey === undefined
+              ? candidate.target === reference.target
+              : mkosiReferenceKey(tree, candidate) === selectedKey),
         )
         .map((candidate): TextEdit => ({
           range: toRange(source, candidate.span),
@@ -1246,6 +1271,11 @@ function referenceCompletionValues(
   assignment: AssignmentNode,
   documents: readonly ParsedDocument[],
 ): string[] {
+  const mkosiKind =
+    tree.dialect === "mkosi"
+      ? mkosiReferenceKindFor(assignment.section, assignment.name)
+      : undefined;
+  if (mkosiKind !== undefined) return mkosiCompletionValues(tree, mkosiKind, documents);
   const extensions =
     tree.dialect === "podman-quadlet"
       ? quadletReferenceExtensionsFor(tree.kind, assignment.section, assignment.name)
@@ -1261,6 +1291,42 @@ function referenceCompletionValues(
   return identities.filter((identity) =>
     extensions.some((extension) => identity.endsWith(extension)),
   );
+}
+
+function mkosiCompletionValues(
+  tree: ParsedDocument,
+  kind: Reference["kind"],
+  documents: readonly ParsedDocument[],
+): string[] {
+  const mkosi = documents.filter(({ dialect }) => dialect === "mkosi");
+  switch (kind) {
+    case "mkosi-profile":
+      return mkosi.map(({ uri }) => mkosiProfileName(uri)).filter(isString);
+    case "mkosi-image":
+      return mkosi.map(({ uri }) => mkosiImageName(uri)).filter(isString);
+    case "mkosi-include":
+      return [
+        "mkosi-addon",
+        "mkosi-initrd",
+        "mkosi-tools",
+        "mkosi-vm",
+        ...mkosi
+          .filter((candidate) => candidate.uri !== tree.uri && candidate.kind !== "mkosi:version")
+          .map((candidate) => relativeMkosiPath(tree.uri, candidate.uri))
+          .filter(isString),
+      ];
+    case "mkosi-uki-profile":
+      return mkosi
+        .filter(({ kind: candidateKind }) => candidateKind === "mkosi:uki-profile")
+        .map((candidate) => relativeMkosiPath(tree.uri, candidate.uri))
+        .filter(isString);
+    default:
+      return [];
+  }
+}
+
+function isString(value: string | undefined): value is string {
+  return value !== undefined;
 }
 
 const unitReferenceSettings = new Set([
@@ -1376,22 +1442,25 @@ function documentLocations(
   target: string,
   trees: readonly ParsedDocument[],
   documents: TextDocuments<TextDocument>,
-  kind?: Reference["kind"],
+  reference?: Reference,
+  sourceTree?: ParsedDocument,
 ): Location[] {
-  return trees
-    .filter((tree) =>
-      kind === "unit" || kind === "quadlet" || kind === "mkosi"
-        ? configurationIdentity(tree.uri) === target
-        : basename(tree.uri) === basename(target),
-    )
-    .map((tree): Location => {
-      const document =
-        documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
-      return {
-        uri: tree.uri,
-        range: toRange(document, { start: 0, end: Math.min(1, tree.source.length) }),
-      };
-    });
+  const selected =
+    reference !== undefined && sourceTree !== undefined && reference.kind.startsWith("mkosi-")
+      ? resolveMkosiReferenceDocuments(sourceTree, reference, trees)
+      : trees.filter((tree) =>
+          reference?.kind === "unit" || reference?.kind === "quadlet"
+            ? configurationIdentity(tree.uri) === target
+            : basename(tree.uri) === basename(target),
+        );
+  return selected.map((tree): Location => {
+    const document =
+      documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
+    return {
+      uri: tree.uri,
+      range: toRange(document, { start: 0, end: Math.min(1, tree.source.length) }),
+    };
+  });
 }
 
 function formatDocument(
@@ -1514,7 +1583,11 @@ function renameableReference(reference: Reference): boolean {
     case "quadlet":
       return isQuadletIdentity(reference.target);
     case "mkosi":
+    case "mkosi-profile":
+    case "mkosi-image":
       return isSafeMkosiIdentity(reference.target);
+    case "mkosi-include":
+    case "mkosi-uki-profile":
     case "documentation":
     case "path":
       return false;
@@ -1534,7 +1607,11 @@ function validReferenceRename(reference: Reference, candidate: string): boolean 
         identityExtension(candidate) === identityExtension(reference.target)
       );
     case "mkosi":
+    case "mkosi-profile":
+    case "mkosi-image":
       return isSafeMkosiIdentity(candidate);
+    case "mkosi-include":
+    case "mkosi-uki-profile":
     case "documentation":
     case "path":
       return false;
@@ -1554,10 +1631,11 @@ function isSafeMkosiIdentity(identity: string): boolean {
   return (
     identity.length > 0 &&
     identity.length <= 255 &&
-    !identity.startsWith("/") &&
+    identity !== "." &&
+    identity !== ".." &&
+    !identity.includes("/") &&
     !identity.includes("\\") &&
-    !identity.split("/").includes("..") &&
-    /^[A-Za-z0-9_@+.,:/=-]+$/u.test(identity)
+    /^[A-Za-z0-9_@+.=-]+$/u.test(identity)
   );
 }
 

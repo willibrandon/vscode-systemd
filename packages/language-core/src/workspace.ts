@@ -61,7 +61,15 @@ const quadletExtensions = [
   ".pod",
   ".volume",
 ] as const;
-const graphReferenceKinds = new Set<Reference["kind"]>(["unit", "quadlet", "mkosi"]);
+const graphReferenceKinds = new Set<Reference["kind"]>([
+  "unit",
+  "quadlet",
+  "mkosi",
+  "mkosi-include",
+  "mkosi-profile",
+  "mkosi-image",
+]);
+const mkosiBuiltInIncludes = new Set(["mkosi-addon", "mkosi-initrd", "mkosi-tools", "mkosi-vm"]);
 
 const unitTypes = new Set([
   "service",
@@ -300,7 +308,14 @@ export function extractReferences(document: ParsedDocument): readonly Reference[
         continue;
       }
     }
-    const kind = referenceKind(document, node);
+    if (document.dialect === "mkosi") {
+      const mkosi = extractMkosiReferences(document, node);
+      if (mkosi !== undefined) {
+        result.push(...mkosi);
+        continue;
+      }
+    }
+    const kind = referenceKind(node);
     if (kind === undefined) continue;
     for (const value of splitValues(node.value, node.valueSpan.start)) {
       result.push({
@@ -350,6 +365,108 @@ export function quadletReferenceExtensionsFor(
   return [];
 }
 
+export function mkosiReferenceKindFor(
+  section: string | null,
+  name: string,
+): Reference["kind"] | undefined {
+  if (section === "Include" && name === "Include") return "mkosi-include";
+  if (section === "Config" && name === "Profiles") return "mkosi-profile";
+  if (section === "Config" && name === "Dependencies") return "mkosi-image";
+  if (section === "Content" && name === "UnifiedKernelImageProfiles") {
+    return "mkosi-uki-profile";
+  }
+  return undefined;
+}
+
+export function mkosiProfileName(uri: string): string | undefined {
+  return mkosiCollectionName(uri, "mkosi.profiles");
+}
+
+export function mkosiImageName(uri: string): string | undefined {
+  return mkosiCollectionName(uri, "mkosi.images");
+}
+
+export function mkosiReferenceKey(document: ParsedDocument, reference: Reference): string {
+  const location = uriLocation(document.uri);
+  switch (reference.kind) {
+    case "mkosi-profile":
+      return (
+        "profile:" +
+        location.origin +
+        normalizeAbsolutePath(mkosiProfilesDirectory(location.path) + "/" + reference.target)
+      );
+    case "mkosi-image":
+      return (
+        "image:" +
+        location.origin +
+        normalizeAbsolutePath(mkosiImagesDirectory(location.path) + "/" + reference.target)
+      );
+    case "mkosi-include":
+      return mkosiBuiltInIncludes.has(reference.target)
+        ? "builtin:" + reference.target
+        : "include:" + (resolvedMkosiPath(document.uri, reference.target) ?? reference.target);
+    case "mkosi-uki-profile":
+      return (
+        "uki-profile:" + (resolvedMkosiPath(document.uri, reference.target) ?? reference.target)
+      );
+    default:
+      return reference.kind + ":" + reference.target;
+  }
+}
+
+export function resolveMkosiReferenceDocuments(
+  document: ParsedDocument,
+  reference: Reference,
+  documents: readonly ParsedDocument[],
+): readonly ParsedDocument[] {
+  const candidates = documents.filter(({ dialect }) => dialect === "mkosi");
+  switch (reference.kind) {
+    case "mkosi-profile":
+      return preferredMkosiEntry(
+        document.uri,
+        candidates.filter(({ uri }) => mkosiProfileName(uri) === reference.target),
+        "mkosi.profiles",
+        reference.target,
+      );
+    case "mkosi-image":
+      return preferredMkosiEntry(
+        document.uri,
+        candidates.filter(({ uri }) => mkosiImageName(uri) === reference.target),
+        "mkosi.images",
+        reference.target,
+      );
+    case "mkosi-include":
+      if (mkosiBuiltInIncludes.has(reference.target)) return [];
+      return documentsAtMkosiPath(document.uri, reference.target, candidates);
+    case "mkosi-uki-profile":
+      return documentsAtMkosiPath(document.uri, reference.target, candidates);
+    default:
+      return [];
+  }
+}
+
+export function relativeMkosiPath(sourceUri: string, targetUri: string): string | undefined {
+  const source = uriLocation(sourceUri);
+  const target = uriLocation(targetUri);
+  if (source.origin !== target.origin) return undefined;
+  const from = mkosiWorkingDirectory(source.path);
+  const fromParts = pathParts(from);
+  const targetParts = pathParts(target.path);
+  let shared = 0;
+  while (
+    shared < fromParts.length &&
+    shared < targetParts.length &&
+    fromParts[shared] === targetParts[shared]
+  ) {
+    shared += 1;
+  }
+  const relative = [
+    ...Array.from({ length: fromParts.length - shared }, () => ".."),
+    ...targetParts.slice(shared),
+  ].join("/");
+  return relative === "" ? "." : relative;
+}
+
 export function buildSemanticModel(document: ParsedDocument): SemanticModel {
   return {
     document,
@@ -364,6 +481,7 @@ export function analyzeWorkspaceReferences(
   document: ParsedDocument,
   documents: readonly ParsedDocument[],
 ): readonly CoreDiagnostic[] {
+  if (document.dialect === "mkosi") return analyzeMkosiReferences(document, documents);
   if (document.dialect !== "podman-quadlet") return [];
   const available = new Set(
     documents
@@ -760,19 +878,259 @@ function stronglyConnectedCycles(
   return result.sort((left, right) => (left.nodes[0] ?? "").localeCompare(right.nodes[0] ?? ""));
 }
 
-function referenceKind(
-  document: ParsedDocument,
-  node: AssignmentNode,
-): Reference["kind"] | undefined {
+function referenceKind(node: AssignmentNode): Reference["kind"] | undefined {
   if (unitReferenceSettings.has(node.name)) return "unit";
-  if (document.dialect === "mkosi" && ["Include", "Profiles", "Dependencies"].includes(node.name)) {
-    return "mkosi";
-  }
   if (node.name === "Documentation") return "documentation";
   if (node.definition?.valueKind === "path") {
     return "path";
   }
   return undefined;
+}
+
+function extractMkosiReferences(
+  document: ParsedDocument,
+  node: AssignmentNode,
+): readonly Reference[] | undefined {
+  const kind = mkosiReferenceKindFor(node.section, node.name);
+  if (kind === undefined) return undefined;
+  return splitMkosiValues(node.value, node.valueSpan.start).map(({ target, span }) => ({
+    sourceUri: document.uri,
+    target,
+    kind,
+    span,
+  }));
+}
+
+function splitMkosiValues(
+  value: string,
+  valueOffset: number,
+): readonly { readonly target: string; readonly span: TextSpan }[] {
+  const result: { target: string; span: TextSpan }[] = [];
+  for (const match of value.matchAll(/[^,\s]+/gu)) {
+    result.push({
+      target: match[0],
+      span: {
+        start: valueOffset + match.index,
+        end: valueOffset + match.index + match[0].length,
+      },
+    });
+  }
+  return result;
+}
+
+function analyzeMkosiReferences(
+  document: ParsedDocument,
+  documents: readonly ParsedDocument[],
+): readonly CoreDiagnostic[] {
+  const result: CoreDiagnostic[] = [];
+  for (const reference of extractReferences(document)) {
+    if (!reference.kind.startsWith("mkosi-")) continue;
+    if (reference.kind === "mkosi-include" && mkosiBuiltInIncludes.has(reference.target)) continue;
+    if (reference.target.includes("%")) continue;
+    if (resolveMkosiReferenceDocuments(document, reference, documents).length > 0) continue;
+    const details = mkosiReferenceDiagnostic(reference);
+    result.push({
+      code: details.code,
+      message: details.message,
+      severity: details.severity,
+      span: reference.span,
+      documentation: "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+    });
+  }
+  return result;
+}
+
+function mkosiReferenceDiagnostic(reference: Reference): {
+  readonly code: string;
+  readonly message: string;
+  readonly severity: CoreDiagnostic["severity"];
+} {
+  switch (reference.kind) {
+    case "mkosi-profile":
+      return {
+        code: "missing-mkosi-profile",
+        message: "Selected mkosi profile " + reference.target + " was not found in mkosi.profiles.",
+        severity: "warning",
+      };
+    case "mkosi-image":
+      return {
+        code: "missing-mkosi-image",
+        message: "Required mkosi subimage " + reference.target + " was not found in mkosi.images.",
+        severity: "error",
+      };
+    case "mkosi-uki-profile":
+      return {
+        code: "missing-mkosi-uki-profile",
+        message: "Referenced UKI profile " + reference.target + " was not found in the index.",
+        severity: "warning",
+      };
+    case "mkosi-include":
+    case "mkosi":
+    case "unit":
+    case "path":
+    case "quadlet":
+    case "documentation":
+      return {
+        code: "missing-mkosi-include",
+        message:
+          "Included mkosi configuration " + reference.target + " was not found in the index.",
+        severity: "warning",
+      };
+  }
+}
+
+function mkosiCollectionName(
+  uri: string,
+  collection: "mkosi.profiles" | "mkosi.images",
+): string | undefined {
+  const parts = pathParts(uriLocation(uri).path);
+  const index =
+    collection === "mkosi.images" ? parts.indexOf(collection) : parts.lastIndexOf(collection);
+  const entry = index < 0 ? undefined : parts[index + 1];
+  if (entry === undefined || entry === "") return undefined;
+  return entry.endsWith(".conf") ? entry.slice(0, -".conf".length) : entry;
+}
+
+function preferredMkosiEntry(
+  sourceUri: string,
+  documents: readonly ParsedDocument[],
+  collection: "mkosi.profiles" | "mkosi.images",
+  name: string,
+): readonly ParsedDocument[] {
+  const source = uriLocation(sourceUri);
+  const collectionPath =
+    collection === "mkosi.profiles"
+      ? mkosiProfilesDirectory(source.path)
+      : mkosiImagesDirectory(source.path);
+  const scoped = documents.filter((document) => {
+    const location = uriLocation(document.uri);
+    return location.origin === source.origin && location.path.startsWith(collectionPath + "/");
+  });
+  const entries = scoped.filter((document) => {
+    const parts = pathParts(uriLocation(document.uri).path);
+    const index =
+      collection === "mkosi.images" ? parts.indexOf(collection) : parts.lastIndexOf(collection);
+    if (index < 0) return false;
+    const remainder = parts.slice(index + 1);
+    return (
+      (remainder.length === 1 && [name, name + ".conf"].includes(remainder[0] ?? "")) ||
+      (remainder[0] === name && remainder[1] === "mkosi.conf")
+    );
+  });
+  const selected = entries.length > 0 ? entries : [...scoped].sort(compareDocumentUri).slice(0, 1);
+  return selected.sort(compareDocumentUri);
+}
+
+function documentsAtMkosiPath(
+  sourceUri: string,
+  target: string,
+  documents: readonly ParsedDocument[],
+): readonly ParsedDocument[] {
+  const resolved = resolvedMkosiPath(sourceUri, target);
+  if (resolved === undefined) return [];
+  const sourceOrigin = uriLocation(sourceUri).origin;
+  const exact = documents.filter((document) => {
+    const location = uriLocation(document.uri);
+    return location.origin === sourceOrigin && location.path === resolved;
+  });
+  if (exact.length > 0) return exact.sort(compareDocumentUri);
+  const nested = documents.filter((document) => {
+    const location = uriLocation(document.uri);
+    return location.origin === sourceOrigin && location.path.startsWith(resolved + "/");
+  });
+  const entry = nested.filter(({ uri }) => uriLocation(uri).path === resolved + "/mkosi.conf");
+  return (entry.length > 0 ? entry : nested.slice().sort(compareDocumentUri).slice(0, 1)).sort(
+    compareDocumentUri,
+  );
+}
+
+function compareDocumentUri(left: ParsedDocument, right: ParsedDocument): number {
+  return left.uri.localeCompare(right.uri);
+}
+
+interface UriLocation {
+  readonly origin: string;
+  readonly path: string;
+}
+
+function uriLocation(uri: string): UriLocation {
+  const parsed = /^([A-Za-z][A-Za-z0-9+.-]*:)\/\/([^/]*)(\/[^?#]*)/u.exec(uri);
+  if (parsed !== null) {
+    let path = parsed[3] ?? "/";
+    try {
+      path = decodeURIComponent(path);
+    } catch {
+      // Keep malformed escapes intact so workspace analysis remains total.
+    }
+    return {
+      origin: (parsed[1] ?? "") + "//" + (parsed[2] ?? ""),
+      path: normalizeAbsolutePath(path),
+    };
+  }
+  return { origin: "", path: normalizeAbsolutePath(normalizeUriPath(uri)) };
+}
+
+function resolvedMkosiPath(sourceUri: string, target: string): string | undefined {
+  if (target === "" || /^(?:[A-Za-z][A-Za-z0-9+.-]*:|%)/u.test(target)) return undefined;
+  if (target.startsWith("/")) return normalizeAbsolutePath(target);
+  const source = uriLocation(sourceUri);
+  return normalizeAbsolutePath(mkosiWorkingDirectory(source.path) + "/" + target);
+}
+
+function mkosiWorkingDirectory(path: string): string {
+  const parts = pathParts(path);
+  const name = parts.at(-1) ?? "";
+  const confd = parts.lastIndexOf("mkosi.conf.d");
+  if (confd >= 0 && confd === parts.length - 2) return "/" + parts.slice(0, confd).join("/");
+  for (const collection of ["mkosi.profiles", "mkosi.images"] as const) {
+    const index = parts.lastIndexOf(collection);
+    if (index >= 0 && index === parts.length - 2) return "/" + parts.slice(0, index).join("/");
+  }
+  if (["mkosi.local.conf", "mkosi.tools.conf", "mkosi.initrd.conf"].includes(name)) {
+    return "/" + parts.slice(0, -1).join("/");
+  }
+  return "/" + parts.slice(0, -1).join("/");
+}
+
+function mkosiProfilesDirectory(path: string): string {
+  const parts = pathParts(path);
+  const local = parts.indexOf("mkosi.local");
+  const base = local >= 0 ? "/" + parts.slice(0, local).join("/") : mkosiWorkingDirectory(path);
+  return normalizeAbsolutePath(base + "/mkosi.profiles");
+}
+
+function mkosiImagesDirectory(path: string): string {
+  return normalizeAbsolutePath(mkosiProjectRoot(path) + "/mkosi.images");
+}
+
+function mkosiProjectRoot(path: string): string {
+  const parts = pathParts(path);
+  const markers = [
+    "mkosi.conf.d",
+    "mkosi.images",
+    "mkosi.initrd.conf",
+    "mkosi.local",
+    "mkosi.profiles",
+    "mkosi.tools.conf",
+    "mkosi.uki-profiles",
+  ];
+  const indices = markers.map((marker) => parts.indexOf(marker)).filter((index) => index >= 0);
+  const first = indices.length === 0 ? parts.length - 1 : Math.min(...indices);
+  return "/" + parts.slice(0, first).join("/");
+}
+
+function normalizeAbsolutePath(path: string): string {
+  const result: string[] = [];
+  for (const part of path.replaceAll("\\", "/").split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") result.pop();
+    else result.push(part);
+  }
+  return "/" + result.join("/");
+}
+
+function pathParts(path: string): readonly string[] {
+  return normalizeAbsolutePath(path).split("/").filter(Boolean);
 }
 
 function extractQuadletReferences(

@@ -629,6 +629,112 @@ describe("language server JSON-RPC contract", () => {
     await client.sendNotification("textDocument/didClose", { textDocument: { uri: containerUri } });
   });
 
+  it("provides type-aware mkosi graph completion, navigation, and rename", async () => {
+    const mkosiUri = "file:///workspace/mkosi.conf";
+    const indexed = [
+      ["config/common.conf", "[Distribution]\nDistribution=fedora\n"],
+      ["mkosi.profiles/development.conf", "[Content]\nPackages=debugger\n"],
+      ["mkosi.profiles/release/mkosi.conf", "[Output]\nFormat=disk\n"],
+      ["mkosi.images/base.conf", "[Distribution]\nDistribution=fedora\n"],
+      ["mkosi.uki-profiles/secure.conf", "[UKIProfile]\nProfile=ID=secure\n"],
+    ] as const;
+    await client.sendNotification("systemd/index/documents", {
+      replace: false,
+      documents: indexed.map(([name, text], index) => ({
+        uri: "file:///workspace/" + name,
+        languageId: "mkosi",
+        source: text,
+        mtime: index + 1,
+        workspaceOwned: true,
+      })),
+    });
+    const emptySource = [
+      "[Include]",
+      "Include=",
+      "[Config]",
+      "Profiles=",
+      "Dependencies=",
+      "[Content]",
+      "UnifiedKernelImageProfiles=",
+      "",
+    ].join("\n");
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: mkosiUri,
+        languageId: "mkosi",
+        version: 1,
+        text: emptySource,
+      },
+    });
+
+    const profiles = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 3, character: 9 },
+    });
+    expect(profiles.map(({ label }) => label).sort()).toEqual(["development", "release"]);
+    const images = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 4, character: 13 },
+    });
+    expect(images.map(({ label }) => label)).toEqual(["base"]);
+    const includes = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 1, character: 8 },
+    });
+    expect(includes.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["config/common.conf", "mkosi-tools"]),
+    );
+    const ukiProfiles = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 6, character: "UnifiedKernelImageProfiles=".length },
+    });
+    expect(ukiProfiles.map(({ label }) => label)).toEqual(["mkosi.uki-profiles/secure.conf"]);
+
+    const source = emptySource
+      .replace("Include=", "Include=config/common.conf")
+      .replace("Profiles=", "Profiles=development,release")
+      .replace("Dependencies=", "Dependencies=base")
+      .replace(
+        "UnifiedKernelImageProfiles=",
+        "UnifiedKernelImageProfiles=mkosi.uki-profiles/secure.conf",
+      );
+    await client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: mkosiUri, version: 2 },
+      contentChanges: [{ text: source }],
+    });
+    expect(
+      await request<Location[]>(client, "textDocument/definition", {
+        textDocument: { uri: mkosiUri },
+        position: { line: 1, character: 15 },
+      }),
+    ).toEqual([expect.objectContaining({ uri: "file:///workspace/config/common.conf" })]);
+    expect(
+      await request<Location[]>(client, "textDocument/definition", {
+        textDocument: { uri: mkosiUri },
+        position: { line: 3, character: 14 },
+      }),
+    ).toEqual([
+      expect.objectContaining({ uri: "file:///workspace/mkosi.profiles/development.conf" }),
+    ]);
+    const prepare = await request<Range>(client, "textDocument/prepareRename", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 3, character: 14 },
+    });
+    expect(prepare).toEqual({
+      start: { line: 3, character: 9 },
+      end: { line: 3, character: 20 },
+    });
+    const rename = await request<WorkspaceEdit>(client, "textDocument/rename", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 3, character: 14 },
+      newName: "staging",
+    });
+    expect(rename.changes?.[mkosiUri]).toEqual([
+      expect.objectContaining({ range: prepare, newText: "staging" }),
+    ]);
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: mkosiUri } });
+  });
+
   it("completes systemd enum values from generated upstream metadata", async () => {
     const networkUri = "file:///workspace/example.network";
     const text = "[Link]\nActivationPolicy=\n\n[Network]\nIPMasquerade=both\n";

@@ -39,6 +39,9 @@ All notable changes to this project will be documented here. The format follows
 - Field-aware completion, hover, and signature help for line-oriented formats, including tmpfiles,
   sysusers, systemd-boot, Boot Loader Specification entries, DNSSEC trust anchors, table files,
   kernel-install, os-release, machine-info, locale, and virtual-console configuration.
+- Typed mkosi graph intelligence for comma-separated includes, profiles, subimage dependencies, and
+  UKI profiles, with compatible completion, exact navigation and rename, and unresolved-reference
+  diagnostics.
 
 ### Fixed
 

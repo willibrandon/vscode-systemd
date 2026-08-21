@@ -259,7 +259,16 @@ export interface TextEdit {
 export interface Reference {
   readonly sourceUri: string;
   readonly target: string;
-  readonly kind: "unit" | "path" | "quadlet" | "mkosi" | "documentation";
+  readonly kind:
+    | "unit"
+    | "path"
+    | "quadlet"
+    | "mkosi"
+    | "mkosi-include"
+    | "mkosi-profile"
+    | "mkosi-image"
+    | "mkosi-uki-profile"
+    | "documentation";
   readonly span: TextSpan;
 }
 

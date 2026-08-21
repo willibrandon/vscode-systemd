@@ -7,8 +7,10 @@ import {
   findOrderingDependencyCycles,
   mergeConfigurations,
   parse,
+  relativeMkosiPath,
   renderEffectiveConfiguration,
   resolveConfigurationDocuments,
+  resolveMkosiReferenceDocuments,
 } from "../src/index.js";
 import type { ParsedDocument } from "../src/index.js";
 
@@ -464,5 +466,102 @@ describe("Quadlet configuration resolution", () => {
         templateDropIn,
       ]).documents.map(({ uri }) => uri),
     ).toEqual([template.uri, templateDropIn.uri, instanceDropIn.uri]);
+  });
+});
+
+describe("mkosi configuration references", () => {
+  const mkosi = (uri: string, source = "[Config]\nMinimumVersion=26\n"): ParsedDocument =>
+    parse(source, "mkosi", uri);
+
+  it("classifies comma-separated includes, profiles, subimages, and UKI profiles", () => {
+    const source = [
+      "[Include]",
+      "Include=config/common.conf, mkosi-tools",
+      "[Config]",
+      "Profiles=development,release",
+      "Dependencies=base tools",
+      "[Content]",
+      "UnifiedKernelImageProfiles=mkosi.uki-profiles/secure.conf",
+      "",
+    ].join("\n");
+    const main = mkosi("file:///workspace/mkosi.conf", source);
+    const common = mkosi("file:///workspace/config/common.conf");
+    const development = mkosi("file:///workspace/mkosi.profiles/development.conf");
+    const release = mkosi("file:///workspace/mkosi.profiles/release/mkosi.conf");
+    const base = mkosi("file:///workspace/mkosi.images/base.conf");
+    const tools = mkosi("file:///workspace/mkosi.images/tools/mkosi.conf");
+    const secure = mkosi(
+      "file:///workspace/mkosi.uki-profiles/secure.conf",
+      "[UKIProfile]\nProfile=ID=secure\n",
+    );
+    const documents = [main, common, development, release, base, tools, secure];
+    const references = extractReferences(main);
+
+    expect(references.map(({ kind, target }) => ({ kind, target }))).toEqual([
+      { kind: "mkosi-include", target: "config/common.conf" },
+      { kind: "mkosi-include", target: "mkosi-tools" },
+      { kind: "mkosi-profile", target: "development" },
+      { kind: "mkosi-profile", target: "release" },
+      { kind: "mkosi-image", target: "base" },
+      { kind: "mkosi-image", target: "tools" },
+      { kind: "mkosi-uki-profile", target: "mkosi.uki-profiles/secure.conf" },
+    ]);
+    for (const reference of references) {
+      expect(source.slice(reference.span.start, reference.span.end)).toBe(reference.target);
+    }
+    expect(
+      references.map((reference) =>
+        resolveMkosiReferenceDocuments(main, reference, documents).map(({ uri }) => uri),
+      ),
+    ).toEqual([
+      [common.uri],
+      [],
+      [development.uri],
+      [release.uri],
+      [base.uri],
+      [tools.uri],
+      [secure.uri],
+    ]);
+    expect(analyzeWorkspaceReferences(main, documents)).toEqual([]);
+    expect(relativeMkosiPath(main.uri, secure.uri)).toBe("mkosi.uki-profiles/secure.conf");
+  });
+
+  it("resolves profiles within a subimage but dependencies from the project image directory", () => {
+    const application = mkosi(
+      "file:///workspace/mkosi.images/application/mkosi.conf",
+      "[Config]\nProfiles=debug\nDependencies=base\n",
+    );
+    const rootProfile = mkosi("file:///workspace/mkosi.profiles/debug.conf");
+    const imageProfile = mkosi(
+      "file:///workspace/mkosi.images/application/mkosi.profiles/debug.conf",
+    );
+    const base = mkosi("file:///workspace/mkosi.images/base.conf");
+    const references = extractReferences(application);
+
+    expect(
+      references.map((reference) =>
+        resolveMkosiReferenceDocuments(application, reference, [
+          application,
+          rootProfile,
+          imageProfile,
+          base,
+        ]).map(({ uri }) => uri),
+      ),
+    ).toEqual([[imageProfile.uri], [base.uri]]);
+  });
+
+  it("diagnoses missing dependencies while keeping optional or incompletely indexed paths conservative", () => {
+    const document = mkosi(
+      "file:///workspace/mkosi.conf",
+      "[Include]\nInclude=config/missing.conf\n[Config]\nProfiles=missing\nDependencies=missing\n[Content]\nUnifiedKernelImageProfiles=missing.conf\n",
+    );
+    expect(analyzeWorkspaceReferences(document, [document])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "missing-mkosi-include", severity: "warning" }),
+        expect.objectContaining({ code: "missing-mkosi-profile", severity: "warning" }),
+        expect.objectContaining({ code: "missing-mkosi-image", severity: "error" }),
+        expect.objectContaining({ code: "missing-mkosi-uki-profile", severity: "warning" }),
+      ]),
+    );
   });
 });

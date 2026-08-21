@@ -22,10 +22,16 @@ export {
   extractReferences,
   findOrderingDependencyCycles,
   mergeConfigurations,
+  mkosiImageName,
+  mkosiProfileName,
+  mkosiReferenceKey,
+  mkosiReferenceKindFor,
   quadletReferenceExtensionsFor,
+  relativeMkosiPath,
   relatedConfiguration,
   renderEffectiveConfiguration,
   resolveConfigurationDocuments,
+  resolveMkosiReferenceDocuments,
   resolveUnitConfigurations,
 } from "./workspace.js";
 export type {
