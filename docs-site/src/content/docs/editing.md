@@ -18,7 +18,9 @@ folding, selection ranges, semantic tokens, and specifier inlay hints use the pa
 rather than text-only guesses.
 
 The bundled registry is generated from pinned systemd, Podman, and mkosi source revisions. Normal
-language help does not require a network request or a host executable.
+language help does not require a network request or a host executable. Its parser is additionally
+checked against successful fixtures from those same pinned upstream trees, including mkosi's
+indented multiline values and conditional sections.
 
 ## File skeletons
 

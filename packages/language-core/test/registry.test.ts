@@ -72,6 +72,10 @@ describe("registry queries", () => {
     expect(definitionFor("systemd-unit", "Install", "ExecStart")).toBeUndefined();
     expect(definitionFor("systemd-config", "Journal", "SystemMaxUse")?.valueKind).toBe("size");
     expect(definitionFor("systemd-config", "Resolve", "DNSSEC")?.valueKind).toBe("string");
+    expect(definitionFor("mkosi", "Match", "Distribution")?.choices).toContain("fedora");
+    expect(definitionFor("mkosi", "TriggerMatch", "PathExists")).toBeDefined();
+    expect(definitionFor("mkosi", "Assert", "SystemdVersion")).toBeDefined();
+    expect(definitionFor("mkosi", "TriggerAssert", "Image")).toBeDefined();
     expect(definitionFor("systemd-unit", "Service", "Type")?.choices).toEqual([
       "simple",
       "exec",

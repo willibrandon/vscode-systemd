@@ -10,7 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 5;
+const adapterVersion = 6;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -726,13 +726,14 @@ async function extractMkosi(source) {
         setting.summary ??
         (setting.help === undefined ? undefined : setting.help.replace(/\.$/u, "") + "."),
       choices: setting.choices,
-      exclusiveChoices: setting.choices.length > 0,
+      exclusiveChoices: setting.exclusiveChoices ?? setting.choices.length > 0,
     });
   }
 }
 
 function mkosiSettings(text, enumChoices = new Map()) {
   const result = [];
+  const matchSections = ["Match", "TriggerMatch", "Assert", "TriggerAssert"];
   let cursor = 0;
   while ((cursor = text.indexOf("ConfigSetting(", cursor)) >= 0) {
     const block = balancedCall(text, cursor + "ConfigSetting".length);
@@ -751,26 +752,53 @@ function mkosiSettings(text, enumChoices = new Map()) {
     const parser = /\bparse=([A-Za-z0-9_]+)/u.exec(block.text)?.[1] ?? "";
     const help = /\bhelp="([^"]+)"/su.exec(block.text)?.[1];
     const choices = configChoices(block.text, enumChoices);
-    result.push({
+    const setting = {
       section,
       name,
       parser,
       help,
       choices,
-    });
+    };
+    result.push(setting);
+    if (/\bmatch\s*=/u.test(block.text)) {
+      addMkosiMatchSettings(result, matchSections, setting);
+    }
     const aliases = /\bcompat_names=\(([^)]*)\)/su.exec(block.text)?.[1] ?? "";
     for (const alias of aliases.matchAll(/"([^"]+)"/gu)) {
-      result.push({
+      const compatibilitySetting = {
         section,
         name: alias[1],
         parser,
         deprecated: true,
         summary: "Compatibility alias for " + name + ".",
         choices,
-      });
+      };
+      result.push(compatibilitySetting);
+      if (/\bmatch\s*=/u.test(block.text)) {
+        addMkosiMatchSettings(result, matchSections, compatibilitySetting);
+      }
     }
   }
+  for (const match of text.matchAll(/\bMatch\(\s*name="([^"]+)"/gu)) {
+    addMkosiMatchSettings(result, matchSections, {
+      name: match[1],
+      parser: "",
+      choices: [],
+    });
+  }
   return result;
+}
+
+function addMkosiMatchSettings(result, sections, setting) {
+  for (const section of sections) {
+    result.push({
+      ...setting,
+      section,
+      parser: "",
+      summary: "Match or assert against " + setting.name + ".",
+      exclusiveChoices: false,
+    });
+  }
 }
 
 async function extractPythonStringEnums(directory) {

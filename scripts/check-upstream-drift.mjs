@@ -16,7 +16,7 @@ const sources = {
 };
 const failures = [];
 
-if (lock.schemaVersion !== 1 || lock.adapterVersion !== 5) {
+if (lock.schemaVersion !== 1 || lock.adapterVersion !== 6) {
   failures.push("the upstream lock schema or adapter version is unsupported");
 }
 

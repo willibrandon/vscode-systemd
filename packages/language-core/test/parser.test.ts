@@ -81,6 +81,37 @@ describe("lossless parsers", () => {
     });
   });
 
+  it("parses mkosi's indented multiline values and inline comments", () => {
+    const source = [
+      "[Content]",
+      "Packages= # reset and append",
+      "    systemd # required",
+      "",
+      "    bash",
+      "KernelCommandLine=",
+      "    enforcing=0",
+      "    systemd.log_target=console",
+      "Format=directory # inline comment",
+      "",
+    ].join("\n");
+    const document = parse(source, "mkosi", "file:///workspace/mkosi.conf");
+
+    expect(document.diagnostics).toEqual([]);
+    expect(document.nodes.filter((node) => node.kind === "assignment")).toMatchObject([
+      {
+        name: "Packages",
+        value: "systemd\nbash",
+        physicalLines: [1, 2, 3, 4],
+      },
+      {
+        name: "KernelCommandLine",
+        value: "enforcing=0\nsystemd.log_target=console",
+        physicalLines: [5, 6, 7],
+      },
+      { name: "Format", value: "directory", physicalLines: [8] },
+    ]);
+  });
+
   it("parses hwdb properties, simple assignments, templates, and records", () => {
     const hwdb = parse("usb:v0001*\n ID_BAD\n ID_MODEL = Demo\n", "systemd-hwdb");
     expect(hwdb.diagnostics).toHaveLength(1);

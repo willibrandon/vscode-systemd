@@ -116,7 +116,7 @@ function parseIni(
     if (first === undefined) continue;
     const logical = [first];
     let text = first.text;
-    let continuing = hasContinuation(text);
+    let continuing = dialect !== "mkosi" && hasContinuation(text);
     while (continuing && index + 1 < physical.length) {
       text = text.replace(/\\\s*$/u, "");
       index += 1;
@@ -126,6 +126,14 @@ function parseIni(
       if (/^\s*[#;]/u.test(next.text)) continue;
       text += next.text.trimStart();
       continuing = hasContinuation(next.text);
+    }
+    if (dialect === "mkosi" && isMkosiAssignment(text)) {
+      while (index + 1 < physical.length && continuesMkosiValue(physical, index + 1)) {
+        index += 1;
+        const next = physical[index];
+        if (next !== undefined) logical.push(next);
+      }
+      text = mkosiLogicalText(logical);
     }
     const raw = logical.map((line) => line.text).join("\n");
     const span = {
@@ -212,6 +220,36 @@ function parseIni(
     nodes.push(node);
   }
   return nodes;
+}
+
+function isMkosiAssignment(text: string): boolean {
+  const trimmed = stripMkosiComment(text).trim();
+  return !trimmed.startsWith("[") && !trimmed.startsWith("#") && trimmed.includes("=");
+}
+
+function continuesMkosiValue(physical: readonly PhysicalLine[], start: number): boolean {
+  for (let index = start; index < physical.length; index += 1) {
+    const text = physical[index]?.text ?? "";
+    const semantic = stripMkosiComment(text);
+    if (semantic.trim() === "") continue;
+    return /^\s/u.test(text);
+  }
+  return false;
+}
+
+function mkosiLogicalText(logical: readonly PhysicalLine[]): string {
+  return logical
+    .map((line, index) => {
+      const text = stripMkosiComment(line.text);
+      return index === 0 ? text : text.trim();
+    })
+    .filter((line, index) => index === 0 || line !== "")
+    .join("\n");
+}
+
+function stripMkosiComment(text: string): string {
+  const comment = text.indexOf("#");
+  return comment < 0 ? text : text.slice(0, comment);
 }
 
 function parseRecords(

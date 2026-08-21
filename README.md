@@ -125,6 +125,10 @@ currently pins:
 The generated registry contains independently implemented metadata and links to official manuals;
 upstream source trees are not distributed in the extension.
 
+CI also parses a pinned, successful corpus from each upstream project's own tests and bundled
+configurations. This covers all author-configurable unit families, representative networkd files,
+every current Quadlet type, Quadlet continuation syntax, and mkosi's real multiline configurations.
+
 ## Development
 
 Requires Node.js 24 and the npm version pinned by `packageManager`.
@@ -142,6 +146,7 @@ Useful focused commands:
 
 ```sh
 npm run test:core
+npm run check:upstream:corpus
 npm run typecheck
 npm run build
 npm run package

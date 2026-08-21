@@ -185,6 +185,12 @@ jobs:
           SYSTEMD_SOURCE: ${{ github.workspace }}/.systemd-upstream
           PODMAN_SOURCE: ${{ github.workspace }}/.podman-upstream
           MKOSI_SOURCE: ${{ github.workspace }}/.mkosi-upstream
+      - name: Parse pinned upstream configuration fixtures
+        run: npm run check:upstream:corpus
+        env:
+          SYSTEMD_SOURCE: ${{ github.workspace }}/.systemd-upstream
+          PODMAN_SOURCE: ${{ github.workspace }}/.podman-upstream
+          MKOSI_SOURCE: ${{ github.workspace }}/.mkosi-upstream
 
   insiders:
     name: VS Code Insiders early warning

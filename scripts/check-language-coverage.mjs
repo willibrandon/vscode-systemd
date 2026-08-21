@@ -77,8 +77,8 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
     failures.push(name + " does not have a pinned 40-character Git revision");
   }
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 5) {
-  failures.push("upstream lock must use schema version 1 and adapter version 5");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 6) {
+  failures.push("upstream lock must use schema version 1 and adapter version 6");
 }
 for (const name of ["systemd", "podman", "mkosi"]) {
   const source = upstreamLock.sources?.[name];
@@ -120,6 +120,17 @@ for (const [section, name, expected] of [
   );
   if (!definition?.choices?.includes(expected)) {
     failures.push("mkosi enum choices are missing for [" + section + "] " + name + "=");
+  }
+}
+for (const section of ["Match", "TriggerMatch", "Assert", "TriggerAssert"]) {
+  for (const name of ["Distribution", "PathExists", "SystemdVersion", "Image"]) {
+    const definition = registry.directives.find(
+      (directive) =>
+        directive.dialect === "mkosi" && directive.section === section && directive.name === name,
+    );
+    if (definition === undefined) {
+      failures.push("mkosi conditional metadata is missing [" + section + "] " + name + "=");
+    }
   }
 }
 for (const [dialect, section, name, choices] of [

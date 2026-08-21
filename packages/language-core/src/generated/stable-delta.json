@@ -7,8 +7,10 @@
     "mkosi": "ebd488899176524f08c3767cdea3224db0016c34"
   },
   "remove": [
+    "mkosi\u0000Assert\u0000Bootloader",
     "mkosi\u0000Build\u0000ForeignUIDRange",
     "mkosi\u0000Build\u0000MakeScriptsExecutable",
+    "mkosi\u0000Match\u0000Bootloader",
     "mkosi\u0000Output\u0000ElTorito",
     "mkosi\u0000Output\u0000ElToritoPublisher",
     "mkosi\u0000Output\u0000ElToritoSystem",
@@ -17,6 +19,8 @@
     "mkosi\u0000Output\u0000OciLabels",
     "mkosi\u0000Output\u0000OutputSize",
     "mkosi\u0000Runtime\u0000DiskType",
+    "mkosi\u0000TriggerAssert\u0000Bootloader",
+    "mkosi\u0000TriggerMatch\u0000Bootloader",
     "mkosi\u0000Validation\u0000SignInitrdPCRs",
     "podman-quadlet\u0000Container\u0000Umask",
     "systemd-config\u0000*\u0000inhibit",

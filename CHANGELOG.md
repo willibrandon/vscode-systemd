@@ -30,6 +30,8 @@ All notable changes to this project will be documented here. The format follows
   isolated environment and private path remapping.
 - Semantically validated file-skeleton snippets for every author-configurable unit type, all current
   Quadlet types, major systemd network and configuration families, and common mkosi image formats.
+- Pinned-corpus conformance against successful configuration fixtures maintained by systemd, Podman,
+  and mkosi themselves.
 
 ### Fixed
 
@@ -55,5 +57,7 @@ All notable changes to this project will be documented here. The format follows
   islands scoped inside values, and explicitly avoids shell-language injection into command values.
 - The Systemd Explorer now groups templates with their instances and exposes source precedence,
   masking, candidate, drop-in, and reference details in configuration hover text.
+- mkosi indented multiline values, inline comments, and conditional Match, TriggerMatch, Assert, and
+  TriggerAssert sections now parse and validate according to mkosi's own configuration parser.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main
