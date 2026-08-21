@@ -126,12 +126,12 @@ try {
           context + " dialog lacks comfortable viewport margins",
         );
         assert(
-          measurements.dialog.right - measurements.dialog.left <= 640 + 1,
+          measurements.dialog.right - measurements.dialog.left <= 576 + 1,
           context + " dialog is wider than the documented maximum",
         );
         assert(
           measurements.dialog.bottom - measurements.dialog.top <=
-            Math.min(viewport.height * 0.6, 480) + 1,
+            Math.min(viewport.height * 0.5, 384) + 1,
           context + " dialog is taller than the documented maximum",
         );
         assert(
