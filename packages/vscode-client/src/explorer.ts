@@ -5,6 +5,7 @@ import type {
   WorkspaceSnapshot,
   WorkspaceSnapshotConfiguration,
 } from "@systemd/language-server/protocol";
+import { collectConfigurations, configurationTooltip } from "./explorer-model.js";
 
 const viewId = "systemd.explorer";
 
@@ -103,7 +104,14 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
       case "category":
         return categoryItem(element);
       case "configuration":
-        return configurationItem(element.configuration);
+        return configurationItem(
+          element.configuration,
+          configurationTooltip(
+            element.configuration,
+            this.referencesFor(element.configuration).length,
+            this.incomingFor(element.configuration).length,
+          ),
+        );
       case "group":
         return groupItem(element);
       case "action":
@@ -119,10 +127,25 @@ class SystemdExplorerProvider implements vscode.TreeDataProvider<ExplorerNode>, 
     if (element === undefined) return this.categories();
     switch (element.kind) {
       case "category":
-        return element.configurations.map((configuration) => ({
-          kind: "configuration",
-          configuration,
-        }));
+        return collectConfigurations(element.configurations).map((collection) => {
+          const children: ConfigurationNode[] = collection.configurations.map((configuration) => ({
+            kind: "configuration",
+            configuration,
+          }));
+          return collection.template
+            ? {
+                kind: "group",
+                label: collection.label + " template",
+                icon: "symbol-array",
+                children,
+              }
+            : (children[0] ?? {
+                kind: "group",
+                label: collection.label,
+                icon: "files",
+                children: [],
+              });
+        });
       case "configuration":
         return this.configurationChildren(element.configuration);
       case "group":
@@ -339,13 +362,16 @@ function categoryItem(node: CategoryNode): vscode.TreeItem {
   return item;
 }
 
-function configurationItem(configuration: WorkspaceSnapshotConfiguration): vscode.TreeItem {
+function configurationItem(
+  configuration: WorkspaceSnapshotConfiguration,
+  tooltip: string,
+): vscode.TreeItem {
   const item = new vscode.TreeItem(
     configuration.identity,
     vscode.TreeItemCollapsibleState.Collapsed,
   );
   item.description = configuration.masked ? "masked" : basename(configuration.sourceUri);
-  item.tooltip = configuration.sourceUri;
+  item.tooltip = tooltip;
   item.contextValue =
     configuration.languageId === "systemd-unit" ? "systemdUnit" : "systemdConfiguration";
   item.resourceUri = vscode.Uri.parse(configuration.sourceUri);
