@@ -1,19 +1,17 @@
 ---
 title: Getting started
-description: Build and install the test version.
+description: Install the extension and open a systemd file.
 ---
 
-Version 0.1.0 has not been released. Build it with Node.js 24:
+Search for **systemd Unit Files** in the Extensions view or run:
 
 ```sh
-git clone https://github.com/willibrandon/vscode-systemd.git
-cd vscode-systemd
-npm ci
-npm run package
-code --install-extension dist/systemd-0.1.0.vsix
+code --install-extension willibrandon.systemd
 ```
 
-Install it in the same host as the file. WSL, SSH, and Dev Containers each have their own
-extensions.
+For WSL, SSH, or Dev Containers, install it in that host. Each host has its own extensions.
 
 Reload VS Code and open a `.service` file. The status bar should say `systemd Unit`.
+
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=willibrandon.systemd)
+and [Open VSX](https://open-vsx.org/extension/willibrandon/systemd) publish the same extension.

@@ -2,7 +2,7 @@
   "name": "systemd",
   "displayName": "systemd Unit Files",
   "description": "Complete language support for systemd, Podman Quadlet, and mkosi configuration",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "publisher": "willibrandon",
   "author": {

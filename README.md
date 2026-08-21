@@ -2,7 +2,16 @@
 
 VS Code support for systemd, systemd-networkd, Podman Quadlet, and mkosi.
 
-> Version 0.1.0 is under development and has not been released.
+## Install
+
+Search for **systemd Unit Files** in the Extensions view or run:
+
+```sh
+code --install-extension willibrandon.systemd
+```
+
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=willibrandon.systemd)
+and [Open VSX](https://open-vsx.org/extension/willibrandon/systemd) publish the same extension.
 
 ## Features
 
@@ -15,7 +24,8 @@ VS Code support for systemd, systemd-networkd, Podman Quadlet, and mkosi.
 
 No other extension is required. The extension does not manage services or request root access.
 
-[Documentation](https://willibrandon.github.io/vscode-systemd/)
+[Documentation](https://willibrandon.github.io/vscode-systemd/) · [Changelog](CHANGELOG.md) ·
+[Issues](https://github.com/willibrandon/vscode-systemd/issues)
 
 ## Supported files
 

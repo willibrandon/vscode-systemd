@@ -23,4 +23,4 @@ WantedBy=multi-user.target
 The extension works locally, remotely, and in the browser. It does not manage services or request
 root access.
 
-[Install a test build](./getting-started/) or see [recognized files](./recognized-files/).
+[Install the extension](./getting-started/) or see [recognized files](./recognized-files/).

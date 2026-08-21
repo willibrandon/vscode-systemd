@@ -1,13 +1,13 @@
 {
   "name": "@systemd/vscode-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/common.ts"
   },
   "dependencies": {
-    "@systemd/language-core": "0.1.0",
-    "@systemd/language-server": "0.1.0"
+    "@systemd/language-core": "0.2.0",
+    "@systemd/language-server": "0.2.0"
   }
 }
