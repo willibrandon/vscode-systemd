@@ -170,6 +170,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   let fallbackSettings = defaultSettings;
   let detectedVersions: DetectedVersions = {};
   let supportsConfiguration = false;
+  let supportsWorkspaceFolders = false;
   let graphRevision = 0;
   let cycleCacheRevision = -1;
   let cycleCache: readonly OrderingDependencyCycle[] = [];
@@ -293,10 +294,15 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
 
   connection.onInitialize((params: InitializeParams): InitializeResult => {
     supportsConfiguration = params.capabilities.workspace?.configuration === true;
+    supportsWorkspaceFolders = params.capabilities.workspace?.workspaceFolders === true;
     const legacyRootUri = object(params)?.["rootUri"];
+    const initializationRoots = stringArray(
+      object(params.initializationOptions)?.["workspaceRoots"],
+    );
     workspaceRoots = [
       ...(params.workspaceFolders?.map(({ uri }) => uri) ?? []),
       ...(typeof legacyRootUri === "string" ? [legacyRootUri] : []),
+      ...initializationRoots,
     ].filter((root, index, roots) => roots.indexOf(root) === index);
     detectedVersions = normalizeDetectedVersions(
       object(object(params.initializationOptions)?.["detectedVersions"]),
@@ -331,8 +337,24 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         },
         codeLensProvider: { resolveProvider: false },
         inlayHintProvider: true,
+        workspace: {
+          workspaceFolders: { supported: true, changeNotifications: true },
+        },
       },
     };
+  });
+
+  connection.onInitialized((): void => {
+    if (!supportsWorkspaceFolders) return;
+    connection.workspace.onDidChangeWorkspaceFolders(({ added, removed }): void => {
+      const removedRoots = new Set(removed.map(({ uri }) => uri));
+      workspaceRoots = [
+        ...workspaceRoots.filter((root) => !removedRoots.has(root)),
+        ...added.map(({ uri }) => uri),
+      ].filter((root, index, roots) => roots.indexOf(root) === index);
+      invalidateGraph();
+      scheduleAll(0);
+    });
   });
 
   connection.onDidChangeConfiguration((event): void => {
@@ -1112,6 +1134,12 @@ function object(candidate: unknown): Record<string, unknown> | undefined {
   return candidate !== null && typeof candidate === "object"
     ? (candidate as Record<string, unknown>)
     : undefined;
+}
+
+function stringArray(candidate: unknown): readonly string[] {
+  return Array.isArray(candidate)
+    ? candidate.filter((value): value is string => typeof value === "string" && value !== "")
+    : [];
 }
 
 function boundedInteger(

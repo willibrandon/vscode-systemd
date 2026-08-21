@@ -94,9 +94,10 @@ describe("language server JSON-RPC contract", () => {
     });
     const initialization = await client.sendRequest<InitializeResult>("initialize", {
       processId: null,
-      rootUri: "file:///workspace",
-      capabilities: {},
+      rootUri: null,
+      capabilities: { workspace: { workspaceFolders: true } },
       clientInfo: { name: "contract test" },
+      initializationOptions: { workspaceRoots: ["file:///workspace"] },
     });
     expect(initialization.capabilities.completionProvider).toMatchObject({
       resolveProvider: true,
@@ -105,6 +106,9 @@ describe("language server JSON-RPC contract", () => {
     expect(initialization.capabilities.renameProvider).toEqual({ prepareProvider: true });
     expect(initialization.capabilities.codeLensProvider).toEqual({ resolveProvider: false });
     expect(initialization.capabilities.inlayHintProvider).toBe(true);
+    expect(initialization.capabilities.workspace).toEqual({
+      workspaceFolders: { supported: true, changeNotifications: true },
+    });
     await client.sendNotification("initialized", {});
     await client.sendNotification("systemd/index/documents", {
       replace: true,

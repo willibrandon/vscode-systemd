@@ -43,6 +43,7 @@ export interface ClientRuntime {
 
 export interface ClientInitializationOptions {
   readonly dataChannel?: "stable" | "preview";
+  readonly workspaceRoots?: readonly string[];
   readonly detectedVersions?: Readonly<{
     readonly systemd?: string;
     readonly podman?: string;
@@ -57,11 +58,12 @@ export function clientOptions(
   const dataChannel = vscode.workspace
     .getConfiguration("systemd")
     .get<"stable" | "preview">("dataChannel", "stable");
+  const workspaceRoots = vscode.workspace.workspaceFolders?.map(({ uri }) => uri.toString()) ?? [];
   return {
     documentSelector: systemdLanguageIds.map((language) => ({ language })),
     outputChannel: output,
     markdown: { isTrusted: false },
-    initializationOptions: { dataChannel, ...initializationOptions },
+    initializationOptions: { dataChannel, workspaceRoots, ...initializationOptions },
     synchronize: { configurationSection: "systemd" },
   };
 }
