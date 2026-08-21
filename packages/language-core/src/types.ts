@@ -111,6 +111,16 @@ export type ValueKind =
 
 export type AssignmentMode = "replace" | "append" | "append-no-reset" | "first";
 
+export type MkosiSettingScope =
+  | "local"
+  | "universal"
+  | "multiversal"
+  | "inherit"
+  | "main"
+  | "tools"
+  | "initrd"
+  | "initrd-inherit";
+
 export interface SourceSpan {
   readonly start: number;
   readonly end: number;
@@ -124,6 +134,7 @@ export interface DirectiveDefinition {
   readonly name: string;
   readonly valueKind: ValueKind;
   readonly assignmentMode?: AssignmentMode;
+  readonly mkosiScope?: MkosiSettingScope;
   readonly resetGroup?: string;
   readonly since: string | null;
   readonly deprecated: boolean;

@@ -379,6 +379,9 @@ function add(candidate) {
   if (candidate.assignmentMode !== undefined && candidate.assignmentMode !== "replace") {
     value.assignmentMode = candidate.assignmentMode;
   }
+  if (candidate.mkosiScope !== undefined && candidate.mkosiScope !== "local") {
+    value.mkosiScope = candidate.mkosiScope;
+  }
   if (candidate.resetGroup !== undefined) value.resetGroup = candidate.resetGroup;
   if (candidate.exclusiveChoices !== undefined && value.choices.length > 0) {
     value.exclusiveChoices = candidate.exclusiveChoices;
@@ -405,6 +408,9 @@ function add(candidate) {
   if (exclusiveChoices !== undefined) merged.exclusiveChoices = exclusiveChoices;
   if (merged.assignmentMode === undefined && value.assignmentMode !== undefined) {
     merged.assignmentMode = value.assignmentMode;
+  }
+  if (merged.mkosiScope === undefined && value.mkosiScope !== undefined) {
+    merged.mkosiScope = value.mkosiScope;
   }
   if (merged.resetGroup === undefined && value.resetGroup !== undefined) {
     merged.resetGroup = value.resetGroup;
@@ -732,13 +738,15 @@ async function extractMkosi(source) {
       name: setting.name,
       since: availability.get(availabilityKey("mkosi", setting.section, setting.name)) ?? "preview",
       valueKind: parserKind(setting.parser),
-      documentation: "https://man.archlinux.org/man/mkosi.1.en",
+      documentation: "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       deprecated: setting.deprecated,
       summary:
         setting.summary ??
         (setting.help === undefined ? undefined : setting.help.replace(/\.$/u, "") + "."),
       choices: setting.choices,
       exclusiveChoices: setting.exclusiveChoices ?? setting.choices.length > 0,
+      assignmentMode: setting.assignmentMode,
+      mkosiScope: setting.mkosiScope,
     });
   }
 }
@@ -762,6 +770,7 @@ function mkosiSettings(text, enumChoices = new Map()) {
         .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
         .join("");
     const parser = /\bparse=([A-Za-z0-9_]+)/u.exec(block.text)?.[1] ?? "";
+    const scope = /\bscope=SettingScope\.([A-Za-z0-9_]+)/u.exec(block.text)?.[1] ?? "local";
     const help = /\bhelp="([^"]+)"/su.exec(block.text)?.[1];
     const choices = configChoices(block.text, enumChoices);
     const setting = {
@@ -770,6 +779,8 @@ function mkosiSettings(text, enumChoices = new Map()) {
       parser,
       help,
       choices,
+      assignmentMode: mkosiAssignmentMode(parser, block.text),
+      mkosiScope: scope.replaceAll("_", "-"),
     };
     result.push(setting);
     if (/\bmatch\s*=/u.test(block.text)) {
@@ -784,6 +795,8 @@ function mkosiSettings(text, enumChoices = new Map()) {
         deprecated: true,
         summary: "Compatibility alias for " + name + ".",
         choices,
+        assignmentMode: setting.assignmentMode,
+        mkosiScope: setting.mkosiScope,
       };
       result.push(compatibilitySetting);
       if (/\bmatch\s*=/u.test(block.text)) {
@@ -809,8 +822,23 @@ function addMkosiMatchSettings(result, sections, setting) {
       parser: "",
       summary: "Match or assert against " + setting.name + ".",
       exclusiveChoices: false,
+      assignmentMode: "append-no-reset",
     });
   }
+}
+
+function mkosiAssignmentMode(parser, block) {
+  if (
+    [
+      "config_make_credential_parser",
+      "config_make_dict_parser",
+      "config_make_list_parser",
+      "config_parse_artifact_output_list",
+    ].includes(parser)
+  ) {
+    return /\breset=False\b/u.test(block) ? "append-no-reset" : "append";
+  }
+  return "replace";
 }
 
 async function extractPythonStringEnums(directory) {

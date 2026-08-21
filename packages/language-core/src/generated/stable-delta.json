@@ -66,13 +66,34 @@
     {
       "dialect": "mkosi",
       "section": "Build",
+      "name": "CacheOnly",
+      "valueKind": "boolean",
+      "since": "25",
+      "deprecated": false,
+      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "summary": "Only use the package cache when installing packages.",
+      "choices": [
+        "always",
+        "auto",
+        "metadata",
+        "never",
+        ""
+      ],
+      "mkosiScope": "multiversal",
+      "exclusiveChoices": true
+    },
+    {
+      "dialect": "mkosi",
+      "section": "Build",
       "name": "ExtraSearchPaths",
       "valueKind": "list",
       "since": "25",
       "deprecated": false,
-      "documentation": "https://man.archlinux.org/man/mkosi.1.en",
+      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "summary": "List of comma-separated paths to look for programs before looking in PATH.",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "mkosiScope": "universal"
     },
     {
       "dialect": "mkosi",
@@ -81,7 +102,7 @@
       "valueKind": "string",
       "since": "25",
       "deprecated": false,
-      "documentation": "https://man.archlinux.org/man/mkosi.1.en",
+      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "summary": "Select the virtual machine firmware to use.",
       "choices": [
         "auto",
@@ -92,6 +113,7 @@
         "bios",
         ""
       ],
+      "mkosiScope": "main",
       "exclusiveChoices": true
     },
     {
@@ -101,7 +123,7 @@
       "valueKind": "string",
       "since": "25",
       "deprecated": true,
-      "documentation": "https://man.archlinux.org/man/mkosi.1.en",
+      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "summary": "Compatibility alias for Firmware.",
       "choices": [
         "auto",
@@ -112,6 +134,7 @@
         "bios",
         ""
       ],
+      "mkosiScope": "main",
       "exclusiveChoices": true
     },
     {
@@ -121,9 +144,11 @@
       "valueKind": "list",
       "since": "25",
       "deprecated": false,
-      "documentation": "https://man.archlinux.org/man/mkosi.1.en",
+      "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "summary": "Set properties on the scopes spawned by systemd-nspawn or systemd-run.",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "mkosiScope": "main"
     },
     {
       "dialect": "systemd-unit",

@@ -55,6 +55,9 @@ All notable changes to this project will be documented here. The format follows
 - Podman and mkosi target versions now use generated per-release availability data, semantic version
   comparison, version-filtered completion, and trusted installed-tool auto-detection rather than
   silently using the systemd target.
+- Generated mkosi metadata now preserves collection reset behavior and main, inherited, universal,
+  tools-tree, and initrd setting scopes from pinned `ConfigSetting` declarations, and links hover
+  documentation to mkosi's official manual.
 - The stable and preview data channels now select distinct, pinned upstream registries through a
   compact generated delta and reparse open and indexed files immediately when switched.
 - Indexed unit symlinks now retain their canonical targets so aliases use the canonical fragment,

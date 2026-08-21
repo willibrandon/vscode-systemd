@@ -148,6 +148,25 @@ describe("registry queries", () => {
     );
   });
 
+  it("preserves mkosi collection reset behavior and inheritance scopes", () => {
+    expect(definitionFor("mkosi", "Include", "Include")).toMatchObject({
+      assignmentMode: "append-no-reset",
+    });
+    expect(definitionFor("mkosi", "Config", "Profiles")).toMatchObject({
+      assignmentMode: "append",
+      mkosiScope: "inherit",
+    });
+    expect(definitionFor("mkosi", "Content", "Packages")).toMatchObject({
+      assignmentMode: "append",
+    });
+    expect(definitionFor("mkosi", "Distribution", "Distribution")).toMatchObject({
+      mkosiScope: "universal",
+    });
+    expect(definitionFor("mkosi", "Match", "Distribution")).toMatchObject({
+      assignmentMode: "append-no-reset",
+    });
+  });
+
   it("switches between pinned stable data and the compact preview delta", () => {
     configureRegistryChannel("stable");
     const stableRevision = registryMetadata.upstream.mkosi;

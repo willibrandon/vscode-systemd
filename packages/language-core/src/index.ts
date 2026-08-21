@@ -55,6 +55,7 @@ export type {
   LineKeywordDefinition,
   LineSettingDefinition,
   MkosiDocumentType,
+  MkosiSettingScope,
   NetworkDocumentType,
   ParseResult,
   ParsedDocument,
