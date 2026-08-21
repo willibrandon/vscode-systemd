@@ -39,6 +39,7 @@ export interface DialectDetectionParams {
 
 export interface IndexedDocument {
   readonly uri: string;
+  readonly canonicalUri?: string;
   readonly languageId: DialectId;
   readonly source: string;
   readonly mtime: number;

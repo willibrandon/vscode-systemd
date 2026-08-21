@@ -474,6 +474,48 @@ describe("language server JSON-RPC contract", () => {
     await client.sendNotification("systemd/registry/dataChannel", { channel: "stable" });
   });
 
+  it("follows indexed unit aliases and includes canonical and alias drop-ins", async () => {
+    const canonicalUri = "file:///usr/lib/systemd/system/real.service";
+    const aliasUri = "file:///etc/systemd/system/alias.service";
+    await client.sendNotification("systemd/index/documents", {
+      replace: true,
+      documents: [
+        {
+          uri: canonicalUri,
+          languageId: "systemd-unit",
+          source: "[Unit]\nDescription=Canonical\n",
+          mtime: 1,
+        },
+        {
+          uri: aliasUri,
+          canonicalUri,
+          languageId: "systemd-unit",
+          source: "[Unit]\nDescription=Canonical\n",
+          mtime: 2,
+        },
+        {
+          uri: "file:///etc/systemd/system/real.service.d/10-canonical.conf",
+          languageId: "systemd-unit",
+          source: "[Service]\nEnvironment=CANONICAL=1\n",
+          mtime: 3,
+        },
+        {
+          uri: "file:///etc/systemd/system/alias.service.d/20-alias.conf",
+          languageId: "systemd-unit",
+          source: "[Service]\nEnvironment=ALIAS=1\n",
+          mtime: 4,
+        },
+      ],
+    });
+
+    const effective = await request<string>(client, "systemd/effectiveConfiguration", {
+      uri: aliasUri,
+    });
+    expect(effective).toContain("# " + canonicalUri + ":2");
+    expect(effective).toContain("Environment=CANONICAL=1");
+    expect(effective).toContain("Environment=ALIAS=1");
+  });
+
   it("serves cross-file navigation and custom analysis", async () => {
     const diagnosticsPromise = nextDiagnostics(client);
     await client.sendNotification("textDocument/didOpen", {

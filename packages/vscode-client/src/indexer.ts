@@ -30,6 +30,7 @@ export interface HostIndexingOptions {
   readonly supported: boolean;
   readonly standardRoots: readonly ExternalIndexRoot[];
   resolveExtraPath(path: string): vscode.Uri | undefined;
+  canonicalUri(uri: vscode.Uri): Promise<vscode.Uri | undefined>;
 }
 
 export interface WorkspaceIndexer extends vscode.Disposable {
@@ -312,7 +313,16 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
             }));
       if (languageId === null || isAborted(signal)) return undefined;
       const stat = await vscode.workspace.fs.stat(uri);
-      return { uri: uri.toString(), languageId, source, mtime: stat.mtime };
+      const canonicalUri = await this.host?.canonicalUri(uri);
+      return {
+        uri: uri.toString(),
+        ...(canonicalUri === undefined || canonicalUri.toString() === uri.toString()
+          ? {}
+          : { canonicalUri: canonicalUri.toString() }),
+        languageId,
+        source,
+        mtime: stat.mtime,
+      };
     } catch (error) {
       this.output.debug("Unable to index " + uri.toString() + ": " + safeMessage(error));
       return undefined;

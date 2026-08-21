@@ -43,5 +43,7 @@ All notable changes to this project will be documented here. The format follows
   silently using the systemd target.
 - The stable and preview data channels now select distinct, pinned upstream registries through a
   compact generated delta and reparse open and indexed files immediately when switched.
+- Indexed unit symlinks now retain their canonical targets so aliases use the canonical fragment,
+  combine canonical and alias drop-ins, and preserve `/dev/null` mask behavior.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

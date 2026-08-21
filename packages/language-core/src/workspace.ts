@@ -87,8 +87,16 @@ export function resolveConfigurationDocuments(
   uri: string,
   documents: readonly ParsedDocument[],
 ): ConfigurationResolution {
-  const identity = configurationIdentity(uri);
   const available = uniqueDocuments(documents);
+  return resolveConfigurationDocumentsWithAliases(uri, available, buildAliasIndex(available));
+}
+
+function resolveConfigurationDocumentsWithAliases(
+  uri: string,
+  available: readonly ParsedDocument[],
+  aliases: AliasIndex,
+): ConfigurationResolution {
+  const identity = configurationIdentity(uri);
   if (!isUnitName(identity)) {
     const related = available
       .filter((document) => relatedConfiguration(uri, document.uri))
@@ -104,22 +112,29 @@ export function resolveConfigurationDocuments(
 
   const query = available.find((document) => document.uri === uri);
   const queryParts = configurationParts(uri);
+  const canonicalIdentity = aliases.canonical(identity);
+  const equivalentIdentities = aliases.equivalent(identity);
   const mainCandidates = available.filter((document) => {
     const parts = configurationParts(document.uri);
     return (
       !parts.dropIn &&
       isUnitName(parts.identity) &&
       !parts.workingCopy &&
-      (parts.identity === identity || parts.identity === templateName(identity))
+      (equivalentIdentities.includes(parts.identity) ||
+        equivalentIdentities.map(templateName).includes(parts.identity))
     );
   });
   let base =
     queryParts.workingCopy && !queryParts.dropIn
       ? query
       : selectMain(
-          identity,
-          mainCandidates.filter((document) => configurationIdentity(document.uri) === identity),
+          canonicalIdentity,
+          mainCandidates.filter(
+            (document) => configurationIdentity(document.uri) === canonicalIdentity,
+          ),
         );
+  base ??= selectMain(templateName(canonicalIdentity), mainCandidates);
+  base ??= selectMain(identity, mainCandidates);
   base ??= selectMain(templateName(identity), mainCandidates);
   if (base?.source.trim() === "") {
     return {
@@ -131,7 +146,9 @@ export function resolveConfigurationDocuments(
     };
   }
 
-  const ownerOrder = dropInOwners(identity);
+  const ownerOrder = [
+    ...new Set(equivalentIdentities.flatMap((candidate) => dropInOwners(candidate))),
+  ];
   const selectedDropIns = new Map<
     string,
     { document: ParsedDocument; owner: number; queried: boolean }
@@ -174,6 +191,7 @@ export function resolveUnitConfigurations(
   documents: readonly ParsedDocument[],
 ): readonly ConfigurationResolution[] {
   const available = uniqueDocuments(documents);
+  const aliases = buildAliasIndex(available);
   const mainByIdentity = new Map<string, ParsedDocument[]>();
   const dropInsByOwner = new Map<string, ParsedDocument[]>();
   const identities = new Set<string>();
@@ -191,12 +209,15 @@ export function resolveUnitConfigurations(
     }
   }
   return [...identities].sort().map((identity) => {
+    const equivalent = aliases.equivalent(identity);
     const candidates = [
-      ...(mainByIdentity.get(identity) ?? []),
-      ...(mainByIdentity.get(templateName(identity)) ?? []),
-      ...dropInOwners(identity).flatMap((owner) => dropInsByOwner.get(owner) ?? []),
+      ...equivalent.flatMap((candidate) => mainByIdentity.get(candidate) ?? []),
+      ...equivalent.flatMap((candidate) => mainByIdentity.get(templateName(candidate)) ?? []),
+      ...equivalent.flatMap((candidate) =>
+        dropInOwners(candidate).flatMap((owner) => dropInsByOwner.get(owner) ?? []),
+      ),
     ];
-    return resolveConfigurationDocuments(identity, uniqueDocuments(candidates));
+    return resolveConfigurationDocumentsWithAliases(identity, uniqueDocuments(candidates), aliases);
   });
 }
 
@@ -328,6 +349,64 @@ interface ConfigurationParts {
   readonly dropInOwner?: string;
   readonly dropInFile?: string;
   readonly workingCopy: boolean;
+}
+
+interface AliasIndex {
+  canonical(identity: string): string;
+  equivalent(identity: string): readonly string[];
+}
+
+function buildAliasIndex(documents: readonly ParsedDocument[]): AliasIndex {
+  const mainByIdentity = new Map<string, ParsedDocument[]>();
+  const identities = new Set<string>();
+  for (const document of documents) {
+    const parts = configurationParts(document.uri);
+    if (parts.dropIn || parts.workingCopy || !isUnitName(parts.identity)) continue;
+    mainByIdentity.set(parts.identity, [...(mainByIdentity.get(parts.identity) ?? []), document]);
+    identities.add(parts.identity);
+    if (document.canonicalUri !== undefined) {
+      const target = configurationIdentity(document.canonicalUri);
+      if (isUnitName(target)) identities.add(target);
+    }
+  }
+  const canonicalByIdentity = new Map<string, string>();
+  const resolveCanonical = (identity: string, visiting = new Set<string>()): string => {
+    const cached = canonicalByIdentity.get(identity);
+    if (cached !== undefined) return cached;
+    if (visiting.has(identity)) return identity;
+    const nextVisiting = new Set(visiting).add(identity);
+    const selected = selectMain(identity, mainByIdentity.get(identity) ?? []);
+    const target =
+      selected?.canonicalUri === undefined
+        ? identity
+        : configurationIdentity(selected.canonicalUri);
+    const canonical =
+      target === identity || !isUnitName(target)
+        ? identity
+        : resolveCanonical(target, nextVisiting);
+    canonicalByIdentity.set(identity, canonical);
+    return canonical;
+  };
+  const byCanonical = new Map<string, Set<string>>();
+  for (const identity of identities) {
+    const canonical = resolveCanonical(identity);
+    const group = byCanonical.get(canonical) ?? new Set<string>();
+    group.add(identity);
+    group.add(canonical);
+    byCanonical.set(canonical, group);
+  }
+  return {
+    canonical(identity): string {
+      return resolveCanonical(identity);
+    },
+    equivalent(identity): readonly string[] {
+      const canonical = resolveCanonical(identity);
+      const related = [...(byCanonical.get(canonical) ?? [])].sort();
+      return [identity, canonical, ...related].filter(
+        (candidate, index, all) => all.indexOf(candidate) === index,
+      );
+    },
+  };
 }
 
 function configurationParts(uri: string): ConfigurationParts {

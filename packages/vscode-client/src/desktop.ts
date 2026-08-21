@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import process from "node:process";
@@ -310,6 +311,15 @@ function hostIndexingOptions(): HostIndexingOptions {
     standardRoots: [...unique.values()],
     resolveExtraPath(path): vscode.Uri | undefined {
       return isAbsolute(path) ? vscode.Uri.file(path) : undefined;
+    },
+    async canonicalUri(uri): Promise<vscode.Uri | undefined> {
+      if (uri.scheme !== "file") return undefined;
+      try {
+        const canonical = await realpath(uri.fsPath);
+        return canonical === uri.fsPath ? undefined : vscode.Uri.file(canonical);
+      } catch {
+        return undefined;
+      }
     },
   };
 }

@@ -29,6 +29,8 @@ into the desktop and browser extension.
 - Exact unit/template/drop-in precedence and systemd-aware scalar, list, command, and reset merging,
   plus ordering-cycle diagnostics with related locations, specifier inlay hints, and CodeLens entry
   points.
+- Canonical unit-symlink and alias resolution, including drop-ins attached to either name and
+  `/dev/null` masks.
 - Unit drop-in creation.
 - Identical language analysis on desktop, Remote Development hosts, virtual workspaces, and
   vscode.dev-compatible browser hosts.

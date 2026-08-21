@@ -25,6 +25,12 @@ use the last value, cumulative directives retain their entries, and empty assign
 correct reset or no-op behavior, including resets shared by condition, timer, socket, and path
 lists. Source annotations retain the file and line that contributed each effective entry.
 
+On desktop and remote extension hosts, indexed symbolic links retain their real target. Opening an
+alias therefore uses the canonical unit fragment and combines drop-ins attached to the canonical or
+alias name. A unit symlinked to `/dev/null` remains a mask. Browser workspaces still index the
+symlink contents exposed by their file-system provider, but providers do not expose a portable
+realpath API for alias grouping.
+
 ![An effective unit configuration with line-level source provenance and the Systemd Explorer](../../assets/effective-configuration.png)
 
 Run **systemd: Show Dependency Graph** to view known relationships between indexed units. The graph

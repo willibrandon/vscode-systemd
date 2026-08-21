@@ -210,7 +210,13 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const channel = candidate === "preview" ? "preview" : "stable";
     configureRegistryChannel(channel);
     for (const [uri, document] of indexed) {
-      indexed.set(uri, parse(document.source, document.dialect, document.uri));
+      const reparsed = parse(document.source, document.dialect, document.uri);
+      indexed.set(
+        uri,
+        document.canonicalUri === undefined
+          ? reparsed
+          : { ...reparsed, canonicalUri: document.canonicalUri },
+      );
     }
     settingsCache.clear();
     invalidateGraph();
@@ -703,7 +709,13 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     ({ documents: candidates, replace }): void => {
       if (replace) indexed.clear();
       for (const candidate of candidates) {
-        indexed.set(candidate.uri, parse(candidate.source, candidate.languageId, candidate.uri));
+        const document = parse(candidate.source, candidate.languageId, candidate.uri);
+        indexed.set(
+          candidate.uri,
+          candidate.canonicalUri === undefined
+            ? document
+            : { ...document, canonicalUri: candidate.canonicalUri },
+        );
       }
       invalidateGraph();
       for (const document of documents.all()) schedule(document, 0);

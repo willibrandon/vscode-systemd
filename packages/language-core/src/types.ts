@@ -117,6 +117,7 @@ export interface CoreDiagnostic {
 
 export interface ParsedDocument {
   readonly uri: string;
+  readonly canonicalUri?: string;
   readonly source: string;
   readonly dialect: DialectId;
   readonly nodes: readonly SyntaxNode[];

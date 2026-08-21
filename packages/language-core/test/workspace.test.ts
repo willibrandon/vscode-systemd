@@ -12,6 +12,10 @@ function unit(uri: string, source = "[Unit]\nDescription=" + uri + "\n"): Parsed
   return parse(source, "systemd-unit", uri);
 }
 
+function alias(uri: string, canonicalUri: string, source: string): ParsedDocument {
+  return { ...unit(uri, source), canonicalUri };
+}
+
 describe("systemd unit configuration resolution", () => {
   it("selects the highest-priority main unit from the system lookup path", () => {
     const vendor = unit("file:///usr/lib/systemd/system/demo.service");
@@ -122,6 +126,47 @@ describe("systemd unit configuration resolution", () => {
     expect(resolution.masked).toBe(true);
     expect(resolution.documents).toEqual([mask]);
     expect(resolution.dropInUris).toEqual([]);
+  });
+
+  it("resolves unit aliases to their canonical base and combines both drop-in names", () => {
+    const canonical = unit(
+      "file:///usr/lib/systemd/system/real.service",
+      "[Unit]\nDescription=Canonical\n",
+    );
+    const unitAlias = alias(
+      "file:///etc/systemd/system/alias.service",
+      canonical.uri,
+      canonical.source,
+    );
+    const canonicalDropIn = unit(
+      "file:///etc/systemd/system/real.service.d/10-canonical.conf",
+      "[Service]\nEnvironment=CANONICAL=1\n",
+    );
+    const aliasDropIn = unit(
+      "file:///etc/systemd/system/alias.service.d/20-alias.conf",
+      "[Service]\nEnvironment=ALIAS=1\n",
+    );
+    const documents = [unitAlias, aliasDropIn, canonicalDropIn, canonical];
+
+    for (const uri of [unitAlias.uri, canonical.uri]) {
+      const resolution = resolveConfigurationDocuments(uri, documents);
+      expect(resolution.baseUri).toBe(canonical.uri);
+      expect(resolution.dropInUris).toEqual([canonicalDropIn.uri, aliasDropIn.uri]);
+      const rendered = renderEffectiveConfiguration(mergeConfigurations(resolution.documents));
+      expect(rendered).toContain("Environment=CANONICAL=1");
+      expect(rendered).toContain("Environment=ALIAS=1");
+    }
+  });
+
+  it("treats a symlink to a non-unit empty target as a mask", () => {
+    const vendor = unit("file:///usr/lib/systemd/system/disabled.service");
+    const mask = alias("file:///etc/systemd/system/disabled.service", "file:///dev/null", "");
+
+    const resolution = resolveConfigurationDocuments(mask.uri, [vendor, mask]);
+
+    expect(resolution.masked).toBe(true);
+    expect(resolution.baseUri).toBe(mask.uri);
+    expect(resolution.documents).toEqual([mask]);
   });
 
   it("previews only the queried working copy without contaminating normal resolution", () => {
