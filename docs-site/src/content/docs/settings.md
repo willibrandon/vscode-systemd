@@ -13,9 +13,16 @@ can name an executable or host path are restricted in untrusted workspaces.
 | `systemd.validation.enable`      | `true`   | Enable built-in diagnostics.                                |
 | `systemd.validation.maxProblems` | `200`    | Limit diagnostics for one document, from 1 through 2000.    |
 | `systemd.target.systemdVersion`  | `latest` | Select latest, auto-detected, or explicit systemd metadata. |
-| `systemd.target.podmanVersion`   | `latest` | Select the target Podman version for Quadlet.               |
-| `systemd.target.mkosiVersion`    | `latest` | Select the target mkosi version.                            |
+| `systemd.target.podmanVersion`   | `latest` | Select latest, auto-detected, or explicit Quadlet metadata. |
+| `systemd.target.mkosiVersion`    | `latest` | Select latest, auto-detected, or explicit mkosi metadata.   |
 | `systemd.dataChannel`            | `stable` | Select stable or preview bundled metadata.                  |
+
+Explicit target versions produce availability diagnostics and remove settings introduced by a newer
+release from completion. Podman comparisons use the complete semantic version, so `5.10` is
+correctly newer than `5.8`. On a trusted desktop or remote extension host, `auto` probes
+`systemd-analyze --version`, `podman --version`, or `mkosi --version` with a two-second timeout and
+an environment that excludes workspace secrets. In Restricted Mode and browser extension hosts,
+`auto` safely falls back to `latest`.
 
 ## Indexing and detection
 

@@ -39,6 +39,43 @@ describe("INI semantic analysis", () => {
     ).not.toContain("setting-unavailable");
   });
 
+  it("compares ecosystem-specific target versions by every numeric component", () => {
+    const quadlet = parse(
+      "[Build]\nBuildArg=RELEASE=1\n",
+      "podman-quadlet",
+      "file:///workspace/image.build",
+    );
+    expect(
+      analyze(quadlet, { targetVersions: { "podman-quadlet": "5.6.9" } }).map(({ code }) => code),
+    ).toContain("setting-unavailable");
+    expect(
+      analyze(quadlet, { targetVersions: { "podman-quadlet": "5.10.0" } }).map(({ code }) => code),
+    ).not.toContain("setting-unavailable");
+
+    const mkosi = parse("[Build]\nBuildKey=key\n", "mkosi", "file:///workspace/mkosi.conf");
+    expect(analyze(mkosi, { targetVersions: { mkosi: "25" } }).map(({ code }) => code)).toContain(
+      "setting-unavailable",
+    );
+    expect(
+      analyze(mkosi, { targetVersions: { mkosi: "26" } }).map(({ code }) => code),
+    ).not.toContain("setting-unavailable");
+  });
+
+  it("marks preview-only metadata unavailable for an explicit released target", () => {
+    const document = parse(
+      "[Build]\nForeignUIDRange=1000\n",
+      "mkosi",
+      "file:///workspace/mkosi.conf",
+    );
+
+    expect(
+      analyze(document, { targetVersions: { mkosi: "26" } }).map(({ code }) => code),
+    ).toContain("setting-unavailable");
+    expect(
+      analyze(document, { targetVersions: { mkosi: "latest" } }).map(({ code }) => code),
+    ).not.toContain("setting-unavailable");
+  });
+
   it.each([
     ["[Coredump]\nCompress=perhaps\n", "systemd-config"],
     ["[Coredump]\nExternalSizeMax=many\n", "systemd-config"],

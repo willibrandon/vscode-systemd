@@ -4,22 +4,31 @@ import { isAbsolute, join } from "node:path";
 import process from "node:process";
 import { LanguageClient, TransportKind } from "vscode-languageclient/node";
 import type { ServerOptions } from "vscode-languageclient/node";
+import { detectedVersionsNotification } from "@systemd/language-server/protocol";
 import { clientOptions, registerCommonFeatures, systemdLanguageIds } from "./common.js";
 import type { ExternalIndexRoot, HostIndexingOptions } from "./indexer.js";
 import { runValidator, validationInvocation } from "./external-validator.js";
 import type { ValidationResult } from "./external-validator.js";
+import { detectInstalledVersions } from "./target-versions.js";
+import type { VersionProbe } from "./target-versions.js";
 
 let client: LanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel("systemd Language Server", { log: true });
+  const detectedVersions = vscode.workspace.isTrusted
+    ? await detectInstalledVersions(configuredVersionProbes())
+    : {};
+  for (const [ecosystem, version] of Object.entries(detectedVersions)) {
+    output.info("Detected " + ecosystem + " " + version + " for automatic version targeting.");
+  }
   const module = vscode.Uri.joinPath(context.extensionUri, "dist", "nodeServer.cjs").fsPath;
   const serverOptions: ServerOptions = { module, transport: TransportKind.ipc };
   client = new LanguageClient(
     "systemd",
     "systemd Language Server",
     serverOptions,
-    clientOptions(output),
+    clientOptions(output, { detectedVersions }),
   );
   const languageClient = client;
   context.subscriptions.push(output, languageClient);
@@ -111,6 +120,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       validationUnavailable(vscode.window.activeTextEditor?.document) === undefined,
     );
   };
+  const refreshDetectedVersions = async (): Promise<void> => {
+    const versions = vscode.workspace.isTrusted
+      ? await detectInstalledVersions(configuredVersionProbes())
+      : {};
+    await languageClient.sendNotification(detectedVersionsNotification, versions);
+  };
   context.subscriptions.push(
     vscode.commands.registerCommand("systemd.validateWithInstalledTools", async (): Promise<void> =>
       validate(vscode.window.activeTextEditor?.document, true),
@@ -130,19 +145,53 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       void updateContext();
     }),
     vscode.window.onDidChangeActiveTextEditor(updateContext),
-    vscode.workspace.onDidGrantWorkspaceTrust(updateContext),
+    vscode.workspace.onDidGrantWorkspaceTrust((): void => {
+      void Promise.all([updateContext(), refreshDetectedVersions()]);
+    }),
     vscode.workspace.onDidChangeConfiguration((event): void => {
-      if (!event.affectsConfiguration("systemd.externalValidation")) return;
-      for (const controller of active.values()) controller.abort();
-      active.clear();
-      diagnostics.clear();
-      void updateContext();
+      if (
+        event.affectsConfiguration("systemd.target") ||
+        event.affectsConfiguration("systemd.externalValidation.systemdAnalyzePath") ||
+        event.affectsConfiguration("systemd.externalValidation.mkosiPath")
+      ) {
+        void refreshDetectedVersions();
+      }
+      if (event.affectsConfiguration("systemd.externalValidation")) {
+        for (const controller of active.values()) controller.abort();
+        active.clear();
+        diagnostics.clear();
+        void updateContext();
+      }
     }),
   );
 
   await features.refreshIndex();
   await updateContext();
   output.info("systemd language server started.");
+}
+
+function configuredVersionProbes(): readonly VersionProbe[] {
+  const scopes = [undefined, ...(vscode.workspace.workspaceFolders?.map(({ uri }) => uri) ?? [])];
+  const result: VersionProbe[] = [];
+  for (const scope of scopes) {
+    const configuration = vscode.workspace.getConfiguration("systemd", scope);
+    if (configuration.get<string>("target.systemdVersion", "latest") === "auto") {
+      result.push({
+        ecosystem: "systemd",
+        executable: configuration.get("externalValidation.systemdAnalyzePath", "systemd-analyze"),
+      });
+    }
+    if (configuration.get<string>("target.podmanVersion", "latest") === "auto") {
+      result.push({ ecosystem: "podman", executable: "podman" });
+    }
+    if (configuration.get<string>("target.mkosiVersion", "latest") === "auto") {
+      result.push({
+        ecosystem: "mkosi",
+        executable: configuration.get("externalValidation.mkosiPath", "mkosi"),
+      });
+    }
+  }
+  return result;
 }
 
 export async function deactivate(): Promise<void> {

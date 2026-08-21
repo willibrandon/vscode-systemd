@@ -10,6 +10,7 @@
   "include": [
     "packages/*/test/**/*.ts",
     "packages/vscode-client/src/external-validator.ts",
+    "packages/vscode-client/src/target-versions.ts",
     "scripts/test/**/*.ts",
     "test/**/*.ts",
     "vitest.config.mts",

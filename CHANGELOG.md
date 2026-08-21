@@ -38,5 +38,8 @@ All notable changes to this project will be documented here. The format follows
   assignments, and shared condition, timer, socket, and path lists reset as a group.
 - Installed-validator diagnostics are cleared immediately when the document or validator settings
   change.
+- Podman and mkosi target versions now use generated per-release availability data, semantic version
+  comparison, version-filtered completion, and trusted installed-tool auto-detection rather than
+  silently using the systemd target.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

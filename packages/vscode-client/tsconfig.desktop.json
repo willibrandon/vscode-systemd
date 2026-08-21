@@ -5,7 +5,7 @@
     "tsBuildInfoFile": "../../node_modules/.cache/vscode-client-desktop.tsbuildinfo",
     "types": ["node", "vscode"]
   },
-  "include": ["src/desktop.ts", "src/external-validator.ts"],
+  "include": ["src/desktop.ts", "src/external-validator.ts", "src/target-versions.ts"],
   "references": [
     {
       "path": "."

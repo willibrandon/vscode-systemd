@@ -34,11 +34,23 @@ export interface ClientRuntime {
   readonly output: vscode.LogOutputChannel;
 }
 
-export function clientOptions(output: vscode.LogOutputChannel): LanguageClientOptions {
+export interface ClientInitializationOptions {
+  readonly detectedVersions?: Readonly<{
+    readonly systemd?: string;
+    readonly podman?: string;
+    readonly mkosi?: string;
+  }>;
+}
+
+export function clientOptions(
+  output: vscode.LogOutputChannel,
+  initializationOptions: ClientInitializationOptions = {},
+): LanguageClientOptions {
   return {
     documentSelector: systemdLanguageIds.map((language) => ({ language })),
     outputChannel: output,
     markdown: { isTrusted: false },
+    initializationOptions,
     synchronize: { configurationSection: "systemd" },
   };
 }

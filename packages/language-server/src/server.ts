@@ -7,6 +7,7 @@ import {
   extractReferences,
   findOrderingDependencyCycles,
   format,
+  isDefinitionAvailable,
   mergeConfigurations,
   parse,
   resolveConfigurationDocuments,
@@ -65,6 +66,7 @@ import type {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   dependencyGraphRequest,
+  detectedVersionsNotification,
   detectDialectRequest,
   effectiveConfigurationRequest,
   indexedDocumentsNotification,
@@ -103,12 +105,22 @@ export interface TimerHost {
 
 interface ServerSettings {
   readonly validation: Readonly<{ enable: boolean; maxProblems: number }>;
-  readonly targetVersion: string;
+  readonly targetVersions: Readonly<{
+    systemd: string;
+    podman: string;
+    mkosi: string;
+  }>;
+}
+
+interface DetectedVersions {
+  readonly systemd?: string;
+  readonly podman?: string;
+  readonly mkosi?: string;
 }
 
 const defaultSettings: ServerSettings = {
   validation: { enable: true, maxProblems: 200 },
-  targetVersion: "latest",
+  targetVersions: { systemd: "latest", podman: "latest", mkosi: "latest" },
 };
 
 export function startLanguageServer(connection: Connection, timers: TimerHost): void {
@@ -117,6 +129,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   const pending = new Map<string, unknown>();
   const settingsCache = new Map<string, Promise<ServerSettings>>();
   let fallbackSettings = defaultSettings;
+  let detectedVersions: DetectedVersions = {};
   let supportsConfiguration = false;
   let graphRevision = 0;
   let cycleCacheRevision = -1;
@@ -132,7 +145,10 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     if (cached !== undefined) return cached;
     const request = connection.workspace
       .getConfiguration({ scopeUri: uri, section: "systemd" })
-      .then(normalizeSettings, (): ServerSettings => defaultSettings);
+      .then(
+        (candidate): ServerSettings => normalizeSettings(candidate, detectedVersions),
+        (): ServerSettings => defaultSettings,
+      );
     settingsCache.set(uri, request);
     return request;
   };
@@ -146,7 +162,13 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         : [
             ...analyze(tree, {
               maxProblems: settings.validation.maxProblems,
-              targetVersion: settings.targetVersion,
+              targetVersions: {
+                "systemd-unit": settings.targetVersions.systemd,
+                "systemd-network": settings.targetVersions.systemd,
+                "systemd-config": settings.targetVersions.systemd,
+                "podman-quadlet": settings.targetVersions.podman,
+                mkosi: settings.targetVersions.mkosi,
+              },
             }).map((item) => toDiagnostic(document, item)),
             ...orderingCycleDiagnostics(document, tree, orderingCycles(), allParsed(), documents),
           ].slice(0, settings.validation.maxProblems);
@@ -192,6 +214,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
 
   connection.onInitialize((params: InitializeParams): InitializeResult => {
     supportsConfiguration = params.capabilities.workspace?.configuration === true;
+    detectedVersions = normalizeDetectedVersions(
+      object(object(params.initializationOptions)?.["detectedVersions"]),
+    );
     return {
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
@@ -226,11 +251,19 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   connection.onDidChangeConfiguration((event): void => {
     settingsCache.clear();
     if (!supportsConfiguration) {
-      fallbackSettings = normalizeSettings(object(event.settings)?.["systemd"] ?? event.settings);
+      fallbackSettings = normalizeSettings(
+        object(event.settings)?.["systemd"] ?? event.settings,
+        detectedVersions,
+      );
     }
     for (const document of documents.all()) schedule(document, 0);
   });
-  connection.onCompletion((params): CompletionItem[] => {
+  connection.onNotification(detectedVersionsNotification, (versions): void => {
+    detectedVersions = normalizeDetectedVersions(object(versions));
+    settingsCache.clear();
+    for (const document of documents.all()) schedule(document, 0);
+  });
+  connection.onCompletion(async (params): Promise<CompletionItem[]> => {
     const document = documents.get(params.textDocument.uri);
     const tree = document === undefined ? undefined : parsed(document);
     if (document === undefined || tree === undefined) return [];
@@ -251,7 +284,12 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     if (assignment !== undefined && offset >= assignment.valueSpan.start) {
       return valueCompletions(assignment, allParsed());
     }
-    return definitionsFor(tree.dialect, sectionAt(tree, offset)).map(definitionCompletion);
+    const settings = await settingsFor(document.uri);
+    return definitionsFor(tree.dialect, sectionAt(tree, offset))
+      .filter((definition) =>
+        isDefinitionAvailable(definition, targetVersionForDefinition(definition, settings)),
+      )
+      .map(definitionCompletion);
   });
   connection.onCompletionResolve((item): CompletionItem => {
     const data = completionData(item.data);
@@ -684,7 +722,10 @@ function dialectFor(document: TextDocument): DialectId | undefined {
     : detectDialect(document.uri, document.getText());
 }
 
-function normalizeSettings(candidate: unknown): ServerSettings {
+function normalizeSettings(
+  candidate: unknown,
+  detectedVersions: DetectedVersions = {},
+): ServerSettings {
   const value = object(candidate);
   const validation = object(value?.["validation"]);
   const target = object(value?.["target"]);
@@ -693,13 +734,46 @@ function normalizeSettings(candidate: unknown): ServerSettings {
       enable: typeof validation?.["enable"] === "boolean" ? validation["enable"] : true,
       maxProblems: boundedInteger(validation?.["maxProblems"], 200, 1, 10_000),
     },
-    targetVersion:
-      typeof target?.["systemdVersion"] === "string"
-        ? target["systemdVersion"]
-        : typeof value?.["targetVersion"] === "string"
-          ? value["targetVersion"]
+    targetVersions: {
+      systemd:
+        typeof target?.["systemdVersion"] === "string"
+          ? resolvedTargetVersion(target["systemdVersion"], detectedVersions.systemd)
+          : typeof value?.["targetVersion"] === "string"
+            ? resolvedTargetVersion(value["targetVersion"], detectedVersions.systemd)
+            : "latest",
+      podman:
+        typeof target?.["podmanVersion"] === "string"
+          ? resolvedTargetVersion(target["podmanVersion"], detectedVersions.podman)
           : "latest",
+      mkosi:
+        typeof target?.["mkosiVersion"] === "string"
+          ? resolvedTargetVersion(target["mkosiVersion"], detectedVersions.mkosi)
+          : "latest",
+    },
   };
+}
+
+function normalizeDetectedVersions(
+  candidate: Record<string, unknown> | undefined,
+): DetectedVersions {
+  return {
+    ...(typeof candidate?.["systemd"] === "string" ? { systemd: candidate["systemd"] } : {}),
+    ...(typeof candidate?.["podman"] === "string" ? { podman: candidate["podman"] } : {}),
+    ...(typeof candidate?.["mkosi"] === "string" ? { mkosi: candidate["mkosi"] } : {}),
+  };
+}
+
+function resolvedTargetVersion(configured: string, detected: string | undefined): string {
+  return configured === "auto" ? (detected ?? "latest") : configured;
+}
+
+function targetVersionForDefinition(
+  definition: DirectiveDefinition,
+  settings: ServerSettings,
+): string {
+  if (definition.dialect === "podman-quadlet") return settings.targetVersions.podman;
+  if (definition.dialect === "mkosi") return settings.targetVersions.mkosi;
+  return settings.targetVersions.systemd;
 }
 
 function object(candidate: unknown): Record<string, unknown> | undefined {

@@ -49,6 +49,12 @@ export interface IndexedDocumentsParams {
   readonly replace: boolean;
 }
 
+export interface DetectedVersionsParams {
+  readonly systemd?: string;
+  readonly podman?: string;
+  readonly mkosi?: string;
+}
+
 export interface WorkspaceSnapshotDocument {
   readonly uri: string;
   readonly languageId: DialectId;
@@ -104,3 +110,5 @@ export const indexedDocumentsNotification: NotificationType<IndexedDocumentsPara
   new NotificationType<IndexedDocumentsParams>("systemd/index/documents");
 export const refreshDiagnosticsNotification: NotificationType<{ readonly uri?: string }> =
   new NotificationType<{ readonly uri?: string }>("systemd/diagnostics/refresh");
+export const detectedVersionsNotification: NotificationType<DetectedVersionsParams> =
+  new NotificationType<DetectedVersionsParams>("systemd/targets/detectedVersions");

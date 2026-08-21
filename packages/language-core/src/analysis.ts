@@ -1,8 +1,16 @@
 import { definitionFor, isDynamicDirective, sectionsFor } from "./registry.js";
-import type { AssignmentNode, CoreDiagnostic, ParsedDocument, RecordNode } from "./types.js";
+import type {
+  AssignmentNode,
+  CoreDiagnostic,
+  DirectiveDefinition,
+  ParsedDocument,
+  RecordNode,
+  RegistryDialect,
+} from "./types.js";
 
 export interface AnalysisOptions {
   readonly targetVersion?: string;
+  readonly targetVersions?: Partial<Readonly<Record<RegistryDialect, string>>>;
   readonly maxProblems?: number;
 }
 
@@ -68,7 +76,7 @@ export function analyze(
       document.dialect,
     )
   ) {
-    analyzeIni(document, diagnostics, options.targetVersion ?? "latest");
+    analyzeIni(document, diagnostics, options);
   } else if (document.dialect === "systemd-json") {
     analyzeJson(document, diagnostics);
   } else {
@@ -80,7 +88,7 @@ export function analyze(
 function analyzeIni(
   document: ParsedDocument,
   diagnostics: CoreDiagnostic[],
-  targetVersion: string,
+  options: AnalysisOptions,
 ): void {
   const knownSections = new Set(sectionsFor(document.dialect));
   for (const node of document.nodes) {
@@ -125,6 +133,7 @@ function analyzeIni(
       continue;
     }
     if (definition === undefined) continue;
+    const targetVersion = targetVersionFor(definition, options);
     if (definition.deprecated) {
       diagnostics.push({
         code: "deprecated-setting",
@@ -134,18 +143,13 @@ function analyzeIni(
         documentation: definition.documentation,
       });
     }
-    if (
-      definition.since !== null &&
-      targetVersion !== "latest" &&
-      targetVersion !== "auto" &&
-      compareVersions(definition.since, targetVersion) > 0
-    ) {
+    if (!isDefinitionAvailable(definition, targetVersion)) {
       diagnostics.push({
         code: "setting-unavailable",
         message:
           node.name +
           "= requires version " +
-          definition.since +
+          String(definition.since) +
           " but the target is " +
           targetVersion +
           ".",
@@ -550,7 +554,39 @@ function quadletSection(uri: string): string | undefined {
 }
 
 function compareVersions(left: string, right: string): number {
-  return Number.parseInt(left, 10) - Number.parseInt(right.replace(/^v/u, ""), 10);
+  if (left === "preview") return right === "preview" ? 0 : 1;
+  if (right === "preview") return -1;
+  const leftParts = versionParts(left);
+  const rightParts = versionParts(right);
+  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
+    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+export function isDefinitionAvailable(
+  definition: DirectiveDefinition,
+  targetVersion: string,
+): boolean {
+  return (
+    definition.since === null ||
+    targetVersion === "latest" ||
+    targetVersion === "auto" ||
+    compareVersions(definition.since, targetVersion) <= 0
+  );
+}
+
+function versionParts(value: string): readonly number[] {
+  return value
+    .replace(/^v/u, "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10))
+    .filter((part) => Number.isFinite(part));
+}
+
+function targetVersionFor(definition: DirectiveDefinition, options: AnalysisOptions): string {
+  return options.targetVersions?.[definition.dialect] ?? options.targetVersion ?? "latest";
 }
 
 function containsTemplate(value: string): boolean {

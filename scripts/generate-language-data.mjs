@@ -100,6 +100,7 @@ if (unavailable.length > 0) {
   process.exit(0);
 }
 
+const availability = extractAvailability(sources);
 const records = new Map();
 await extractSystemd(sources.systemd);
 await extractQuadlet(sources.podman);
@@ -372,8 +373,76 @@ function inheritedSemantics(semantics, dialect, name) {
   };
 }
 
+function extractAvailability(sourceTrees) {
+  const result = new Map();
+  for (const tag of releaseTags(sourceTrees.podman, /^v\d+\.\d+\.\d+$/u).filter((tag) => {
+    const [major = 0, minor = 0] = tag
+      .slice(1)
+      .split(".")
+      .map((part) => Number.parseInt(part, 10));
+    return major > 4 || (major === 4 && minor >= 4);
+  })) {
+    const text = sourceAt(sourceTrees.podman, tag, "pkg/systemd/quadlet/quadlet.go");
+    if (text === undefined) continue;
+    for (const { section, name } of quadletSettings(text)) {
+      rememberAvailability(result, "podman-quadlet", section, name, tag.slice(1));
+    }
+  }
+  for (const tag of releaseTags(sourceTrees.mkosi, /^v(?:1[6-9]|2\d)(?:\.\d+)*$/u)) {
+    const text = sourceAt(sourceTrees.mkosi, tag, "mkosi/config.py");
+    if (text === undefined) continue;
+    for (const { section, name } of mkosiSettings(text)) {
+      rememberAvailability(result, "mkosi", section, name, tag.slice(1));
+    }
+  }
+  return result;
+}
+
+function releaseTags(source, pattern) {
+  return execFileSync("git", ["-C", source, "tag", "--list", "--sort=v:refname"], {
+    encoding: "utf8",
+  })
+    .split(/\r?\n/u)
+    .filter((tag) => pattern.test(tag));
+}
+
+function sourceAt(source, revision, path) {
+  try {
+    return execFileSync("git", ["-C", source, "show", revision + ":" + path], {
+      encoding: "utf8",
+      maxBuffer: 16 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+function rememberAvailability(result, dialect, section, name, version) {
+  const key = availabilityKey(dialect, section, name);
+  if (!result.has(key)) result.set(key, version);
+}
+
+function availabilityKey(dialect, section, name) {
+  return [dialect, section, name].join("\0");
+}
+
 async function extractQuadlet(source) {
   const text = await readFile(resolve(source, "pkg/systemd/quadlet/quadlet.go"), "utf8");
+  for (const { section, name } of quadletSettings(text)) {
+    add({
+      dialect: "podman-quadlet",
+      section,
+      name,
+      since: availability.get(availabilityKey("podman-quadlet", section, name)) ?? "preview",
+      valueKind: quadletKind(name),
+      documentation: "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
+    });
+  }
+}
+
+function quadletSettings(text) {
+  const result = new Map();
   const constants = new Map();
   for (const match of text.matchAll(/^\s*([A-Za-z][A-Za-z0-9_]*)\s*=\s*"([^"]*)"/gmu)) {
     constants.set(match[1], match[2]);
@@ -396,24 +465,53 @@ async function extractQuadlet(source) {
     const key = /^\s*([A-Za-z0-9_]+):\s*true,/u.exec(line)?.[1];
     if (key !== undefined) {
       const name = constants.get(key);
-      if (name !== undefined) {
-        add({
-          dialect: "podman-quadlet",
-          section,
-          name,
-          valueKind: quadletKind(name),
-          documentation: "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-        });
-      }
+      if (name !== undefined) result.set(section + "\0" + name, { section, name });
     } else if (/^\s*\},?\s*$/u.test(line)) {
       inKeys = false;
     }
   }
+  const legacyLines = text.split(/\r?\n/u);
+  for (let index = 0; index < legacyLines.length; index += 1) {
+    const group = /^\s*supported([A-Za-z0-9]+)Keys\s*=\s*map\[string\]bool\s*\{/u.exec(
+      legacyLines[index] ?? "",
+    )?.[1];
+    if (group === undefined) continue;
+    const legacySection = constants.get(group + "Group") ?? group;
+    for (index += 1; index < legacyLines.length; index += 1) {
+      const line = legacyLines[index] ?? "";
+      if (/^\s*\}/u.test(line)) break;
+      const symbol = /^\s*([A-Za-z0-9_]+)\s*:\s*true,/u.exec(line)?.[1];
+      const name = symbol === undefined ? undefined : constants.get(symbol);
+      if (name !== undefined) {
+        result.set(legacySection + "\0" + name, { section: legacySection, name });
+      }
+    }
+  }
+  return [...result.values()];
 }
 
 async function extractMkosi(source) {
   const text = await readFile(resolve(source, "mkosi/config.py"), "utf8");
   const enumChoices = await extractPythonStringEnums(resolve(source, "mkosi"));
+  for (const setting of mkosiSettings(text, enumChoices)) {
+    add({
+      dialect: "mkosi",
+      section: setting.section,
+      name: setting.name,
+      since: availability.get(availabilityKey("mkosi", setting.section, setting.name)) ?? "preview",
+      valueKind: parserKind(setting.parser),
+      documentation: "https://man.archlinux.org/man/mkosi.1.en",
+      deprecated: setting.deprecated,
+      summary:
+        setting.summary ??
+        (setting.help === undefined ? undefined : setting.help.replace(/\.$/u, "") + "."),
+      choices: setting.choices,
+    });
+  }
+}
+
+function mkosiSettings(text, enumChoices = new Map()) {
+  const result = [];
   let cursor = 0;
   while ((cursor = text.indexOf("ConfigSetting(", cursor)) >= 0) {
     const block = balancedCall(text, cursor + "ConfigSetting".length);
@@ -432,29 +530,26 @@ async function extractMkosi(source) {
     const parser = /\bparse=([A-Za-z0-9_]+)/u.exec(block.text)?.[1] ?? "";
     const help = /\bhelp="([^"]+)"/su.exec(block.text)?.[1];
     const choices = configChoices(block.text, enumChoices);
-    add({
-      dialect: "mkosi",
+    result.push({
       section,
       name,
-      valueKind: parserKind(parser),
-      documentation: "https://man.archlinux.org/man/mkosi.1.en",
-      summary: help === undefined ? undefined : help.replace(/\.$/u, "") + ".",
+      parser,
+      help,
       choices,
     });
     const aliases = /\bcompat_names=\(([^)]*)\)/su.exec(block.text)?.[1] ?? "";
     for (const alias of aliases.matchAll(/"([^"]+)"/gu)) {
-      add({
-        dialect: "mkosi",
+      result.push({
         section,
         name: alias[1],
-        valueKind: parserKind(parser),
-        documentation: "https://man.archlinux.org/man/mkosi.1.en",
+        parser,
         deprecated: true,
         summary: "Compatibility alias for " + name + ".",
         choices,
       });
     }
   }
+  return result;
 }
 
 async function extractPythonStringEnums(directory) {

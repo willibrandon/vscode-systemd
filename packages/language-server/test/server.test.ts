@@ -416,6 +416,38 @@ describe("language server JSON-RPC contract", () => {
     ).toEqual({ changes: {} });
   });
 
+  it("applies the matching ecosystem target to diagnostics and completion", async () => {
+    const quadletUri = "file:///workspace/image.build";
+    await client.sendNotification("systemd/targets/detectedVersions", { podman: "5.6.9" });
+    await client.sendNotification("workspace/didChangeConfiguration", {
+      settings: {
+        systemd: {
+          validation: { enable: true, maxProblems: 200 },
+          target: { systemdVersion: "latest", podmanVersion: "auto", mkosiVersion: "latest" },
+        },
+      },
+    });
+    const diagnosticsPromise = nextDiagnostics(client, quadletUri);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: quadletUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: "[Build]\nBuildArg=RELEASE=1\n",
+      },
+    });
+
+    expect((await diagnosticsPromise).map(({ code }) => code)).toContain("setting-unavailable");
+    const completions = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: quadletUri },
+      position: { line: 2, character: 0 },
+    });
+    expect(completions.some(({ label }) => label === "BuildArg")).toBe(false);
+    expect(completions.some(({ label }) => label === "Annotation")).toBe(true);
+
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: quadletUri } });
+  });
+
   it("serves cross-file navigation and custom analysis", async () => {
     const diagnosticsPromise = nextDiagnostics(client);
     await client.sendNotification("textDocument/didOpen", {
@@ -660,12 +692,12 @@ async function request<T = unknown>(
   return client.sendRequest<T>(method, params);
 }
 
-function nextDiagnostics(client: MessageConnection): Promise<Diagnostic[]> {
+function nextDiagnostics(client: MessageConnection, targetUri = uri): Promise<Diagnostic[]> {
   return new Promise((resolve) => {
     const disposable = client.onNotification(
       "textDocument/publishDiagnostics",
       (params: { readonly uri: string; readonly diagnostics: Diagnostic[] }): void => {
-        if (params.uri !== uri) return;
+        if (params.uri !== targetUri) return;
         disposable.dispose();
         resolve(params.diagnostics);
       },

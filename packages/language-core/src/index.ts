@@ -1,4 +1,4 @@
-export { analyze } from "./analysis.js";
+export { analyze, isDefinitionAvailable } from "./analysis.js";
 export type { AnalysisOptions } from "./analysis.js";
 export { applyTextEdits, format } from "./formatter.js";
 export { detectDialect, parse } from "./parser.js";
