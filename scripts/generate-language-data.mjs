@@ -10,7 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 4;
+const adapterVersion = 5;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -858,8 +858,14 @@ function parserKind(parser) {
   const normalized = parser.toLowerCase();
   if (/(?:^|_)(?:bool|boolean|tristate)(?:_|$)/u.test(normalized)) return "boolean";
   if (/(?:^|_)(?:sec|time|timespan|calendar)(?:_|$)/u.test(normalized)) return "duration";
-  if (/(?:^|_)(?:size|bytes)(?:_|$)/u.test(normalized)) return "size";
-  if (/(?:^|_)(?:u?int(?:8|16|32|64)?|unsigned|percent|mode|nice)(?:_|$)/u.test(normalized)) {
+  if (/(?:^|_)(?:size|bytes|iec)(?:_|$)/u.test(normalized)) return "size";
+  if (normalized !== "config_parse_mode" && /(?:^|_)mode(?:_|$)/u.test(normalized)) {
+    return "string";
+  }
+  if (
+    normalized === "config_parse_mode" ||
+    /(?:^|_)(?:u?int(?:8|16|32|64)?|unsigned|percent|nice)(?:_|$)/u.test(normalized)
+  ) {
     return "number";
   }
   if (/(?:^|_)(?:path|filename|directory|image)(?:_|$)/u.test(normalized)) return "path";

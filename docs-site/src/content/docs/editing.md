@@ -22,11 +22,12 @@ language help does not require a network request or a host executable.
 
 ## File skeletons
 
-At the start of an empty file, type a snippet prefix such as `service-unit`, `quadlet-container`, or
-`mkosi-image`. The extension includes complete starting points for every unit type that systemd
-allows developers to configure in a file, every current Quadlet type, and common mkosi outputs.
-Placeholder choices cover details such as service type, user or system installation target, image
-format, and bootloader.
+At the start of an empty file, type a snippet prefix such as `service-unit`, `network-static`,
+`config-nspawn`, `quadlet-container`, or `mkosi-image`. The extension includes complete starting
+points for every unit type that systemd allows developers to configure in a file; common networkd,
+DNS-SD, DNS delegation, daemon, container, repart, and sysupdate configurations; every current
+Quadlet type; and common mkosi outputs. Placeholder choices cover details such as service type,
+network policy, user or system installation target, image format, and bootloader.
 
 There is intentionally no `.scope` file skeleton: systemd creates scope units programmatically and
 does not load them from unit configuration files. Existing scope units remain recognized for

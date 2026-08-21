@@ -463,6 +463,14 @@
         "path": "./snippets/systemd.json"
       },
       {
+        "language": "systemd-network",
+        "path": "./snippets/network.json"
+      },
+      {
+        "language": "systemd-config",
+        "path": "./snippets/config.json"
+      },
+      {
         "language": "podman-quadlet",
         "path": "./snippets/quadlet.json"
       },

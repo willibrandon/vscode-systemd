@@ -77,8 +77,8 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
     failures.push(name + " does not have a pinned 40-character Git revision");
   }
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 4) {
-  failures.push("upstream lock must use schema version 1 and adapter version 4");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 5) {
+  failures.push("upstream lock must use schema version 1 and adapter version 5");
 }
 for (const name of ["systemd", "podman", "mkosi"]) {
   const source = upstreamLock.sources?.[name];

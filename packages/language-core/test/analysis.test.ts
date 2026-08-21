@@ -123,7 +123,7 @@ describe("INI semantic analysis", () => {
   });
 
   it.each([
-    ["[Coredump]\nExternalSizeMax=0x20\n", "systemd-config"],
+    ["[Coredump]\nExternalSizeMax=2G\n", "systemd-config"],
     ["[Journal]\nMaxFileSec=1h 30min\n", "systemd-config"],
     ["[Coredump]\nJournalSizeMax=1.5 GiB\n", "systemd-config"],
     ["[Delegate]\nDNS=[2001:db8::1]:53\n", "systemd-config"],
@@ -133,12 +133,12 @@ describe("INI semantic analysis", () => {
 
   it("covers systemd numeric, duration, size, address, and path forms", () => {
     for (const value of ["+42", "-0o17", "0xAf"]) {
-      expect(codes("[Coredump]\nExternalSizeMax=" + value + "\n", "systemd-config")).not.toContain(
+      expect(codes("[Journal]\nRateLimitBurst=" + value + "\n", "systemd-config")).not.toContain(
         "invalid-value",
       );
     }
     for (const value of ["+", "0x", "0o8", "12x"]) {
-      expect(codes("[Coredump]\nExternalSizeMax=" + value + "\n", "systemd-config")).toContain(
+      expect(codes("[Journal]\nRateLimitBurst=" + value + "\n", "systemd-config")).toContain(
         "invalid-value",
       );
     }

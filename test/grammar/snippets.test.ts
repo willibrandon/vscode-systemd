@@ -48,6 +48,25 @@ const quadletCases: readonly SnippetCase[] = registryMetadata.quadletExtensions.
   };
 });
 
+const networkCases: readonly SnippetCase[] = [
+  { name: "DHCP network", uri: "file:///workspace/20-wired.network" },
+  { name: "Static network", uri: "file:///workspace/20-static.network" },
+  { name: "Bridge netdev", uri: "file:///workspace/10-bridge.netdev" },
+  { name: "Link policy", uri: "file:///workspace/10-ethernet.link" },
+  { name: "DNS-SD service", uri: "file:///workspace/example.dnssd" },
+  { name: "DNS delegate", uri: "file:///workspace/example.dns-delegate" },
+];
+
+const configCases: readonly SnippetCase[] = [
+  { name: "Journal configuration", uri: "file:///workspace/journald.conf" },
+  { name: "Resolver configuration", uri: "file:///workspace/resolved.conf" },
+  { name: "Container configuration", uri: "file:///workspace/example.nspawn" },
+  { name: "Partition definition", uri: "file:///workspace/repart.d/10-root.conf" },
+  { name: "System update transfer", uri: "file:///workspace/sysupdate.d/example.conf" },
+  { name: "Login manager configuration", uri: "file:///workspace/logind.conf" },
+  { name: "Core dump configuration", uri: "file:///workspace/coredump.conf" },
+];
+
 const mkosiCases: readonly SnippetCase[] = [
   { name: "mkosi image", uri: "file:///workspace/mkosi.conf" },
   { name: "mkosi bootable disk", uri: "file:///workspace/mkosi.conf" },
@@ -73,8 +92,19 @@ describe("shipped snippets", () => {
     expect(Object.keys(snippets)).toEqual(mkosiCases.map(({ name }) => name));
   });
 
+  it("covers the major systemd network and configuration families", async () => {
+    expect(Object.keys(await readSnippets("snippets/network.json"))).toEqual(
+      networkCases.map(({ name }) => name),
+    );
+    expect(Object.keys(await readSnippets("snippets/config.json"))).toEqual(
+      configCases.map(({ name }) => name),
+    );
+  });
+
   it.each([
     ["snippets/systemd.json", "systemd-unit", unitCases],
+    ["snippets/network.json", "systemd-network", networkCases],
+    ["snippets/config.json", "systemd-config", configCases],
     ["snippets/quadlet.json", "podman-quadlet", quadletCases],
     ["snippets/mkosi.json", "mkosi", mkosiCases],
   ] as const)(
@@ -110,6 +140,8 @@ describe("shipped snippets", () => {
   it("uses unique, documented completion prefixes", async () => {
     const collections = await Promise.all([
       readSnippets("snippets/systemd.json"),
+      readSnippets("snippets/network.json"),
+      readSnippets("snippets/config.json"),
       readSnippets("snippets/quadlet.json"),
       readSnippets("snippets/mkosi.json"),
     ]);

@@ -29,7 +29,7 @@ All notable changes to this project will be documented here. The format follows
 - Capability-probed installed validation against bounded temporary configuration copies with an
   isolated environment and private path remapping.
 - Semantically validated file-skeleton snippets for every author-configurable unit type, all current
-  Quadlet types, and common mkosi image formats.
+  Quadlet types, major systemd network and configuration families, and common mkosi image formats.
 
 ### Fixed
 

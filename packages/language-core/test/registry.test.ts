@@ -70,6 +70,8 @@ describe("registry queries", () => {
     expect(definitionFor("podman-quadlet", "Container", "CgroupsMode")).toBeDefined();
     expect(definitionFor("podman-quadlet", "Build", "ImageTag")).toBeDefined();
     expect(definitionFor("systemd-unit", "Install", "ExecStart")).toBeUndefined();
+    expect(definitionFor("systemd-config", "Journal", "SystemMaxUse")?.valueKind).toBe("size");
+    expect(definitionFor("systemd-config", "Resolve", "DNSSEC")?.valueKind).toBe("string");
     expect(definitionFor("systemd-unit", "Service", "Type")?.choices).toEqual([
       "simple",
       "exec",

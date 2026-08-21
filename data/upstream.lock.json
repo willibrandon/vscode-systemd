@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "adapterVersion": 4,
+  "adapterVersion": 5,
   "sources": {
     "systemd": {
       "repository": "https://github.com/systemd/systemd.git",

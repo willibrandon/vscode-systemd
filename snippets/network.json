@@ -1,0 +1,77 @@
+{
+  "DHCP network": {
+    "prefix": "network-dhcp",
+    "description": "Configure a network interface with DHCP",
+    "body": [
+      "[Match]",
+      "Name=${1:enp1s0}",
+      "",
+      "[Network]",
+      "DHCP=${2|yes,ipv4,ipv6,no|}",
+      "$0"
+    ]
+  },
+  "Static network": {
+    "prefix": "network-static",
+    "description": "Configure a static address, gateway, and DNS server",
+    "body": [
+      "[Match]",
+      "Name=${1:enp1s0}",
+      "",
+      "[Network]",
+      "Address=${2:192.0.2.10/24}",
+      "Gateway=${3:192.0.2.1}",
+      "DNS=${4:1.1.1.1}",
+      "$0"
+    ]
+  },
+  "Bridge netdev": {
+    "prefix": "netdev-bridge",
+    "description": "Create a software bridge network device",
+    "body": [
+      "[NetDev]",
+      "Name=${1:br0}",
+      "Kind=bridge",
+      "",
+      "[Bridge]",
+      "STP=${2|yes,no|}",
+      "$0"
+    ]
+  },
+  "Link policy": {
+    "prefix": "link-policy",
+    "description": "Match a link and configure its naming and activation policy",
+    "body": [
+      "[Match]",
+      "OriginalName=${1:eth*}",
+      "",
+      "[Link]",
+      "NamePolicy=${2:keep kernel database onboard slot path}",
+      "ActivationPolicy=${3|up,always-up,manual,always-down,down,bound|}",
+      "$0"
+    ]
+  },
+  "DNS-SD service": {
+    "prefix": "dnssd-service",
+    "description": "Advertise a service with systemd-resolved DNS-SD",
+    "body": [
+      "[Service]",
+      "Name=${1:%H}",
+      "Type=${2:_http._tcp}",
+      "Port=${3:8080}",
+      "TxtText=${4:path=/}",
+      "$0"
+    ]
+  },
+  "DNS delegate": {
+    "prefix": "dns-delegate",
+    "description": "Delegate DNS servers and search domains to systemd-resolved",
+    "body": [
+      "[Delegate]",
+      "DNS=${1:192.0.2.53}",
+      "Domains=${2:example.com}",
+      "DefaultRoute=${3|yes,no|}",
+      "$0"
+    ]
+  }
+}

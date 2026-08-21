@@ -1,0 +1,90 @@
+{
+  "Journal configuration": {
+    "prefix": "config-journald",
+    "description": "Configure persistent systemd journal storage",
+    "body": [
+      "[Journal]",
+      "Storage=${1|persistent,auto,volatile,none|}",
+      "Compress=${2|yes,no|}",
+      "SystemMaxUse=${3:1G}",
+      "$0"
+    ]
+  },
+  "Resolver configuration": {
+    "prefix": "config-resolved",
+    "description": "Configure systemd-resolved DNS servers and DNSSEC",
+    "body": [
+      "[Resolve]",
+      "DNS=${1:1.1.1}",
+      "FallbackDNS=${2:9.9.9.9}",
+      "DNSSEC=${3|allow-downgrade,true,false|}",
+      "$0"
+    ]
+  },
+  "Container configuration": {
+    "prefix": "config-nspawn",
+    "description": "Boot a systemd-nspawn container with virtual Ethernet",
+    "body": [
+      "[Exec]",
+      "Boot=yes",
+      "Hostname=${1:example}",
+      "",
+      "[Network]",
+      "VirtualEthernet=${2|yes,no|}",
+      "$0"
+    ]
+  },
+  "Partition definition": {
+    "prefix": "config-repart",
+    "description": "Define a root partition for systemd-repart",
+    "body": [
+      "[Partition]",
+      "Type=${1:root}",
+      "Label=${2:root}",
+      "Format=${3:ext4}",
+      "SizeMinBytes=${4:1G}",
+      "$0"
+    ]
+  },
+  "System update transfer": {
+    "prefix": "config-sysupdate",
+    "description": "Transfer versioned files with systemd-sysupdate",
+    "body": [
+      "[Transfer]",
+      "Verify=${1|signature,checksum,no|}",
+      "",
+      "[Source]",
+      "Type=${2:url-file}",
+      "Path=${3:https://example.com/releases/}",
+      "MatchPattern=${4:example_@v.raw.xz}",
+      "",
+      "[Target]",
+      "Type=regular-file",
+      "Path=${5:/var/lib/example/}",
+      "MatchPattern=example_@v.raw",
+      "$0"
+    ]
+  },
+  "Login manager configuration": {
+    "prefix": "config-logind",
+    "description": "Configure local consoles, sessions, and the power key",
+    "body": [
+      "[Login]",
+      "NAutoVTs=${1:6}",
+      "KillUserProcesses=${2|no,yes|}",
+      "HandlePowerKey=${3|poweroff,ignore,reboot,lock|}",
+      "$0"
+    ]
+  },
+  "Core dump configuration": {
+    "prefix": "config-coredump",
+    "description": "Configure external core dump storage",
+    "body": [
+      "[Coredump]",
+      "Storage=${1|external,journal,none|}",
+      "Compress=${2|yes,no|}",
+      "ProcessSizeMax=${3:2G}",
+      "$0"
+    ]
+  }
+}
