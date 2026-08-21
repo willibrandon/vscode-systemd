@@ -53,6 +53,20 @@ describe("registry queries", () => {
     expect(quadletUnit.some((definition) => definition.name === "Description")).toBe(true);
   });
 
+  it("includes concise upstream help for settings and documented values", () => {
+    const type = definitionFor("systemd-unit", "Service", "Type");
+    expect(type?.summary).toBe(
+      "Configures the mechanism via which the service notifies the manager that the service start-up has finished.",
+    );
+    expect(type?.choiceDescriptions?.["oneshot"]).toContain(
+      "the service manager will consider the unit up after the main process exits",
+    );
+    expect(type?.choiceDescriptions?.["simple"]).not.toMatch(/\.\.\.$/u);
+    expect(definitionFor("systemd-unit", "Service", "ExecStart")?.summary).toBe(
+      "Commands that are executed when this service is started.",
+    );
+  });
+
   it("returns known sections and accepts only generated dynamic names", () => {
     expect(sectionsFor("systemd-unit")).toContain("Service");
     expect(sectionsFor("podman-quadlet")).toEqual(

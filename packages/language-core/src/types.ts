@@ -150,6 +150,7 @@ export interface DirectiveDefinition {
   readonly documentation: string;
   readonly summary: string;
   readonly choices: readonly string[];
+  readonly choiceDescriptions?: Readonly<Record<string, string>>;
   readonly exclusiveChoices?: boolean;
 }
 

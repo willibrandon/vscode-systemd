@@ -40,6 +40,7 @@ const expectedRuntimePackages = new Set([
   "vscode-uri@3.1.0",
 ]);
 const mitSha256 = "f74f925ccd6fc2f4b9bdf7682f6927a64809c8668e8232997c541cc6f992787b";
+const systemdLgplSha256 = "6d9bb3b7fc818a8facc4cc296060a0883fef8710d6498f86165335846e82ee9d";
 
 const lock = JSON.parse(await readFile(resolve(root, "package-lock.json"), "utf8"));
 const failures = [];
@@ -61,6 +62,13 @@ if (createHash("sha256").update(license).digest("hex") !== mitSha256) {
 }
 
 const notices = await readFile(resolve(root, "THIRD-PARTY-NOTICES.md"), "utf8");
+const systemdLgpl = await readFile(resolve(root, "LICENSES/systemd-LGPL-2.1-or-later.txt"));
+if (createHash("sha256").update(systemdLgpl).digest("hex") !== systemdLgplSha256) {
+  failures.push("systemd LGPL text is not the reviewed upstream license");
+}
+if (!notices.includes("systemd manual excerpts") || !notices.includes("LGPL-2.1-or-later")) {
+  failures.push("third-party notice missing for generated systemd manual excerpts");
+}
 const metafiles = JSON.parse(await readFile(resolve(root, "dist/metafile.json"), "utf8"));
 const bundledNames = new Set();
 for (const metafile of metafiles) {

@@ -469,6 +469,21 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
             range: toRange(context.document, assignment.nameSpan),
           };
     }
+    const offset = context.document.offsetAt(params.position);
+    if (offset >= assignment.valueSpan.start && offset <= assignment.valueSpan.end) {
+      const value = wordAt(context.document, params.position);
+      const description = definition.choiceDescriptions?.[value];
+      const range = wordRangeAt(context.document, params.position);
+      if (description !== undefined && range !== null) {
+        return {
+          contents: {
+            kind: MarkupKind.Markdown,
+            value: directiveValueMarkdown(definition, value, description),
+          },
+          range,
+        };
+      }
+    }
     return {
       contents: { kind: MarkupKind.Markdown, value: directiveMarkdown(definition) },
       range: toRange(context.document, assignment.nameSpan),
@@ -1860,6 +1875,14 @@ async function valueCompletions(
     label: value,
     kind: CompletionItemKind.Value,
     detail: definition.name + "= value",
+    ...(definition.choiceDescriptions?.[value] === undefined
+      ? {}
+      : {
+          documentation: {
+            kind: MarkupKind.Markdown,
+            value: directiveValueMarkdown(definition, value, definition.choiceDescriptions[value]),
+          },
+        }),
   }));
 }
 
@@ -2166,16 +2189,34 @@ function directiveMarkdown(definition: DirectiveDefinition): string {
     definition.choices.length === 0 ? "" : "\n\nValues: `" + definition.choices.join("`, `") + "`.";
   const deprecated = definition.deprecated ? "\n\n**Deprecated.**" : "";
   return (
-    "**" +
+    "`" +
     definition.name +
     "=<" +
     definition.valueKind +
-    ">**\n\n" +
+    ">`\n\n" +
     definition.summary +
     choices +
     availability +
     removal +
     deprecated +
+    "\n\n[Official documentation](" +
+    definition.documentation +
+    ")"
+  );
+}
+
+function directiveValueMarkdown(
+  definition: DirectiveDefinition,
+  value: string,
+  description: string,
+): string {
+  return (
+    "`" +
+    definition.name +
+    "=" +
+    value +
+    "`\n\n" +
+    description +
     "\n\n[Official documentation](" +
     definition.documentation +
     ")"

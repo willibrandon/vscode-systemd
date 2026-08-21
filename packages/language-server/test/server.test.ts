@@ -477,6 +477,50 @@ describe("language server JSON-RPC contract", () => {
     ).toEqual({ changes: {} });
   });
 
+  it("explains a setting and its selected documented value", async () => {
+    const hoverUri = "file:///workspace/hover.service";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: hoverUri,
+        languageId: "systemd-unit",
+        version: 1,
+        text: "[Service]\nType=oneshot\n",
+      },
+    });
+
+    const settingHover = await request<Hover | null>(client, "textDocument/hover", {
+      textDocument: { uri: hoverUri },
+      position: { line: 1, character: 2 },
+    });
+    expect(JSON.stringify(settingHover)).toContain(
+      "Configures the mechanism via which the service notifies the manager",
+    );
+    expect(JSON.stringify(settingHover)).toContain("`Type=<string>`");
+    expect(JSON.stringify(settingHover)).toContain(
+      "`simple`, `exec`, `forking`, `oneshot`, `dbus`, `notify`, `notify-reload`, `idle`",
+    );
+
+    const values = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: hoverUri },
+      position: { line: 1, character: "Type=".length },
+    });
+    const oneshot = values.find(({ label }) => label === "oneshot");
+    expect(JSON.stringify(oneshot?.documentation)).toContain(
+      "the service manager will consider the unit up after the main process exits",
+    );
+
+    const valueHover = await request<Hover | null>(client, "textDocument/hover", {
+      textDocument: { uri: hoverUri },
+      position: { line: 1, character: 8 },
+    });
+    expect(JSON.stringify(valueHover)).toContain("`Type=oneshot`");
+    expect(JSON.stringify(valueHover)).toContain(
+      "the service manager will consider the unit up after the main process exits",
+    );
+    expect(JSON.stringify(valueHover)).not.toContain("Values:");
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: hoverUri } });
+  });
+
   it("serves source-backed completions, hover, and signatures for systemd JSON", async () => {
     const jsonUri = "file:///workspace/demo.user";
     await client.sendNotification("textDocument/didOpen", {

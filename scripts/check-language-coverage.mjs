@@ -169,14 +169,22 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
 if (registry.schemaVersion !== 2) {
   failures.push("generated registry must use schema version 2");
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 13) {
-  failures.push("upstream lock must use schema version 1 and adapter version 13");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 14) {
+  failures.push("upstream lock must use schema version 1 and adapter version 14");
 }
 if ((registry.hwdbProperties?.length ?? 0) < 80) {
   failures.push("generated hwdb property coverage is incomplete");
 }
 if ((registry.hwdbMatchPrefixes?.length ?? 0) < 40) {
   failures.push("generated hwdb match-prefix coverage is incomplete");
+}
+const documentedSystemd = (registry.directives ?? []).filter(
+  (directive) =>
+    ["systemd-unit", "systemd-network", "systemd-config"].includes(directive.dialect) &&
+    directive.summary !== directive.name + " in [" + directive.section + "].",
+);
+if (documentedSystemd.length < 2_000) {
+  failures.push("generated systemd hover documentation is incomplete");
 }
 for (const name of ["systemd", "podman", "mkosi"]) {
   const source = upstreamLock.sources?.[name];
@@ -382,6 +390,7 @@ function hydrateDirective(raw) {
     documentation,
     summary,
     choices,
+    ...(x?.v === undefined ? {} : { choiceDescriptions: x.v }),
     ...(x?.k === undefined ? {} : { documentKinds: x.k }),
     ...(x?.a === undefined ? {} : { assignmentMode: x.a }),
     ...(x?.s === undefined ? {} : { mkosiScope: x.s }),

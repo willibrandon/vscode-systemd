@@ -1,10 +1,12 @@
 [
   "CHANGELOG.md",
   "LICENSE",
+  "LICENSES/systemd-LGPL-2.1-or-later.txt",
   "README.md",
   "SECURITY.md",
   "SUPPORT.md",
   "THIRD-PARTY-NOTICES.md",
+  "data/upstream.lock.json",
   "dist/browser.js",
   "dist/browserServer.js",
   "dist/extension.cjs",

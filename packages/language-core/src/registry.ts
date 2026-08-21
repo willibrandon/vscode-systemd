@@ -27,6 +27,7 @@ interface RawDirectiveExtras {
   readonly r?: string;
   readonly x?: boolean;
   readonly u?: string;
+  readonly v?: Readonly<Record<string, string>>;
 }
 
 type RawDirective = readonly [
@@ -312,6 +313,7 @@ function hydrateDirective(raw: RawDirective, quadletAppend = false): DirectiveDe
     documentation,
     summary,
     choices,
+    ...(extras?.v === undefined ? {} : { choiceDescriptions: extras.v }),
     ...(extras?.k === undefined ? {} : { documentKinds: extras.k }),
     ...(quadletAppend
       ? { assignmentMode: "append" as const }

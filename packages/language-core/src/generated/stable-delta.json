@@ -191,18 +191,222 @@
     [
       "systemd-config",
       "*",
+      "IMAGE_VERSION",
+      "string",
+      "249",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/os-release.html#IMAGE_VERSION=",
+      "A lower-case string (mostly numeric, no spaces or other characters outside of 0–9, a–z, \".\", \"_\" and \"-\") identifying the OS image version.",
+      []
+    ],
+    [
+      "systemd-config",
+      "*",
+      "systemd.factory_reset",
+      "string",
+      "258",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/kernel-command-line.html#systemd.factory_reset=",
+      "Controls whether to to boot into factory reset mode, implemented by systemd-factory-reset-generator(8), systemd-repart(8), and other tools.",
+      []
+    ],
+    [
+      "systemd-config",
+      "*",
       "systemd.firstboot",
       "string",
       "233",
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/homectl.html#systemd.firstboot=",
-      "systemd.firstboot in [*].",
+      "This boolean will disable the effect of `homectl firstboot` command.",
       [
         "yes",
         "no"
       ],
       {
         "x": false
+      }
+    ],
+    [
+      "systemd-config",
+      "*",
+      "VERSION_CODENAME",
+      "string",
+      "231",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/os-release.html#VERSION_CODENAME=",
+      "A lower-case string (no spaces or other characters outside of 0–9, a–z, \".\", \"_\" and \"-\") identifying the operating system release code name, excluding any OS name information or release version, and suitable for processing by scripts or usage in generated filenames.",
+      []
+    ],
+    [
+      "systemd-config",
+      "*",
+      "VERSION_ID",
+      "string",
+      null,
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/os-release.html#VERSION_ID=",
+      "A lower-case string (mostly numeric, no spaces or other characters outside of 0–9, a–z, \".\", \"_\" and \"-\") identifying the operating system version, excluding any OS name information or release code name, and suitable for processing by scripts or usage in generated filenames.",
+      []
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "IPoIB",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#IPoIB=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "IPVLAN",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#IPVLAN=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "IPVTAP",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#IPVTAP=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "MACsec",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#MACsec=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "MACVLAN",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#MACVLAN=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "MACVTAP",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#MACVTAP=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "Tunnel",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#Tunnel=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "VLAN",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#VLAN=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "VXLAN",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#VXLAN=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "Xfrm",
+      "string",
+      "211",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#Xfrm=",
+      "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
       }
     ],
     [
@@ -213,7 +417,7 @@
       "243",
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#NUMAPolicy=",
-      "NUMAPolicy in [*].",
+      "Controls the NUMA memory policy of the executed processes.",
       [
         "default",
         "preferred",
@@ -233,7 +437,7 @@
       null,
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#SecureBits=",
-      "SecureBits in [*].",
+      "Controls the secure bits set for the executed process.",
       [
         "keep-caps",
         "keep-caps-locked",
@@ -249,13 +453,39 @@
     [
       "systemd-unit",
       "Socket",
+      "MessageQueueMaxMessages",
+      "string",
+      null,
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#MessageQueueMaxMessages=",
+      "These two settings take integer values and control the mq_maxmsg field or the mq_msgsize field, respectively, when creating the message queue.",
+      []
+    ],
+    [
+      "systemd-unit",
+      "Socket",
       "MessageQueueMessageSize",
       "string",
       null,
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#MessageQueueMessageSize=",
-      "MessageQueueMessageSize in [Socket].",
+      "These two settings take integer values and control the mq_maxmsg field or the mq_msgsize field, respectively, when creating the message queue.",
       []
+    ],
+    [
+      "systemd-unit",
+      "Unit",
+      "ConditionCPUFeature",
+      "string",
+      "248",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionCPUFeature=",
+      "Verify that a given CPU feature is available via the `CPUID` instruction.",
+      [],
+      {
+        "a": "append",
+        "r": "unit-conditions"
+      }
     ]
   ]
 }

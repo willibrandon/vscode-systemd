@@ -3,6 +3,19 @@
 The compiled extension includes the following third-party packages. Versions are locked by
 `package-lock.json`; this notice is checked against the esbuild metafile during verification.
 
+## systemd manual excerpts
+
+Concise directive and value descriptions in the generated language registry are derived from the
+systemd manual sources at the exact revisions recorded in `data/upstream.lock.json`.
+
+Copyright systemd contributors
+
+SPDX-License-Identifier: LGPL-2.1-or-later
+
+Source: <https://github.com/systemd/systemd/tree/main/man>
+
+License: `LICENSES/systemd-LGPL-2.1-or-later.txt`
+
 ## Microsoft VS Code language packages
 
 - vscode-jsonrpc@9.0.1

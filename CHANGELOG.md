@@ -4,6 +4,11 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Added concise upstream descriptions to systemd setting hovers and specific explanations for
+  documented values such as `Type=oneshot`.
+
 ## [0.2.1] - 2026-08-21
 
 ### Fixed

@@ -15,7 +15,7 @@ const groupSchemaOutput = resolve(root, "schemas/systemd-group.schema.json");
 const membershipSchemaOutput = resolve(root, "schemas/systemd-membership.schema.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 13;
+const adapterVersion = 14;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -485,6 +485,7 @@ function serializeDirective(directive, omitAssignmentMode = false) {
   if (directive.resetGroup !== undefined) extras.r = directive.resetGroup;
   if (directive.exclusiveChoices !== undefined) extras.x = directive.exclusiveChoices;
   if (directive.until !== undefined) extras.u = directive.until;
+  if (directive.choiceDescriptions !== undefined) extras.v = directive.choiceDescriptions;
   return [
     directive.dialect,
     directive.section,
@@ -672,6 +673,9 @@ function add(candidate) {
     summary: candidate.summary ?? candidate.name + " in [" + section + "].",
     choices: candidate.choices ?? [],
   };
+  if (Object.keys(candidate.choiceDescriptions ?? {}).length > 0) {
+    value.choiceDescriptions = candidate.choiceDescriptions;
+  }
   if (candidate.until !== undefined) value.until = candidate.until;
   if (candidate.documentKinds?.length > 0) {
     value.documentKinds = [...new Set(candidate.documentKinds)].sort();
@@ -705,6 +709,11 @@ function add(candidate) {
     summary: documentation === value.documentation ? value.summary : existing.summary,
     choices: useExistingChoices ? existing.choices : value.choices,
   };
+  const choiceDescriptions = {
+    ...(existing.choiceDescriptions ?? {}),
+    ...(value.choiceDescriptions ?? {}),
+  };
+  if (Object.keys(choiceDescriptions).length > 0) merged.choiceDescriptions = choiceDescriptions;
   const documentKinds = [
     ...new Set([...(existing.documentKinds ?? []), ...(value.documentKinds ?? [])]),
   ].sort();
@@ -995,6 +1004,8 @@ async function extractSystemd(source) {
         }
       }
       const choiceMetadata = systemdChoices(block);
+      const summary = systemdDirectiveSummary(block);
+      const choiceDescriptions = systemdChoiceDescriptions(block, choiceMetadata.choices);
       for (const name of names) {
         if (name === undefined) continue;
         const inherited = inheritedSemantics(semantics, dialect, name);
@@ -1016,6 +1027,8 @@ async function extractSystemd(source) {
               : choiceMetadata.choices,
           exclusiveChoices:
             choiceMetadata.exclusive && isClosedSystemdChoice(dialect, resolvedSection, name),
+          summary,
+          choiceDescriptions,
           documentation:
             "https://www.freedesktop.org/software/systemd/man/latest/" +
             basename(file, ".xml") +
@@ -1168,6 +1181,97 @@ function systemdChoices(block) {
     }
   }
   return { choices: [], exclusive: undefined };
+}
+
+function systemdDirectiveSummary(block) {
+  const paragraph = /<listitem(?:\s[^>]*)?>\s*<para(?:\s[^>]*)?>([\s\S]*?)<\/para>/u.exec(
+    block,
+  )?.[1];
+  return paragraph === undefined ? undefined : conciseSystemdDocumentation(paragraph);
+}
+
+function systemdChoiceDescriptions(block, choices) {
+  if (choices.length === 0) return undefined;
+  const allowed = new Set(choices);
+  const descriptions = {};
+  for (const list of block.matchAll(/<itemizedlist(?:\s[^>]*)?>([\s\S]*?)<\/itemizedlist>/gu)) {
+    for (const item of (list[1] ?? "").matchAll(
+      /<listitem(?:\s[^>]*)?>\s*<para(?:\s[^>]*)?>([\s\S]*?)<\/para>/gu,
+    )) {
+      const paragraph = item[1] ?? "";
+      const choice = [...paragraph.matchAll(/<option(?:\s[^>]*)?>([\s\S]*?)<\/option>/gu)]
+        .map((match) => systemdChoiceToken(match[1] ?? ""))
+        .find((candidate) => allowed.has(candidate));
+      if (choice === undefined || descriptions[choice] !== undefined) continue;
+      const description = conciseSystemdDocumentation(paragraph);
+      if (description !== "") descriptions[choice] = description;
+    }
+  }
+  return Object.keys(descriptions).length === 0 ? undefined : descriptions;
+}
+
+function conciseSystemdDocumentation(markup) {
+  const text = systemdDocumentationText(markup);
+  let sentence = /^([\s\S]*?[.!?])(?=\s+(?:[A-Z`*]|$)|$)/u.exec(text)?.[1] ?? text;
+  if (sentence.length <= 420) return sentence;
+  const withoutParentheticals = removeParentheticalClauses(sentence);
+  if (withoutParentheticals.length >= 80 && withoutParentheticals.length <= 420) {
+    return withoutParentheticals;
+  }
+  sentence = withoutParentheticals.length >= 80 ? withoutParentheticals : sentence;
+  const clauses = sentence.split(/;\s+/u);
+  if (clauses.length > 1) {
+    const selected = clauses.slice(0, clauses[0]?.endsWith(":") === true ? 2 : 1).join("; ");
+    if (selected.length >= 80 && selected.length <= 420) return selected.replace(/[:,]?$/u, ".");
+  }
+  const boundary = sentence.lastIndexOf(" ", 417);
+  return sentence.slice(0, boundary < 80 ? 417 : boundary).trimEnd() + "...";
+}
+
+function removeParentheticalClauses(text) {
+  let result = "";
+  let depth = 0;
+  for (const character of text) {
+    if (character === "(") {
+      depth += 1;
+      continue;
+    }
+    if (character === ")" && depth > 0) {
+      depth -= 1;
+      continue;
+    }
+    if (depth === 0) result += character;
+  }
+  return result
+    .replace(/\s+([,.;:])/gu, "$1")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function systemdDocumentationText(markup) {
+  return markup
+    .replace(/<!--[\s\S]*?-->/gu, " ")
+    .replace(
+      /<citerefentry(?:\s[^>]*)?>[\s\S]*?<refentrytitle(?:\s[^>]*)?>([\s\S]*?)<\/refentrytitle>[\s\S]*?<manvolnum(?:\s[^>]*)?>([\s\S]*?)<\/manvolnum>[\s\S]*?<\/citerefentry>/gu,
+      "$1($2)",
+    )
+    .replace(
+      /<(varname|option|literal|filename|command|function|constant)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gu,
+      "`$2`",
+    )
+    .replace(/<emphasis(?:\s[^>]*)?>([\s\S]*?)<\/emphasis>/gu, "*$1*")
+    .replace(/<quote(?:\s[^>]*)?>([\s\S]*?)<\/quote>/gu, '"$1"')
+    .replace(/<[^>]+>/gu, " ")
+    .replace(/&#(\d+);/gu, (_, value) => String.fromCodePoint(Number.parseInt(value, 10)))
+    .replace(/&#x([0-9a-f]+);/giu, (_, value) => String.fromCodePoint(Number.parseInt(value, 16)))
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replace(/&([A-Za-z0-9_.%-]+);/gu, "$1")
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 function systemdChoiceToken(value) {

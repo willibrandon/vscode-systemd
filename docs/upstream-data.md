@@ -3,6 +3,9 @@
 Directive and value data is generated from pinned systemd, Podman, and mkosi source. The extension
 does not download data at runtime.
 
+Concise systemd hover descriptions come from the pinned manual sources. The packaged excerpts keep
+their upstream license and attribution.
+
 ## Source lock
 
 `data/upstream.lock.json` records each repository, release tag, commit, tree, preview commit, and
