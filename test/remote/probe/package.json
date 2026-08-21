@@ -1,0 +1,28 @@
+{
+  "name": "systemd-remote-smoke-probe",
+  "displayName": "systemd Remote Smoke Probe",
+  "description": "Test-only extension that records remote systemd activation evidence.",
+  "version": "0.0.0",
+  "publisher": "willibrandon",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/willibrandon/vscode-systemd.git"
+  },
+  "files": [
+    "extension.cjs",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "vscode": "^1.102.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.cjs"
+}

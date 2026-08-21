@@ -48,4 +48,6 @@ jobs:
           PODMAN_SOURCE: ${{ github.workspace }}/.podman-upstream
           MKOSI_SOURCE: ${{ github.workspace }}/.mkosi-upstream
       - name: Report whether review is required
-        run: git diff --exit-code -- packages/language-core/src/generated/registry.json
+        run: >-
+          git diff --exit-code -- data/upstream.lock.json
+          packages/language-core/src/generated/registry.json

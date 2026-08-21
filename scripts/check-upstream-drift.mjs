@@ -1,125 +1,75 @@
-import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { parse } from "yaml";
 
 const execute = promisify(execFile);
 const root = resolve(import.meta.dirname, "..");
-const sourceArgument = valueAfter("--source");
-const upstream = resolve(
-  sourceArgument ?? process.env.SYSTEMD_SOURCE ?? resolve(root, "../systemd"),
+const lock = JSON.parse(await readFile(resolve(root, "data/upstream.lock.json"), "utf8"));
+const registry = JSON.parse(
+  await readFile(resolve(root, "packages/language-core/src/generated/registry.json"), "utf8"),
 );
-const reportOnly = process.argv.includes("--report-only");
-const baseline = JSON.parse(await readFile(resolve(root, "data/upstream-baseline.json"), "utf8"));
-const registry = parse(await readFile(resolve(root, "data/directives.yaml"), "utf8"), {
-  merge: true,
-});
-const current = await snapshot(upstream);
-const reviewedDirectives = registry.directives.map(({ name }) => name).sort();
-const report = {
-  baselineRevision: baseline.revision,
-  currentRevision: current.revision,
-  revisionMatches: baseline.revision === current.revision,
-  directives: {
-    addedToUpstream: current.directives.filter((name) => !reviewedDirectives.includes(name)),
-    removedFromUpstream: reviewedDirectives.filter((name) => !current.directives.includes(name)),
-    parserSourceChanged: current.configSha256 !== baseline.configSha256,
-  },
-  manualDateSectionsChanged: current.manualDateSectionsSha256 !== baseline.manualDateSectionsSha256,
-  shellTests: compareFiles(baseline.shellTests, current.shellTests),
-  configTemplates: compareFiles(baseline.configTemplates, current.configTemplates),
+const sources = {
+  systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
+  podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
+  mkosi: resolve(root, process.env.MKOSI_SOURCE ?? "../mkosi"),
 };
-const drift =
-  !report.revisionMatches ||
-  report.directives.addedToUpstream.length > 0 ||
-  report.directives.removedFromUpstream.length > 0 ||
-  report.directives.parserSourceChanged ||
-  report.manualDateSectionsChanged ||
-  hasFileChanges(report.shellTests) ||
-  hasFileChanges(report.configTemplates);
-const output = resolve(root, valueAfter("--output") ?? "dist/upstream-drift.json");
-await mkdir(resolve(output, ".."), { recursive: true });
-await writeFile(output, `${JSON.stringify({ drift, ...report }, null, 2)}\n`, "utf8");
+const failures = [];
 
-console.log(
-  `${drift ? "Upstream drift detected" : "Pinned upstream snapshot verified"}: ${current.revision} (${current.directives.length} directives, ${Object.keys(current.shellTests).length} shell tests, ${Object.keys(current.configTemplates).length} config templates).`,
-);
-if (drift && !reportOnly) {
-  throw new Error(`Upstream input differs from reviewed baseline; inspect ${output}.`);
+if (lock.schemaVersion !== 1 || lock.adapterVersion !== 2) {
+  failures.push("the upstream lock schema or adapter version is unsupported");
 }
 
-async function snapshot(directory) {
-  const config = await readFile(resolve(directory, "config.c"), "utf8");
-  const manual = await readFile(resolve(directory, "systemd.8.in"), "utf8");
-  const { stdout } = await execute("git", ["rev-parse", "HEAD"], { cwd: directory });
-  return {
-    revision: stdout.trim(),
-    directives: [
-      ...new Set(
-        [...config.matchAll(/(?:!?strcmp)\(key,\s*"([a-z][a-z0-9]*)"\)/gu)].map(
-          (match) => match[1],
-        ),
-      ),
-    ].sort(),
-    configSha256: sha256(config),
-    manualDateSectionsSha256: sha256(dateContext(manual)),
-    shellTests: await fileHashes(resolve(directory, "test"), /^test-[0-9]{4}\.sh$/u),
-    configTemplates: await fileHashes(resolve(directory, "test"), /^test-config\.[0-9]+\.in$/u),
-  };
-}
-
-async function fileHashes(directory, pattern) {
-  const names = (await readdir(directory)).filter((name) => pattern.test(name)).sort();
-  return Object.fromEntries(
-    await Promise.all(
-      names.map(async (name) => [name, sha256(await readFile(resolve(directory, name)))]),
-    ),
-  );
-}
-
-function dateContext(manual) {
-  const lines = manual.split(/\r\n|\n|\r/u);
-  const selected = new Set();
-  for (const [index, line] of lines.entries()) {
-    if (!/dateformat|dateyesterday|datehourago/iu.test(line)) continue;
-    for (
-      let cursor = Math.max(0, index - 8);
-      cursor <= Math.min(lines.length - 1, index + 16);
-      cursor += 1
-    ) {
-      selected.add(cursor);
-    }
+for (const [name, directory] of Object.entries(sources)) {
+  const expected = lock.sources?.[name];
+  if (expected === undefined) {
+    failures.push(`${name}: lock entry is missing`);
+    continue;
   }
-  return [...selected]
-    .sort((left, right) => left - right)
-    .map((index) => lines[index])
-    .join("\n");
+  try {
+    await access(directory);
+  } catch {
+    failures.push(`${name}: source tree is missing at ${directory}`);
+    continue;
+  }
+  const [revision, tree, remote] = await Promise.all([
+    git(directory, ["rev-parse", "HEAD"]),
+    git(directory, ["rev-parse", "HEAD^{tree}"]),
+    git(directory, ["remote", "get-url", "origin"]),
+  ]);
+  if (revision !== expected.revision) {
+    failures.push(`${name}: revision ${revision} does not match ${expected.revision}`);
+  }
+  if (tree !== expected.tree) {
+    failures.push(`${name}: tree ${tree} does not match ${expected.tree}`);
+  }
+  if (normalizeRemote(remote) !== normalizeRemote(expected.repository)) {
+    failures.push(`${name}: remote ${remote} does not match ${expected.repository}`);
+  }
+  if (registry.upstream?.[name] !== revision) {
+    failures.push(
+      `${name}: generated registry is pinned to ${registry.upstream?.[name] ?? "nothing"}`,
+    );
+  }
 }
 
-function compareFiles(expected, actual) {
-  return {
-    added: Object.keys(actual).filter((name) => expected[name] === undefined),
-    removed: Object.keys(expected).filter((name) => actual[name] === undefined),
-    changed: Object.keys(actual).filter(
-      (name) => expected[name] !== undefined && expected[name] !== actual[name],
-    ),
-  };
+if (failures.length > 0) {
+  throw new Error(`Pinned upstream verification failed:\n- ${failures.join("\n- ")}`);
+}
+console.log(
+  `Pinned upstream sources verified: systemd ${lock.sources.systemd.tag}, Podman ${lock.sources.podman.tag}, mkosi ${lock.sources.mkosi.tag}.`,
+);
+
+async function git(directory, arguments_) {
+  const { stdout } = await execute("git", ["-C", directory, ...arguments_]);
+  return stdout.trim();
 }
 
-function hasFileChanges(change) {
-  return change.added.length > 0 || change.removed.length > 0 || change.changed.length > 0;
-}
-
-function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function valueAfter(flag) {
-  const index = process.argv.indexOf(flag);
-  if (index < 0) return undefined;
-  const value = process.argv[index + 1];
-  if (value === undefined || value.startsWith("--")) throw new Error(`${flag} requires a value.`);
-  return value;
+function normalizeRemote(value) {
+  return value
+    .trim()
+    .replace(/^git@github\.com:/u, "https://github.com/")
+    .replace(/\/$/u, "")
+    .replace(/\.git$/u, "")
+    .toLowerCase();
 }

@@ -16,9 +16,13 @@ All notable changes to this project will be documented here. The format follows
 - Workspace indexing, a static Systemd Explorer, exact unit/drop-in precedence, read-only virtual
   effective configurations and dependency graphs, ordering-cycle diagnostics, and safe drop-in
   creation.
+- Trusted Linux host indexing, extra index roots, custom dialect associations, and configurable
+  compound template suffixes.
 - Optional, workspace-trust-gated validation through `systemd-analyze verify`, the Quadlet
   generator's `-dryrun` mode, and `mkosi summary`.
 - TextMate grammars, snippets, tests, packaging checks, secret scanning, and release workflows for
   both the Visual Studio Marketplace and Open VSX.
+- Exact-VSIX smoke tests plus minimum/stable VS Code coverage on Linux, macOS, Windows, browser
+  workers, Dev Containers, and Remote SSH hosts.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

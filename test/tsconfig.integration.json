@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "rootDir": "..",
+    "tsBuildInfoFile": "../node_modules/.cache/integration-tests.tsbuildinfo",
+    "types": ["node", "vscode"]
+  },
+  "include": ["web/**/*.ts"]
+}

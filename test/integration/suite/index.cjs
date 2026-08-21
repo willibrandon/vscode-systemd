@@ -17,6 +17,17 @@ exports.run = async function run() {
 
   await extension.activate();
   assert.equal(extension.isActive, true);
+  const installedPathPrefix = process.env.SYSTEMD_EXPECTED_INSTALLED_EXTENSION_PATH_PREFIX;
+  if (installedPathPrefix !== undefined) {
+    assert.equal(
+      extension.packageJSON.version,
+      process.env.SYSTEMD_EXPECTED_INSTALLED_EXTENSION_VERSION,
+    );
+    assert.ok(
+      extension.extensionPath.startsWith(installedPathPrefix),
+      "The smoke test must activate the extension installed from the VSIX.",
+    );
+  }
 
   const completion = await vscode.commands.executeCommand(
     "vscode.executeCompletionItemProvider",

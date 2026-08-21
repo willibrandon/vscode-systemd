@@ -89,6 +89,7 @@ For unusual project paths, use VS Code's standard association setting:
 | `systemd.index.scope`                             | `workspaceAndHost`            | Select workspace-only or host-aware indexing.     |
 | `systemd.index.extraPaths`                        | `[]`                          | Add trusted local configuration roots.            |
 | `systemd.dialectAssociations`                     | `{}`                          | Override ambiguous path-to-dialect detection.     |
+| `systemd.templateSuffixes`                        | `[]`                          | Add project-specific compound suffixes.           |
 | `systemd.externalValidation.mode`                 | `off`                         | Run a safe installed validator on save.           |
 | `systemd.externalValidation.systemdAnalyzePath`   | `systemd-analyze`             | systemd unit validator.                           |
 | `systemd.externalValidation.quadletGeneratorPath` | `/usr/libexec/podman/quadlet` | Quadlet generator.                                |

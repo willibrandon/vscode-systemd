@@ -24,7 +24,7 @@ const userData = await mkdtemp(resolve(tmpdir(), "vscode-systemd-integration-"))
 
 try {
   await runTests({
-    version: process.env.VSCODE_TEST_VERSION ?? "1.102.0",
+    version: process.env.VSCODE_VERSION ?? "1.102.0",
     extensionDevelopmentPath: root,
     extensionTestsPath: resolve(root, "test/integration/suite/index.cjs"),
     launchArgs: [

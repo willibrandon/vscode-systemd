@@ -24,6 +24,9 @@
     },
     {
       "path": "./tsconfig.tests.json"
+    },
+    {
+      "path": "./test/tsconfig.integration.json"
     }
   ]
 }

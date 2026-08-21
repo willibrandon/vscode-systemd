@@ -1,0 +1,10 @@
+{
+  "name": "systemd-package-smoke-host",
+  "displayName": "systemd Package Smoke Host",
+  "version": "0.0.0",
+  "private": true,
+  "publisher": "vscode-systemd-tests",
+  "engines": {
+    "vscode": "^1.102.0"
+  }
+}

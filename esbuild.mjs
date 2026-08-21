@@ -51,6 +51,14 @@ const builds = await Promise.all([
     platform: "browser",
     define: { global: "globalThis" },
   }),
+  build({
+    ...common,
+    entryPoints: ["test/web/index.ts"],
+    outfile: "dist/test/web/index.cjs",
+    format: "cjs",
+    platform: "browser",
+    external: ["vscode"],
+  }),
 ]);
 
 await writeFile(

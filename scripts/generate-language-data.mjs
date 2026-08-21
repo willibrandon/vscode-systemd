@@ -8,6 +8,7 @@ const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "packages/language-core/src/generated/registry.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
+const existingLock = JSON.parse(await readFile(lockOutput, "utf8"));
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -77,16 +78,19 @@ const upstreamLock = {
   adapterVersion: 2,
   sources: {
     systemd: sourceMetadata(
+      "systemd",
       sources.systemd,
       "https://github.com/systemd/systemd.git",
       "LGPL-2.1-or-later",
     ),
     podman: sourceMetadata(
+      "podman",
       sources.podman,
       "https://github.com/podman-container-tools/podman.git",
       "Apache-2.0",
     ),
     mkosi: sourceMetadata(
+      "mkosi",
       sources.mkosi,
       "https://github.com/systemd/mkosi.git",
       "LGPL-2.1-or-later",
@@ -132,18 +136,29 @@ function revision(source) {
   }).trim();
 }
 
-function sourceMetadata(source, repository, license) {
+function sourceMetadata(name, source, repository, license) {
   return {
     repository,
-    tag: execFileSync("git", ["-C", source, "describe", "--tags", "--abbrev=0"], {
-      encoding: "utf8",
-    }).trim(),
+    tag: checking
+      ? existingLock.sources[name].tag
+      : describeTag(source, existingLock.sources[name].tag),
     revision: revision(source),
     tree: execFileSync("git", ["-C", source, "rev-parse", "HEAD^{tree}"], {
       encoding: "utf8",
     }).trim(),
     license,
   };
+}
+
+function describeTag(source, fallback) {
+  try {
+    return execFileSync("git", ["-C", source, "describe", "--tags", "--abbrev=0"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return fallback;
+  }
 }
 
 function validateLock(lock, revisions) {
