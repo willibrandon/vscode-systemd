@@ -102,8 +102,8 @@ For unusual project paths, use VS Code's standard association setting:
 
 Internal validation is always the primary language service. Installed validation is optional, off by
 default, and available only for saved local files in a trusted desktop workspace. Processes are
-launched without a shell, with bounded time and output, and are terminated when validation is
-cancelled.
+launched without a shell against bounded temporary copies of related configuration, with a minimal
+environment, bounded time and output, and process-tree termination when validation is cancelled.
 
 ## Upstream data
 

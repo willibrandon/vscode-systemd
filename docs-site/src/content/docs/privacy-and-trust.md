@@ -28,7 +28,9 @@ read-only.
 
 Installed validation is off by default, desktop-only, and trust-gated. Configured executable and
 extra-path settings are restricted in untrusted workspaces. Processes use argument arrays rather
-than a shell command and are bounded by cancellation, time, output, and process-tree limits.
+than a shell command, operate on bounded temporary copies of related configuration, and receive a
+minimal environment with private home, cache, configuration, data, and temporary paths. They are
+bounded by cancellation, time, output, and process-tree limits.
 
 ## Logs and traces
 

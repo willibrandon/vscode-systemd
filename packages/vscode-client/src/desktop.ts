@@ -38,12 +38,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   });
 
+  const clearInstalledValidation = (document: vscode.TextDocument): void => {
+    const key = document.uri.toString();
+    active.get(key)?.abort();
+    active.delete(key);
+    diagnostics.delete(document.uri);
+  };
+
   const validate = async (
     document: vscode.TextDocument | undefined,
     explicit: boolean,
   ): Promise<void> => {
     const reason = validationUnavailable(document);
     if (reason !== undefined) {
+      if (document !== undefined) clearInstalledValidation(document);
       if (explicit) await vscode.window.showInformationMessage(reason);
       return;
     }
@@ -58,6 +66,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       mkosi: configuration.get("externalValidation.mkosiPath", "mkosi"),
     });
     if (invocation === undefined) {
+      clearInstalledValidation(document);
       if (explicit) {
         await vscode.window.showInformationMessage(
           "This dialect has no safe installed validator; internal validation is already active.",
@@ -114,13 +123,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (mode === "onSave") await validate(document, false);
     }),
     vscode.workspace.onDidCloseTextDocument((document): void => {
-      active.get(document.uri.toString())?.abort();
-      active.delete(document.uri.toString());
-      diagnostics.delete(document.uri);
+      clearInstalledValidation(document);
     }),
-    vscode.workspace.onDidChangeTextDocument(updateContext),
+    vscode.workspace.onDidChangeTextDocument(({ document }): void => {
+      clearInstalledValidation(document);
+      void updateContext();
+    }),
     vscode.window.onDidChangeActiveTextEditor(updateContext),
     vscode.workspace.onDidGrantWorkspaceTrust(updateContext),
+    vscode.workspace.onDidChangeConfiguration((event): void => {
+      if (!event.affectsConfiguration("systemd.externalValidation")) return;
+      for (const controller of active.values()) controller.abort();
+      active.clear();
+      diagnostics.clear();
+      void updateContext();
+    }),
   );
 
   await features.refreshIndex();

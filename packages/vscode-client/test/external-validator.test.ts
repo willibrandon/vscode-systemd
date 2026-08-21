@@ -1,3 +1,6 @@
+import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runValidator, validationInvocation } from "../src/external-validator.js";
 
@@ -14,6 +17,11 @@ describe("installed validator policy", () => {
       arguments: ["verify", "/workspace/demo.service"],
       cwd: "/workspace",
       label: "systemd-analyze verify",
+      staging: {
+        kind: "systemd-unit",
+        sourcePath: "/workspace/demo.service",
+        sourceRoot: "/workspace",
+      },
     });
   });
 
@@ -26,6 +34,11 @@ describe("installed validator policy", () => {
       cwd: "/workspace",
       label: "Quadlet generator dry run",
       environment: { QUADLET_UNIT_DIRS: "/workspace" },
+      staging: {
+        kind: "quadlet",
+        sourcePath: "/workspace/demo.container",
+        sourceRoot: "/workspace",
+      },
     });
   });
 
@@ -35,7 +48,26 @@ describe("installed validator policy", () => {
       arguments: ["--directory", "/workspace", "summary"],
       cwd: "/workspace",
       label: "mkosi summary",
+      staging: {
+        kind: "mkosi",
+        sourcePath: "/workspace/mkosi.conf",
+        sourceRoot: "/workspace",
+      },
     });
+  });
+
+  it("uses the owning root for drop-ins and nested mkosi configuration", () => {
+    expect(
+      validationInvocation("systemd-unit", "/workspace/demo.service.d/10-local.conf", executables)
+        ?.staging?.sourceRoot,
+    ).toBe("/workspace");
+    expect(
+      validationInvocation(
+        "mkosi",
+        "/workspace/mkosi.profiles/development/profile.conf",
+        executables,
+      )?.staging?.sourceRoot,
+    ).toBe("/workspace");
   });
 
   it("does not invent an unsafe validator for unsupported dialects", () => {
@@ -80,6 +112,159 @@ describe("installed validator policy", () => {
       truncated: false,
       cancelled: false,
     });
+  });
+
+  it("stages related unit files, scrubs the host environment, and remaps private paths", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "systemd-validator-test-"));
+    const source = join(workspace, "demo.service");
+    const related = join(workspace, "other.service");
+    const ignored = join(workspace, "notes.txt");
+    const secretName = "VSCODE_SYSTEMD_VALIDATOR_TEST_SECRET";
+    const previousSecret = process.env[secretName];
+    process.env[secretName] = "must-not-leak";
+    try {
+      await Promise.all([
+        writeFile(source, "[Service]\nExecStart=/bin/true\n"),
+        writeFile(related, "[Unit]\nDescription=Related\n"),
+        writeFile(ignored, "not configuration\n"),
+      ]);
+      const result = await runValidator(
+        {
+          executable: process.execPath,
+          arguments: [
+            "-e",
+            [
+              'const fs = require("node:fs");',
+              "const target = process.argv[1];",
+              'fs.appendFileSync(target, "# staged mutation\\n");',
+              "process.stdout.write(JSON.stringify({",
+              '  content: fs.readFileSync(target, "utf8"),',
+              "  cwd: process.cwd(),",
+              "  entries: fs.readdirSync(process.cwd()).sort(),",
+              "  home: process.env.HOME,",
+              "  secret: process.env.VSCODE_SYSTEMD_VALIDATOR_TEST_SECRET ?? null,",
+              "  unitPath: process.env.SYSTEMD_UNIT_PATH,",
+              "}));",
+            ].join("\n"),
+            source,
+          ],
+          cwd: workspace,
+          label: "staged systemd validator",
+          staging: { kind: "systemd-unit", sourcePath: source, sourceRoot: workspace },
+        },
+        new AbortController().signal,
+        () => true,
+      );
+      const output = JSON.parse(result.stdout) as {
+        readonly content: string;
+        readonly cwd: string;
+        readonly entries: readonly string[];
+        readonly home: string;
+        readonly secret: string | null;
+        readonly unitPath: string;
+      };
+      expect(output.content).toContain("# staged mutation");
+      expect(output.cwd).toBe(workspace);
+      expect(output.entries).toEqual(["demo.service", "other.service"]);
+      expect(output.home).toBe("<validation>/home");
+      expect(output.secret).toBeNull();
+      expect(output.unitPath).toBe(workspace);
+      expect(await readFile(source, "utf8")).not.toContain("staged mutation");
+      expect(await readFile(ignored, "utf8")).toBe("not configuration\n");
+    } finally {
+      if (previousSecret === undefined) Reflect.deleteProperty(process.env, secretName);
+      else process.env[secretName] = previousSecret;
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "capability-probes Quadlet and stages only related files",
+    async () => {
+      const workspace = await mkdtemp(join(tmpdir(), "quadlet-validator-test-"));
+      const source = join(workspace, "demo.container");
+      const dropInDirectory = join(workspace, "demo.container.d");
+      const executable = join(workspace, "quadlet-probe.mjs");
+      try {
+        await mkdir(dropInDirectory);
+        await Promise.all([
+          writeFile(source, "[Container]\nImage=example.test/demo\n"),
+          writeFile(join(workspace, "shared.network"), "[Network]\n"),
+          writeFile(join(dropInDirectory, "10-local.conf"), "[Container]\nAutoUpdate=registry\n"),
+          writeFile(join(workspace, "ignored.txt"), "ignored\n"),
+          writeFile(
+            executable,
+            [
+              "#!/usr/bin/env node",
+              'const fs = await import("node:fs");',
+              'const path = await import("node:path");',
+              'if (process.argv.includes("-h")) { console.log("-dryrun"); process.exit(0); }',
+              "const root = process.env.QUADLET_UNIT_DIRS;",
+              "const files = fs.readdirSync(root).sort();",
+              'const dropIns = fs.readdirSync(path.join(root, "demo.container.d")).sort();',
+              "process.stdout.write(JSON.stringify({ root, files, dropIns }));",
+              "",
+            ].join("\n"),
+          ),
+        ]);
+        await chmod(executable, 0o700);
+        const base = validationInvocation("podman-quadlet", source, executables);
+        if (base === undefined) throw new Error("Quadlet invocation was not created.");
+        const result = await runValidator(
+          { ...base, executable },
+          new AbortController().signal,
+          () => true,
+        );
+        const output = JSON.parse(result.stdout) as {
+          readonly root: string;
+          readonly files: readonly string[];
+          readonly dropIns: readonly string[];
+        };
+        expect(output.root).toBe(workspace);
+        expect(output.files).toEqual(["demo.container", "demo.container.d", "shared.network"]);
+        expect(output.dropIns).toEqual(["10-local.conf"]);
+      } finally {
+        await rm(workspace, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it("rejects a Quadlet executable without an advertised dry-run interface", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "quadlet-capability-test-"));
+    const source = join(workspace, "demo.container");
+    try {
+      await writeFile(source, "[Container]\nImage=example.test/demo\n");
+      const base = validationInvocation("podman-quadlet", source, executables);
+      if (base === undefined) throw new Error("Quadlet invocation was not created.");
+      await expect(
+        runValidator(
+          { ...base, executable: process.execPath },
+          new AbortController().signal,
+          () => true,
+        ),
+      ).rejects.toThrow("does not advertise safe -dryrun support");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an oversized staged source before starting the validator", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "systemd-size-test-"));
+    const source = join(workspace, "large.service");
+    try {
+      await writeFile(source, Buffer.alloc(2 * 1024 * 1024 + 1));
+      const invocation = validationInvocation("systemd-unit", source, executables);
+      if (invocation === undefined) throw new Error("systemd invocation was not created.");
+      await expect(
+        runValidator(
+          { ...invocation, executable: process.execPath },
+          new AbortController().signal,
+          () => true,
+        ),
+      ).rejects.toThrow("exceeds the 2 MiB staging limit");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
   });
 
   it("returns immediately when already cancelled", async () => {
@@ -213,5 +398,56 @@ describe("installed validator policy", () => {
         },
       ),
     ).rejects.toThrow("trust was revoked");
+  });
+
+  it("rechecks trust after preparing policy and after process completion", async () => {
+    const invocation = {
+      executable: process.execPath,
+      arguments: ["-e", "process.exit(0)"],
+      cwd: process.cwd(),
+      label: "trust phases",
+    };
+    let policyChecks = 0;
+    await expect(
+      runValidator(invocation, new AbortController().signal, () => {
+        policyChecks += 1;
+        return policyChecks < 3;
+      }),
+    ).rejects.toThrow("trust was revoked");
+
+    let resultChecks = 0;
+    await expect(
+      runValidator(invocation, new AbortController().signal, () => {
+        resultChecks += 1;
+        return resultChecks < 4;
+      }),
+    ).rejects.toThrow("trust was revoked");
+  });
+
+  it("rejects a staging source outside its declared configuration root", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "systemd-root-test-"));
+    const source = join(workspace, "demo.service");
+    try {
+      await writeFile(source, "[Service]\nExecStart=/bin/true\n");
+      await expect(
+        runValidator(
+          {
+            executable: process.execPath,
+            arguments: ["--version"],
+            cwd: workspace,
+            label: "invalid staging root",
+            staging: {
+              kind: "systemd-unit",
+              sourcePath: source,
+              sourceRoot: join(workspace, "different-root"),
+            },
+          },
+          new AbortController().signal,
+          () => true,
+        ),
+      ).rejects.toThrow("must be contained");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
   });
 });

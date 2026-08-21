@@ -26,10 +26,14 @@ All notable changes to this project will be documented here. The format follows
   workers, Dev Containers, and Remote SSH hosts.
 - A searchable GitHub Pages documentation site with screenshots captured from the packaged
   extension.
+- Capability-probed installed validation against bounded temporary configuration copies with an
+  isolated environment and private path remapping.
 
 ### Fixed
 
 - Effective-configuration provenance now reports one-based source line numbers instead of byte
   offsets.
+- Installed-validator diagnostics are cleared immediately when the document or validator settings
+  change.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

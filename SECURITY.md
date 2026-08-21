@@ -24,7 +24,8 @@ credentials, user names, and private paths.
 - The extension never starts or changes a service and does not invoke `systemctl`, D-Bus, `sudo`, or
   `pkexec`.
 - Installed validation is off by default. It requires a trusted desktop workspace and a saved local
-  file, uses an argument vector without a shell, limits runtime and output, and cancels prior work.
+  file, stages bounded related configuration under a private temporary root, uses an argument vector
+  without a shell and a minimal environment, limits runtime and output, and cancels prior work.
 - Browser and virtual workspaces retain internal language features without local process execution.
 - Workspace indexing limits files and bytes and does not transmit source off the machine.
 - The extension has no telemetry and makes no background network requests.
