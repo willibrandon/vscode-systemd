@@ -19,6 +19,15 @@ const minimums = {
   mkosi: 175,
 };
 const counts = Object.fromEntries(Object.keys(minimums).map((dialect) => [dialect, 0]));
+const quadletAppend = new Set(registry.quadletAppend ?? []);
+for (const index of quadletAppend) {
+  const definition = registry.directives?.[index];
+  if (definition?.dialect !== "podman-quadlet") {
+    failures.push("compact Quadlet append index is invalid: " + String(index));
+  } else {
+    definition.assignmentMode = "append";
+  }
+}
 for (const directive of registry.directives ?? []) {
   if (directive.dialect in counts) counts[directive.dialect] += 1;
   if (typeof directive.name !== "string" || directive.name.length === 0) {
@@ -77,8 +86,8 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
     failures.push(name + " does not have a pinned 40-character Git revision");
   }
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 9) {
-  failures.push("upstream lock must use schema version 1 and adapter version 9");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 10) {
+  failures.push("upstream lock must use schema version 1 and adapter version 10");
 }
 if ((registry.hwdbProperties?.length ?? 0) < 80) {
   failures.push("generated hwdb property coverage is incomplete");
@@ -129,6 +138,52 @@ for (const [section, name, expected] of [
   );
   if (!definition?.choices?.includes(expected)) {
     failures.push("mkosi enum choices are missing for [" + section + "] " + name + "=");
+  }
+}
+for (const [section, name, expected] of [
+  ["Container", "AutoUpdate", ["registry", "local"]],
+  ["Kube", "ExitCodePropagation", ["all", "any", "none"]],
+  ["Network", "Driver", ["bridge", "macvlan", "ipvlan"]],
+]) {
+  const definition = registry.directives.find(
+    (directive) =>
+      directive.dialect === "podman-quadlet" &&
+      directive.section === section &&
+      directive.name === name,
+  );
+  if (JSON.stringify(definition?.choices) !== JSON.stringify(expected)) {
+    failures.push("Quadlet choices are incomplete for [" + section + "] " + name + "=");
+  }
+}
+for (const [section, name, valueKind] of [
+  ["Quadlet", "DefaultDependencies", "boolean"],
+  ["Network", "NetworkDeleteOnStop", "boolean"],
+  ["Build", "ForceRM", "boolean"],
+  ["Volume", "User", "number"],
+]) {
+  const definition = registry.directives.find(
+    (directive) =>
+      directive.dialect === "podman-quadlet" &&
+      directive.section === section &&
+      directive.name === name,
+  );
+  if (definition?.valueKind !== valueKind) {
+    failures.push("Quadlet parser type is wrong for [" + section + "] " + name + "=");
+  }
+}
+for (const [section, name] of [
+  ["Container", "Volume"],
+  ["Kube", "AutoUpdate"],
+  ["Build", "ImageTag"],
+]) {
+  const definition = registry.directives.find(
+    (directive) =>
+      directive.dialect === "podman-quadlet" &&
+      directive.section === section &&
+      directive.name === name,
+  );
+  if (definition?.assignmentMode !== "append") {
+    failures.push("Quadlet repeat semantics are missing for [" + section + "] " + name + "=");
   }
 }
 for (const section of ["Match", "TriggerMatch", "Assert", "TriggerAssert"]) {

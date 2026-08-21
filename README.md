@@ -17,6 +17,8 @@ into the desktop and browser extension.
   generated upstream records, with lazily resolved official documentation.
 - Source-generated completion for systemd signals, Linux capabilities, syscall groups, address
   families, unit specifiers, durations, sizes, and documented closed enums.
+- Podman-source-derived Quadlet booleans, numbers, repeat behavior, defaults, and closed or
+  open-ended value choices, checked against generator fixtures from every release since 4.4.
 - Offline stable and preview metadata channels, with stable-release defaults and a compact bundled
   default-branch delta.
 - Hover documentation with direct links to official manuals.

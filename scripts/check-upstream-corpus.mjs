@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -37,6 +38,10 @@ const corpus = [
     .sort()
     .map((path) => ({ source: "systemd", dialect: "systemd-hwdb", path: "hwdb.d/" + path })),
   ...[
+    "all-tags.image",
+    "artifact-mount.container",
+    "autoupdate.container",
+    "autoupdate.kube",
     "basic.artifact",
     "basic.build",
     "basic.container",
@@ -45,8 +50,40 @@ const corpus = [
     "basic.network",
     "basic.pod",
     "basic.volume",
+    "build.quadlet.servicename.volume",
+    "build.quadlet.volume",
     "comment-with-continuation.container",
+    "dependent.build",
+    "dependent.container",
+    "dependent.image",
+    "dependent.kube",
+    "dependent.network",
+    "dependent.pod",
+    "dependent.volume",
+    "exit_code_propagation.kube",
+    "image.quadlet.servicename.volume",
+    "image.quadlet.volume",
     "line-continuation-whitespace.container",
+    "merged.container",
+    "network.quadlet.build",
+    "network.quadlet.container",
+    "network.quadlet.kube",
+    "network.quadlet.pod",
+    "network.quadlet.servicename.build",
+    "network.quadlet.servicename.container",
+    "network.quadlet.servicename.kube",
+    "network.servicename.quadlet.pod",
+    "no_deps.build",
+    "no_deps.container",
+    "no_deps.image",
+    "notify-healthy.container",
+    "service-name.build",
+    "service-name.container",
+    "service-name.image",
+    "service-name.kube",
+    "service-name.network",
+    "service-name.pod",
+    "service-name.volume",
     "template@.container",
   ].map((path) => ({
     source: "podman",
@@ -93,6 +130,67 @@ for (const fixture of corpus) {
   }
 }
 
+let quadletReleases = 0;
+let quadletReleaseFixtures = 0;
+for (const tag of releaseTags(sources.podman)) {
+  const paths = new Set(
+    execFileSync(
+      "git",
+      ["-C", sources.podman, "ls-tree", "-r", "--name-only", tag, "--", "test/e2e/quadlet"],
+      { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+    )
+      .split(/\r?\n/u)
+      .filter(Boolean),
+  );
+  const fixtures = [
+    ".artifact",
+    ".build",
+    ".container",
+    ".image",
+    ".kube",
+    ".network",
+    ".pod",
+    ".volume",
+  ]
+    .map((extension) => "test/e2e/quadlet/basic" + extension)
+    .filter((path) => paths.has(path));
+  if (fixtures.length === 0) {
+    failures.push("podman/" + tag + ": no basic Quadlet generator fixture found");
+    continue;
+  }
+  quadletReleases += 1;
+  for (const path of fixtures) {
+    const source = execFileSync("git", ["-C", sources.podman, "show", tag + ":" + path], {
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    const document = parse(
+      source,
+      "podman-quadlet",
+      "upstream://podman/" + tag + "/" + path.slice(path.lastIndexOf("/") + 1),
+    );
+    assignments += document.nodes.filter((node) => node.kind === "assignment").length;
+    quadletReleaseFixtures += 1;
+    for (const diagnostic of analyze(document, {
+      maxProblems: 10_000,
+      targetVersions: { "podman-quadlet": tag.slice(1) },
+    })) {
+      failures.push(
+        "podman/" +
+          tag +
+          "/" +
+          path +
+          ":" +
+          lineAt(document.lineStarts, diagnostic.span.start) +
+          ": " +
+          diagnostic.code +
+          ": " +
+          diagnostic.message,
+      );
+    }
+  }
+}
+
 if (failures.length > 0) {
   throw new Error("Pinned upstream fixture conformance failed:\n- " + failures.join("\n- "));
 }
@@ -104,8 +202,27 @@ console.log(
     assignments +
     " assignments and " +
     records +
-    " line records) without diagnostics.",
+    " line records), plus " +
+    quadletReleaseFixtures +
+    " Quadlet fixtures across " +
+    quadletReleases +
+    " Podman releases, without diagnostics.",
 );
+
+function releaseTags(source) {
+  return execFileSync("git", ["-C", source, "tag", "--list", "--sort=v:refname"], {
+    encoding: "utf8",
+  })
+    .split(/\r?\n/u)
+    .filter((tag) => /^v\d+\.\d+\.\d+$/u.test(tag))
+    .filter((tag) => {
+      const [major = 0, minor = 0] = tag
+        .slice(1)
+        .split(".")
+        .map((part) => Number.parseInt(part, 10));
+      return major > 4 || (major === 4 && minor >= 4);
+    });
+}
 
 function lineAt(lineStarts, offset) {
   let low = 0;

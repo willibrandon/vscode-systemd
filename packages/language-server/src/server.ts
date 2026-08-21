@@ -1739,8 +1739,18 @@ const specifierMeanings: Readonly<Record<string, string>> = {
 };
 
 function directiveMarkdown(definition: DirectiveDefinition): string {
+  const ecosystem =
+    definition.dialect === "podman-quadlet"
+      ? "Podman"
+      : definition.dialect === "mkosi"
+        ? "mkosi"
+        : "systemd";
   const availability =
-    definition.since === null ? "" : "\n\nAvailable since systemd " + definition.since + ".";
+    definition.since === null
+      ? ""
+      : "\n\nAvailable since " + ecosystem + " " + definition.since + ".";
+  const choices =
+    definition.choices.length === 0 ? "" : "\n\nValues: `" + definition.choices.join("`, `") + "`.";
   const deprecated = definition.deprecated ? "\n\n**Deprecated.**" : "";
   return (
     "**" +
@@ -1749,6 +1759,7 @@ function directiveMarkdown(definition: DirectiveDefinition): string {
     definition.valueKind +
     ">**\n\n" +
     definition.summary +
+    choices +
     availability +
     deprecated +
     "\n\n[Official documentation](" +

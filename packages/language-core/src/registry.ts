@@ -22,6 +22,7 @@ type RawHwdbProperty = readonly [
 interface RawRegistryFile extends RegistryMetadata {
   readonly hwdbProperties: readonly RawHwdbProperty[];
   readonly hwdbMatchPrefixes: readonly string[];
+  readonly quadletAppend: readonly number[];
   readonly directives: readonly DirectiveDefinition[];
 }
 
@@ -247,9 +248,13 @@ export function isDynamicDirective(name: string): boolean {
 }
 
 function hydrateRegistry(registry: RawRegistryFile): RawRegistry {
+  const quadletAppend = new Set(registry.quadletAppend);
   return {
     ...registry,
     hwdbProperties: registry.hwdbProperties.map(hydrateHwdbProperty),
+    directives: registry.directives.map((definition, index) =>
+      quadletAppend.has(index) ? { ...definition, assignmentMode: "append" } : definition,
+    ),
   };
 }
 

@@ -649,6 +649,98 @@
     "usb:",
     "vmbus:"
   ],
+  "quadletAppend": [
+    288,
+    291,
+    292,
+    298,
+    301,
+    302,
+    303,
+    304,
+    305,
+    306,
+    309,
+    310,
+    312,
+    313,
+    314,
+    315,
+    325,
+    326,
+    327,
+    328,
+    329,
+    334,
+    335,
+    336,
+    337,
+    338,
+    340,
+    341,
+    344,
+    345,
+    346,
+    348,
+    369,
+    371,
+    374,
+    375,
+    376,
+    381,
+    382,
+    388,
+    389,
+    410,
+    412,
+    413,
+    414,
+    420,
+    426,
+    429,
+    433,
+    440,
+    441,
+    442,
+    444,
+    447,
+    448,
+    449,
+    450,
+    451,
+    452,
+    458,
+    459,
+    461,
+    463,
+    464,
+    468,
+    470,
+    473,
+    474,
+    476,
+    477,
+    478,
+    479,
+    480,
+    481,
+    483,
+    484,
+    485,
+    488,
+    489,
+    490,
+    491,
+    493,
+    494,
+    495,
+    503,
+    505,
+    507,
+    512,
+    515,
+    517
+  ],
   "directives": [
     {
       "dialect": "mkosi",
@@ -4961,7 +5053,7 @@
       "dialect": "podman-quadlet",
       "section": "Build",
       "name": "ForceRM",
-      "valueKind": "string",
+      "valueKind": "boolean",
       "since": "5.2.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -5109,7 +5201,11 @@
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
       "summary": "SetWorkingDirectory in [Build].",
-      "choices": []
+      "choices": [
+        "file",
+        "unit"
+      ],
+      "exclusiveChoices": false
     },
     {
       "dialect": "podman-quadlet",
@@ -5219,7 +5315,11 @@
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
       "summary": "AutoUpdate in [Container].",
-      "choices": []
+      "choices": [
+        "registry",
+        "local"
+      ],
+      "exclusiveChoices": true
     },
     {
       "dialect": "podman-quadlet",
@@ -5603,7 +5703,7 @@
       "since": "6.1.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "ImageVolume in [Container].",
+      "summary": "ImageVolume in [Container]. Defaults to anonymous.",
       "choices": []
     },
     {
@@ -5724,7 +5824,7 @@
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "NoNewPrivileges in [Container].",
+      "summary": "NoNewPrivileges in [Container]. Defaults to false.",
       "choices": []
     },
     {
@@ -5735,8 +5835,13 @@
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "Notify in [Container].",
-      "choices": []
+      "summary": "Notify in [Container]. Defaults to false.",
+      "choices": [
+        "yes",
+        "no",
+        "healthy"
+      ],
+      "exclusiveChoices": false
     },
     {
       "dialect": "podman-quadlet",
@@ -5801,7 +5906,7 @@
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "ReadOnly in [Container].",
+      "summary": "ReadOnly in [Container]. Defaults to false.",
       "choices": []
     },
     {
@@ -5812,7 +5917,7 @@
       "since": "4.8.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "ReadOnlyTmpfs in [Container].",
+      "summary": "ReadOnlyTmpfs in [Container]. Defaults to true.",
       "choices": []
     },
     {
@@ -5863,7 +5968,7 @@
       "dialect": "podman-quadlet",
       "section": "Container",
       "name": "RemapUidSize",
-      "valueKind": "string",
+      "valueKind": "number",
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -5922,7 +6027,7 @@
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "RunInit in [Container].",
+      "summary": "RunInit in [Container]. Defaults to false.",
       "choices": []
     },
     {
@@ -5951,7 +6056,7 @@
       "dialect": "podman-quadlet",
       "section": "Container",
       "name": "SecurityLabelDisable",
-      "valueKind": "string",
+      "valueKind": "boolean",
       "since": "4.5.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -5984,7 +6089,7 @@
       "dialect": "podman-quadlet",
       "section": "Container",
       "name": "SecurityLabelNested",
-      "valueKind": "string",
+      "valueKind": "boolean",
       "since": "4.6.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -6028,11 +6133,11 @@
       "dialect": "podman-quadlet",
       "section": "Container",
       "name": "StartWithPod",
-      "valueKind": "string",
+      "valueKind": "boolean",
       "since": "5.3.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "StartWithPod in [Container].",
+      "summary": "StartWithPod in [Container]. Defaults to true.",
       "choices": []
     },
     {
@@ -6043,7 +6148,7 @@
       "since": "5.2.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "StopSignal in [Container].",
+      "summary": "StopSignal in [Container]. Defaults to SIGTERM.",
       "choices": []
     },
     {
@@ -6142,7 +6247,7 @@
       "since": "preview",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "Umask in [Container].",
+      "summary": "Umask in [Container]. Defaults to 0022.",
       "choices": []
     },
     {
@@ -6182,7 +6287,7 @@
       "dialect": "podman-quadlet",
       "section": "Container",
       "name": "VolatileTmp",
-      "valueKind": "string",
+      "valueKind": "boolean",
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -6215,7 +6320,7 @@
       "dialect": "podman-quadlet",
       "section": "Image",
       "name": "AllTags",
-      "valueKind": "string",
+      "valueKind": "boolean",
       "since": "4.8.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -6418,7 +6523,13 @@
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
       "summary": "AutoUpdate in [Kube].",
-      "choices": []
+      "choices": [
+        "registry",
+        "local",
+        "name/local",
+        "name/registry"
+      ],
+      "exclusiveChoices": false
     },
     {
       "dialect": "podman-quadlet",
@@ -6450,8 +6561,13 @@
       "since": "4.6.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "ExitCodePropagation in [Kube].",
-      "choices": []
+      "summary": "ExitCodePropagation in [Kube]. Defaults to none.",
+      "choices": [
+        "all",
+        "any",
+        "none"
+      ],
+      "exclusiveChoices": true
     },
     {
       "dialect": "podman-quadlet",
@@ -6556,7 +6672,7 @@
       "dialect": "podman-quadlet",
       "section": "Kube",
       "name": "RemapUidSize",
-      "valueKind": "string",
+      "valueKind": "number",
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -6637,7 +6753,7 @@
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "DisableDNS in [Network].",
+      "summary": "DisableDNS in [Network]. Defaults to false.",
       "choices": []
     },
     {
@@ -6659,8 +6775,13 @@
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "Driver in [Network].",
-      "choices": []
+      "summary": "Driver in [Network]. Defaults to bridge.",
+      "choices": [
+        "bridge",
+        "macvlan",
+        "ipvlan"
+      ],
+      "exclusiveChoices": false
     },
     {
       "dialect": "podman-quadlet",
@@ -6703,7 +6824,7 @@
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "Internal in [Network].",
+      "summary": "Internal in [Network]. Defaults to false.",
       "choices": []
     },
     {
@@ -6715,7 +6836,12 @@
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
       "summary": "IPAMDriver in [Network].",
-      "choices": []
+      "choices": [
+        "host-local",
+        "dhcp",
+        "none"
+      ],
+      "exclusiveChoices": false
     },
     {
       "dialect": "podman-quadlet",
@@ -6754,11 +6880,11 @@
       "dialect": "podman-quadlet",
       "section": "Network",
       "name": "NetworkDeleteOnStop",
-      "valueKind": "string",
+      "valueKind": "boolean",
       "since": "5.5.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "NetworkDeleteOnStop in [Network].",
+      "summary": "NetworkDeleteOnStop in [Network]. Defaults to false.",
       "choices": []
     },
     {
@@ -7029,7 +7155,7 @@
       "dialect": "podman-quadlet",
       "section": "Pod",
       "name": "RemapUidSize",
-      "valueKind": "string",
+      "valueKind": "number",
       "since": "5.3.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -7139,11 +7265,11 @@
       "dialect": "podman-quadlet",
       "section": "Quadlet",
       "name": "DefaultDependencies",
-      "valueKind": "string",
+      "valueKind": "boolean",
       "since": "5.3.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "DefaultDependencies in [Quadlet].",
+      "summary": "DefaultDependencies in [Quadlet]. Defaults to true.",
       "choices": []
     },
     {
@@ -7165,7 +7291,7 @@
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
-      "summary": "Copy in [Volume].",
+      "summary": "Copy in [Volume]. Defaults to true.",
       "choices": []
     },
     {
@@ -7216,7 +7342,7 @@
       "dialect": "podman-quadlet",
       "section": "Volume",
       "name": "Group",
-      "valueKind": "string",
+      "valueKind": "number",
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
@@ -7304,7 +7430,7 @@
       "dialect": "podman-quadlet",
       "section": "Volume",
       "name": "User",
-      "valueKind": "string",
+      "valueKind": "number",
       "since": "4.4.0",
       "deprecated": false,
       "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",

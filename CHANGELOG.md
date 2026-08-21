@@ -115,6 +115,10 @@ All notable changes to this project will be documented here. The format follows
 - Hardware database files now follow systemd's match/property record state machine, comment and
   separator behavior, typed shipped-property grammar, mouse-wheel dependencies, and exact TextMate
   scopes, with match and property intelligence generated from the pinned systemd source.
+- Quadlet metadata now derives boolean and numeric types, repeated-assignment behavior, documented
+  defaults, and conservative closed or extensible value choices from each pinned Podman source and
+  manual. Hover labels availability as Podman rather than systemd, and conformance covers basic
+  generator fixtures for every available type in every non-prerelease Podman release since 4.4.
 - Documentation image popups now fit every included screenshot within compact laptop and
   split-screen viewports without internal or background-page scrolling.
 

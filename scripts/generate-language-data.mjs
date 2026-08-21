@@ -10,7 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 9;
+const adapterVersion = 10;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -128,6 +128,7 @@ try {
   await rm(stableSources.temporaryDirectory, { recursive: true, force: true });
 }
 const hwdbLanguage = await extractHwdbLanguage(sources.systemd);
+const compactDirectives = compactQuadletAppendModes(directives);
 const registry = {
   schemaVersion: 1,
   generatedAt: "1970-01-01T00:00:00.000Z",
@@ -154,7 +155,8 @@ const registry = {
   ],
   hwdbProperties: hwdbLanguage.properties.map(serializeHwdbProperty),
   hwdbMatchPrefixes: hwdbLanguage.matchPrefixes,
-  directives,
+  quadletAppend: compactDirectives.appendIndexes,
+  directives: compactDirectives.directives,
 };
 const serialized = JSON.stringify(registry, null, 2) + "\n";
 const stableUpstream = {
@@ -339,6 +341,7 @@ async function extractStableSources(sourceTrees, tags) {
     ]);
     extractSourceArchive(sourceTrees.podman, tags.podman, extracted.podman, [
       "pkg/systemd/quadlet/quadlet.go",
+      "docs/source/markdown/podman-systemd.unit.5.md",
     ]);
     extractSourceArchive(sourceTrees.mkosi, tags.mkosi, extracted.mkosi, ["mkosi"]);
     return { temporaryDirectory, sources: extracted };
@@ -384,6 +387,22 @@ function createRegistryDelta(previewDirectives, stableDirectives, upstream, stab
     directives: [...stable.entries()]
       .filter(([key, directive]) => JSON.stringify(preview.get(key)) !== JSON.stringify(directive))
       .map(([, directive]) => directive),
+  };
+}
+
+function compactQuadletAppendModes(directives) {
+  const appendIndexes = [];
+  return {
+    appendIndexes,
+    directives: directives.map((directive, index) => {
+      if (directive.dialect !== "podman-quadlet" || directive.assignmentMode !== "append") {
+        return directive;
+      }
+      appendIndexes.push(index);
+      const compact = { ...directive };
+      delete compact.assignmentMode;
+      return compact;
+    }),
   };
 }
 
@@ -951,24 +970,199 @@ function availabilityKey(dialect, section, name) {
 
 async function extractQuadlet(source) {
   const text = await readFile(resolve(source, "pkg/systemd/quadlet/quadlet.go"), "utf8");
+  const documentationText = await readFile(
+    resolve(source, "docs/source/markdown/podman-systemd.unit.5.md"),
+    "utf8",
+  );
+  const sourceMetadata = quadletSourceMetadata(text);
+  const documentationMetadata = quadletDocumentationMetadata(documentationText);
   for (const { section, name } of quadletSettings(text)) {
+    const source = mergeQuadletMetadata(
+      sourceMetadata.get("*\0" + name),
+      sourceMetadata.get(section + "\0" + name),
+    );
+    const documented = documentationMetadata.get(section + "\0" + name);
+    const choices = [...new Set([...(documented?.choices ?? []), ...(source.choices ?? [])])];
     add({
       dialect: "podman-quadlet",
       section,
       name,
       since: availability.get(availabilityKey("podman-quadlet", section, name)) ?? "preview",
-      valueKind: quadletKind(name),
+      valueKind: source.valueKind ?? quadletKind(name),
+      assignmentMode:
+        source.assignmentMode === "append" || documented?.repeatable === true
+          ? "append"
+          : undefined,
+      choices,
+      exclusiveChoices:
+        choices.length === 0
+          ? undefined
+          : documented?.exclusiveChoices === true && source.openChoices !== true,
       documentation: "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
+      summary:
+        name +
+        " in [" +
+        section +
+        "]." +
+        (documented?.defaultValue === undefined
+          ? ""
+          : " Defaults to " + documented.defaultValue + "."),
     });
   }
 }
 
-function quadletSettings(text) {
+function mergeQuadletMetadata(fallback, exact) {
+  return {
+    ...fallback,
+    ...exact,
+    choices: [...new Set([...(fallback?.choices ?? []), ...(exact?.choices ?? [])])],
+  };
+}
+
+function quadletSourceMetadata(text) {
+  const constants = goStringConstants(text);
   const result = new Map();
+  const remember = (groupExpression, keyExpression, metadata) => {
+    const name = goStringValue(keyExpression, constants);
+    if (name === undefined) return;
+    const section = goStringValue(groupExpression, constants) ?? "*";
+    const key = section + "\0" + name;
+    result.set(key, mergeQuadletMetadata(result.get(key), metadata));
+  };
+
+  for (const match of text.matchAll(
+    /\.LookupBoolean(?:WithDefault)?\(\s*([^,\n]+),\s*([^,\n)]+)/gu,
+  )) {
+    remember(match[1] ?? "", match[2] ?? "", { valueKind: "boolean" });
+  }
+  for (const match of text.matchAll(/\.LookupUint32\(\s*([^,\n]+),\s*([^,\n)]+)/gu)) {
+    remember(match[1] ?? "", match[2] ?? "", { valueKind: "number" });
+  }
+  for (const match of text.matchAll(/\.LookupAll(?:Strv)?\(\s*([^,\n]+),\s*([^,\n)]+)/gu)) {
+    remember(match[1] ?? "", match[2] ?? "", { assignmentMode: "append" });
+  }
+
+  for (const map of text.matchAll(
+    /^\s*([A-Za-z][A-Za-z0-9_]*)\s*:=\s*map\[string\]string\s*\{([\s\S]*?)^\s*\}/gmu,
+  )) {
+    const mapName = map[1] ?? "";
+    const mapEnd = (map.index ?? 0) + map[0].length;
+    const following = text.slice(mapEnd, mapEnd + 320);
+    const call = new RegExp(
+      "lookupAndAdd(Boolean|AllStrings|KeyVals)\\([^,]+,\\s*([^,]+),\\s*" + mapName + "\\b",
+      "u",
+    ).exec(following);
+    if (call === null) continue;
+    const metadata =
+      call[1] === "Boolean" ? { valueKind: "boolean" } : { assignmentMode: "append" };
+    for (const entry of (map[2] ?? "").matchAll(/^\s*([^:\s]+)\s*:/gmu)) {
+      remember(call[2] ?? "", entry[1] ?? "", metadata);
+    }
+  }
+
+  if (/strings\.EqualFold\(notify,\s*"healthy"\)/u.test(text)) {
+    const key = "Container\0Notify";
+    result.set(
+      key,
+      mergeQuadletMetadata(result.get(key), {
+        valueKind: "string",
+        choices: ["yes", "no", "healthy"],
+        openChoices: true,
+      }),
+    );
+  }
+  return result;
+}
+
+function goStringConstants(text) {
   const constants = new Map();
   for (const match of text.matchAll(/^\s*([A-Za-z][A-Za-z0-9_]*)\s*=\s*"([^"]*)"/gmu)) {
     constants.set(match[1], match[2]);
   }
+  return constants;
+}
+
+function goStringValue(expression, constants) {
+  const value = expression.trim();
+  const literal = /^"([^"]*)"$/u.exec(value)?.[1];
+  return literal ?? constants.get(value);
+}
+
+function quadletDocumentationMetadata(text) {
+  const result = new Map();
+  let section;
+  let current;
+  const finish = () => {
+    if (section === undefined || current === undefined) return;
+    const body = current.lines.join("\n");
+    const choices = quadletDocumentedChoices(body);
+    const headingDefault = /defaults? to `([^`]+)`/iu.exec(current.heading)?.[1];
+    const bodyDefault = /\bdefault(?: value)? (?:is|to) (?:`|\*\*)([^`*\n.]+)(?:`|\*\*)/iu.exec(
+      body,
+    )?.[1];
+    result.set(section + "\0" + current.name, {
+      choices: choices.values,
+      exclusiveChoices: choices.exclusive,
+      repeatable: /\b(?:can|may) be (?:listed|used|specified) multiple times\b/iu.test(body),
+      defaultValue: headingDefault ?? bodyDefault,
+    });
+  };
+  for (const line of text.split(/\r?\n/u)) {
+    const nextSection = /^## .*\[([A-Za-z]+)\]\s*$/u.exec(line)?.[1];
+    if (nextSection !== undefined) {
+      finish();
+      current = undefined;
+      section = nextSection;
+      continue;
+    }
+    const heading = /^### `([^`]+)=`(.*)$/u.exec(line);
+    if (heading !== null) {
+      finish();
+      current = { name: heading[1] ?? "", heading: heading[2] ?? "", lines: [] };
+      continue;
+    }
+    current?.lines.push(line);
+  }
+  finish();
+  return result;
+}
+
+function quadletDocumentedChoices(body) {
+  const values = [];
+  let exclusive = false;
+  const supported = /\bthe following values are supported\s*:/iu.exec(body);
+  if (supported !== null) {
+    exclusive = true;
+    const tail = body.slice((supported.index ?? 0) + supported[0].length);
+    for (const match of tail.matchAll(/^\s*[-*]\s+`([^`]+)`\s*:/gmu)) {
+      const value = match[1] ?? "";
+      const pattern = /^([^/]+)\/\(([^)]+)\)$/u.exec(value);
+      if (pattern !== null) {
+        exclusive = false;
+        for (const choice of (pattern[2] ?? "").split("|")) {
+          values.push((pattern[1] ?? "name") + "/" + choice);
+        }
+      } else if (/^[A-Za-z0-9_.+-]+$/u.test(value)) {
+        values.push(value);
+      } else {
+        exclusive = false;
+      }
+    }
+  }
+  const currentlySupported = /\bCurrently ([^.]+) are supported\./iu.exec(body)?.[1];
+  if (currentlySupported !== undefined) {
+    values.push(...[...currentlySupported.matchAll(/`([^`]+)`/gu)].map((match) => match[1] ?? ""));
+  }
+  const specialKeys = /\bspecial keys? ([^.]+?) to (?:set|use|select|make)\b/iu.exec(body)?.[1];
+  if (specialKeys !== undefined) {
+    values.push(...[...specialKeys.matchAll(/`([^`]+)`/gu)].map((match) => match[1] ?? ""));
+  }
+  return { values: [...new Set(values.filter(Boolean))], exclusive };
+}
+
+function quadletSettings(text) {
+  const result = new Map();
+  const constants = goStringConstants(text);
   const start = text.indexOf("groupsInfo = map[string]GroupInfo{");
   const lines = text.slice(start).split(/\r?\n/u);
   let section;

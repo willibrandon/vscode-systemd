@@ -22,6 +22,14 @@ language help does not require a network request or a host executable. Its parse
 checked against successful fixtures from those same pinned upstream trees, including mkosi's
 indented multiline values and conditional sections.
 
+Quadlet setting types and repeat behavior come from Podman's Go converter lookups, while defaults
+and finite or open-ended choices come from the matching version of Podman's manual. Hover therefore
+shows the correct Podman availability and constraints, and completion can distinguish a closed
+choice such as `ExitCodePropagation=all|any|none` from extensible values such as network drivers.
+Basic generator fixtures for every Quadlet type are checked across every non-prerelease Podman
+release from 4.4 onward, alongside current templates, resource references, service-name overrides,
+and merged configurations.
+
 udev rules receive key, attribute, operator, and value completion. Hardware database files receive
 match-prefix and property completion, including typed values for systemd's shipped properties and
 dynamic keyboard and evdev property families. Their record separators, comments, duplicate fields,

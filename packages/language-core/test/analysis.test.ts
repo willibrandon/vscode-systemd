@@ -133,6 +133,44 @@ describe("INI semantic analysis", () => {
     ).toEqual([]);
   });
 
+  it("validates closed Quadlet values without rejecting documented open forms", () => {
+    expect(
+      codes(
+        "[Container]\nAutoUpdate=registry\nNotify=healthy\n",
+        "podman-quadlet",
+        "file:///workspace/demo.container",
+      ),
+    ).not.toContain("invalid-value");
+    expect(
+      codes(
+        "[Container]\nAutoUpdate=weekly\n",
+        "podman-quadlet",
+        "file:///workspace/demo.container",
+      ),
+    ).toContain("invalid-value");
+    expect(
+      codes(
+        "[Kube]\nYaml=demo.yaml\nExitCodePropagation=first\n",
+        "podman-quadlet",
+        "file:///workspace/demo.kube",
+      ),
+    ).toContain("invalid-value");
+    expect(
+      codes(
+        "[Kube]\nYaml=demo.yaml\nAutoUpdate=frontend/registry\n",
+        "podman-quadlet",
+        "file:///workspace/demo.kube",
+      ),
+    ).not.toContain("invalid-value");
+    expect(
+      codes(
+        "[Network]\nDriver=vendor-plugin\n",
+        "podman-quadlet",
+        "file:///workspace/demo.network",
+      ),
+    ).not.toContain("invalid-value");
+  });
+
   it("marks preview-only metadata unavailable for an explicit released target", () => {
     configureRegistryChannel("preview");
     const document = parse(

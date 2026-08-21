@@ -232,6 +232,39 @@ describe("registry queries", () => {
     });
   });
 
+  it("derives Quadlet types, choices, defaults, and repeat behavior from Podman", () => {
+    expect(definitionFor("podman-quadlet", "Quadlet", "DefaultDependencies")).toMatchObject({
+      valueKind: "boolean",
+      summary: "DefaultDependencies in [Quadlet]. Defaults to true.",
+    });
+    expect(definitionFor("podman-quadlet", "Network", "NetworkDeleteOnStop")?.valueKind).toBe(
+      "boolean",
+    );
+    expect(definitionFor("podman-quadlet", "Build", "ForceRM")?.valueKind).toBe("boolean");
+    expect(definitionFor("podman-quadlet", "Volume", "User")?.valueKind).toBe("number");
+    expect(definitionFor("podman-quadlet", "Container", "User")?.valueKind).toBe("string");
+    expect(definitionFor("podman-quadlet", "Container", "AutoUpdate")).toMatchObject({
+      choices: ["registry", "local"],
+      exclusiveChoices: true,
+    });
+    expect(definitionFor("podman-quadlet", "Kube", "AutoUpdate")).toMatchObject({
+      choices: ["registry", "local", "name/local", "name/registry"],
+      assignmentMode: "append",
+      exclusiveChoices: false,
+    });
+    expect(definitionFor("podman-quadlet", "Kube", "ExitCodePropagation")).toMatchObject({
+      choices: ["all", "any", "none"],
+      exclusiveChoices: true,
+      summary: "ExitCodePropagation in [Kube]. Defaults to none.",
+    });
+    expect(definitionFor("podman-quadlet", "Container", "Notify")?.choices).toEqual([
+      "yes",
+      "no",
+      "healthy",
+    ]);
+    expect(definitionFor("podman-quadlet", "Container", "Volume")?.assignmentMode).toBe("append");
+  });
+
   it("switches between pinned stable data and the compact preview delta", () => {
     configureRegistryChannel("stable");
     const stableRevision = registryMetadata.upstream.mkosi;

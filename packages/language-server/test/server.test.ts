@@ -858,6 +858,47 @@ describe("language server JSON-RPC contract", () => {
     });
   });
 
+  it("completes generated Quadlet values and exposes source-derived constraints", async () => {
+    const quadletUri = "file:///workspace/workload.kube";
+    const text = "[Kube]\nYaml=demo.yaml\nExitCodePropagation=\nAutoUpdate=\n";
+    const diagnosticsPromise = nextDiagnostics(client, quadletUri);
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: quadletUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text,
+      },
+    });
+    expect((await diagnosticsPromise).map(({ code }) => code)).not.toContain("invalid-value");
+
+    const exitCodeValues = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: quadletUri },
+      position: { line: 2, character: "ExitCodePropagation=".length },
+    });
+    expect(exitCodeValues.map(({ label }) => label)).toEqual(["all", "any", "none"]);
+
+    const updateValues = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: quadletUri },
+      position: { line: 3, character: "AutoUpdate=".length },
+    });
+    expect(updateValues.map(({ label }) => label)).toEqual([
+      "registry",
+      "local",
+      "name/local",
+      "name/registry",
+    ]);
+    const hover = await request<Hover | null>(client, "textDocument/hover", {
+      textDocument: { uri: quadletUri },
+      position: { line: 2, character: 5 },
+    });
+    expect(JSON.stringify(hover)).toContain("Defaults to none");
+    expect(JSON.stringify(hover)).toContain("`all`, `any`, `none`");
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: quadletUri },
+    });
+  });
+
   it("completes source-backed udev keys, attributes, operators, and values", async () => {
     const rulesUri = "file:///workspace/90-demo.rules";
     const text = [

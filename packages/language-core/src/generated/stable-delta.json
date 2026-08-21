@@ -168,6 +168,17 @@
       "mkosiScope": "main"
     },
     {
+      "dialect": "podman-quadlet",
+      "section": "Container",
+      "name": "ImageVolume",
+      "valueKind": "string",
+      "since": "6.1.0",
+      "deprecated": false,
+      "documentation": "https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html",
+      "summary": "ImageVolume in [Container]. Defaults to bind.",
+      "choices": []
+    },
+    {
       "dialect": "systemd-config",
       "section": "*",
       "name": "systemd.firstboot",
