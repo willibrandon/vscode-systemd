@@ -23,6 +23,9 @@ export default defineConfig({
       favicon: "/icon.png",
       customCss: ["./src/styles/docs.css"],
       credits: false,
+      components: {
+        MarkdownContent: "./src/components/MarkdownContent.astro",
+      },
       expressiveCode: {
         shiki: {
           langs: languages,
