@@ -1,5 +1,5 @@
 ---
-title: systemd Unit Files for Visual Studio Code
+title: systemd for Visual Studio Code
 description:
   Edit systemd, Podman Quadlet, and mkosi configuration with a self-contained language server.
 ---

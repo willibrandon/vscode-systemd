@@ -36,7 +36,7 @@ export default defineConfig({
         },
       ],
       sidebar: [
-        { slug: "" },
+        { slug: "", label: "Overview" },
         { slug: "getting-started" },
         { slug: "recognized-files" },
         { slug: "editing" },
