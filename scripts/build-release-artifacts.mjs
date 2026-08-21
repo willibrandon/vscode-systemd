@@ -5,6 +5,7 @@ import { createVSIX } from "@vscode/vsce";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { prepareCycloneDxForAttestation } from "./release-sbom.mjs";
+import { canonicalizeVsix } from "./canonicalize-vsix.mjs";
 
 const execute = promisify(execFile);
 const root = resolve(import.meta.dirname, "..");
@@ -37,6 +38,7 @@ await createVSIX({
   githubBranch: sourceRevision,
   preRelease,
 });
+await writeFile(vsix, canonicalizeVsix(await readFile(vsix)));
 const npmCli = process.env.npm_execpath;
 if (npmCli === undefined || npmCli.length === 0) {
   throw new Error("The release artifact build must run through npm.");

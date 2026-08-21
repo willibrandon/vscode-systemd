@@ -147,6 +147,7 @@ Useful focused commands:
 ```sh
 npm run test:core
 npm run check:upstream:corpus
+npm run check:release-reproducibility
 npm run typecheck
 npm run build
 npm run package

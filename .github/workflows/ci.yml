@@ -84,6 +84,7 @@ jobs:
       - run: npm run check:licenses
       - run: npm run check:package
       - run: npm run package:artifacts
+      - run: npm run check:release-reproducibility
       - run: npm run test:vsix:prepared
       - name: Stage candidate artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

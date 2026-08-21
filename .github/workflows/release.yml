@@ -44,8 +44,10 @@ jobs:
           test -n "$OVSX_PAT" || { echo "OVSX_PAT is required" >&2; exit 1; }
           npx vsce verify-pat willibrandon
           npx ovsx verify-pat willibrandon --pat "$OVSX_PAT"
-      - name: Build release artifacts once
+      - name: Build release artifacts
         run: npm run package
+      - name: Reproduce release artifacts byte-for-byte
+        run: npm run check:release-reproducibility
       - name: Record immutable artifact paths
         run: |
           VERSION=$(node -p "require('./package.json').version")

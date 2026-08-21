@@ -718,6 +718,7 @@
     "check:bundles": "node ./scripts/check-bundles.mjs",
     "check:licenses": "node ./scripts/check-licenses.mjs",
     "check:package": "node ./scripts/check-package.mjs",
+    "check:release-reproducibility": "node ./scripts/check-release-reproducibility.mjs",
     "check:upstream": "node ./scripts/check-upstream-drift.mjs",
     "check:upstream:corpus": "tsc --build packages/language-core && node ./scripts/check-upstream-corpus.mjs",
     "audit": "npm audit --audit-level=moderate",

@@ -32,6 +32,8 @@ All notable changes to this project will be documented here. The format follows
   Quadlet types, major systemd network and configuration families, and common mkosi image formats.
 - Pinned-corpus conformance against successful configuration fixtures maintained by systemd, Podman,
   and mkosi themselves.
+- Byte-reproducible VSIX, checksum, and CycloneDX SBOM release artifacts with canonical ZIP
+  metadata.
 
 ### Fixed
 
