@@ -21,8 +21,9 @@ if (address === null || typeof address === "string") throw new Error("Docs serve
 const browser = await chromium.launch({ headless: true });
 try {
   for (const viewport of [
-    { width: 1512, height: 850, label: "14-inch MacBook Pro" },
+    { width: 1512, height: 780, label: "14-inch MacBook Pro browser window" },
     { width: 1280, height: 720, label: "compact laptop" },
+    { width: 1024, height: 640, label: "small laptop window" },
   ]) {
     const page = await browser.newPage({
       viewport: { width: viewport.width, height: viewport.height },
@@ -73,6 +74,10 @@ try {
 
     assert(measurements.dialog.top >= 0, viewport.label + " dialog starts above the viewport");
     assert(
+      measurements.dialog.left >= 16 && measurements.dialog.top >= 16,
+      viewport.label + " dialog lacks comfortable viewport margins",
+    );
+    assert(
       measurements.dialog.right <= viewport.width + 1,
       viewport.label + " dialog exceeds the viewport width",
     );
@@ -81,8 +86,22 @@ try {
       viewport.label + " dialog exceeds the viewport height",
     );
     assert(
+      measurements.dialog.right <= viewport.width - 16 &&
+        measurements.dialog.bottom <= viewport.height - 16,
+      viewport.label + " dialog lacks comfortable viewport margins",
+    );
+    assert(
+      measurements.dialog.right - measurements.dialog.left <= 864 + 1,
+      viewport.label + " dialog is wider than the documented maximum",
+    );
+    assert(
+      measurements.dialog.bottom - measurements.dialog.top <=
+        Math.min(viewport.height * 0.76, 672) + 1,
+      viewport.label + " dialog is taller than the documented maximum",
+    );
+    assert(
       measurements.dialog.scrollHeight <= measurements.dialog.clientHeight + 1,
-      viewport.label + " dialog requires scrolling",
+      viewport.label + " dialog requires scrolling: " + JSON.stringify(measurements),
     );
     assert(
       measurements.frame.scrollHeight <= measurements.frame.clientHeight + 1,
