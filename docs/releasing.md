@@ -33,7 +33,7 @@ treat the release as a prerelease channel build.
 Create an annotated tag with concise release notes and push only that tag:
 
 ```sh
-release_version=0.2.0
+release_version=$(node -p "require('./package.json').version")
 git tag -a "v$release_version" -m "systemd Unit Files $release_version"
 git push origin "v$release_version"
 ```

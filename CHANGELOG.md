@@ -4,10 +4,12 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-21
+
 ### Added
 
-- Added concise upstream descriptions to systemd setting hovers and specific explanations for
-  documented values such as `Type=oneshot`.
+- Added concise descriptions from official systemd documentation to setting hovers, including
+  value-specific explanations such as `Type=oneshot`.
 
 ## [0.2.1] - 2026-08-21
 
@@ -51,6 +53,7 @@ Notable changes are listed here. Releases follow semantic versioning.
 - Release artifacts include a reproducible VSIX, SHA-256 checksum, CycloneDX SBOM, and build
   attestations.
 
-[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.1...v0.4.0
 [0.2.1]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/willibrandon/vscode-systemd/releases/tag/v0.2.0
