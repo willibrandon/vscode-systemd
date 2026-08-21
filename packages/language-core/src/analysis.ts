@@ -37,6 +37,7 @@ const durationUnits = [
 ];
 const tmpfilesTypes = new Set([
   "f",
+  "F",
   "w",
   "d",
   "D",
@@ -55,6 +56,7 @@ const tmpfilesTypes = new Set([
   "R",
   "z",
   "Z",
+  "m",
   "t",
   "T",
   "h",
@@ -65,6 +67,49 @@ const tmpfilesTypes = new Set([
   "K",
 ]);
 const tmpfilesModifiers = new Set(["!", "+", "-", "=", "~", "^", "$", "?"]);
+const kernelInstallSettings = new Set([
+  "MACHINE_ID",
+  "BOOT_ROOT",
+  "layout",
+  "initrd_generator",
+  "uki_generator",
+  "entry_name_format",
+]);
+const loaderSettings = new Set([
+  "timeout",
+  "default",
+  "preferred",
+  "editor",
+  "auto-entries",
+  "auto-firmware",
+  "auto-poweroff",
+  "auto-reboot",
+  "beep",
+  "reboot-for-bitlocker",
+  "reboot-on-error",
+  "secure-boot-enroll",
+  "secure-boot-enroll-action",
+  "secure-boot-enroll-timeout-sec",
+  "console-mode",
+  "log-level",
+]);
+const bootEntrySettings = new Set([
+  "title",
+  "sort-key",
+  "version",
+  "machine-id",
+  "architecture",
+  "options",
+  "linux",
+  "efi",
+  "uki",
+  "uki-url",
+  "profile",
+  "initrd",
+  "devicetree",
+  "devicetree-overlay",
+  "extra",
+]);
 
 export function analyze(
   document: ParsedDocument,
@@ -305,13 +350,12 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
         checkColumns(node, 2, 7, "tmpfiles", diagnostics);
         if (!isTmpfilesAction(node.fields[0] ?? "")) {
           fieldError(node, 0, "Unknown tmpfiles entry type.", diagnostics);
+        } else {
+          validateTmpfilesFields(node, diagnostics);
         }
         break;
       case "systemd-sysusers":
-        checkColumns(node, 2, 6, "sysusers", diagnostics);
-        if (!/^[ugmr]$/u.test(node.fields[0] ?? "")) {
-          fieldError(node, 0, "Sysusers entry type must be u, g, m, or r.", diagnostics);
-        }
+        validateSysusers(node, diagnostics);
         break;
       case "systemd-preset":
         checkColumns(node, 2, Number.POSITIVE_INFINITY, "preset", diagnostics);
@@ -323,10 +367,10 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
         checkColumns(node, 1, 1, "modules-load", diagnostics);
         break;
       case "systemd-binfmt":
-        checkColumns(node, 7, 8, "binfmt", diagnostics);
+        validateBinfmt(node, diagnostics);
         break;
       case "systemd-table":
-        validateTable(document.uri, node, diagnostics);
+        validateTable(document.kind, node, diagnostics);
         break;
       case "systemd-udev-rules":
         for (let index = 0; index < node.fields.length; index += 1) {
@@ -335,10 +379,30 @@ function analyzeRecords(document: ParsedDocument, diagnostics: CoreDiagnostic[])
           }
         }
         break;
+      case "systemd-dns-trust-anchor":
+        validateTrustAnchor(document, node, diagnostics);
+        break;
+      case "systemd-boot":
+        validateBootRecord(document, node, diagnostics);
+        break;
+      case "systemd-sysctl":
+        if (!/^-[A-Za-z0-9_.*/-]+$/u.test(node.fields.join(" "))) {
+          diagnostics.push({
+            code: "invalid-sysctl-line",
+            message: "A sysctl line must be an assignment or a '-' exclusion.",
+            severity: "error",
+            span: node.span,
+          });
+        }
+        break;
+      case "systemd-environment":
+        validateEnvironmentRecord(document, node, diagnostics);
+        break;
       default:
         break;
     }
   }
+  validateSingleValueDocument(document, diagnostics);
 }
 
 function isInteger(value: string): boolean {
@@ -527,13 +591,421 @@ function validateSimpleAssignment(
         span: node.nameSpan,
       });
     }
+  } else if (document.kind === "systemd-boot:kernel-install") {
+    if (!kernelInstallSettings.has(node.name)) {
+      diagnostics.push({
+        code: "unknown-boot-setting",
+        message: "Unknown kernel-install setting " + node.name + "=.",
+        severity: "warning",
+        span: node.nameSpan,
+        documentation:
+          "https://www.freedesktop.org/software/systemd/man/latest/kernel-install.html#Files",
+      });
+    }
   }
 }
 
-function validateTable(uri: string, node: RecordNode, diagnostics: CoreDiagnostic[]): void {
-  const name = uri.slice(uri.lastIndexOf("/") + 1).toLowerCase();
-  const expected = name === "fstab" ? [4, 6] : name === "clonetab" ? [2, 4] : [2, 4];
-  checkColumns(node, expected[0] ?? 2, expected[1] ?? 4, name, diagnostics);
+function validateSysusers(node: RecordNode, diagnostics: CoreDiagnostic[]): void {
+  checkColumns(node, 2, 6, "sysusers", diagnostics);
+  const action = node.fields[0] ?? "";
+  if (!/^(?:u!?|g|m|r)$/u.test(action)) {
+    fieldError(node, 0, "Sysusers entry type must be u, u!, g, m, or r.", diagnostics);
+    return;
+  }
+
+  const name = node.fields[1] ?? "";
+  if (action === "r") {
+    if (name !== "-")
+      fieldError(node, 1, "A sysusers r entry must use '-' as its name.", diagnostics);
+    const range = node.fields[2] ?? "";
+    if (!/^\d+(?:-\d+)?$/u.test(range)) {
+      fieldError(node, 2, "A sysusers r entry requires a decimal UID/GID or range.", diagnostics);
+    }
+  } else if (!isUserGroupName(name) && !containsTemplate(name)) {
+    fieldError(node, 1, "Invalid system user or group name.", diagnostics);
+  }
+
+  if (action === "m") {
+    const group = node.fields[2] ?? "";
+    if (!isUserGroupName(group) && !containsTemplate(group)) {
+      fieldError(node, 2, "A sysusers m entry requires a valid group name.", diagnostics);
+    }
+  }
+  if (action === "m" || action === "r" || action === "g") {
+    const firstUnused = 3;
+    for (let index = firstUnused; index < node.fields.length; index += 1) {
+      if ((node.fields[index] ?? "-") !== "-") {
+        fieldError(node, index, "This sysusers entry type does not use this field.", diagnostics);
+      }
+    }
+  }
+  if (action.startsWith("u") && (node.fields[3] ?? "-").includes(":")) {
+    fieldError(node, 3, "A sysusers GECOS field may not contain a colon.", diagnostics);
+  }
+}
+
+function isUserGroupName(value: string): boolean {
+  return value.length <= 31 && /^[A-Za-z_][A-Za-z0-9_-]*$/u.test(value);
+}
+
+function validateBinfmt(node: RecordNode, diagnostics: CoreDiagnostic[]): void {
+  checkColumns(node, 7, 7, "binfmt", diagnostics);
+  if (node.fields.length !== 7) return;
+  if ((node.fields[0] ?? "") === "") {
+    fieldError(node, 0, "A binfmt rule requires a name.", diagnostics);
+  }
+  if (!new Set(["M", "E"]).has(node.fields[1] ?? "")) {
+    fieldError(node, 1, "Binfmt rule type must be M (magic) or E (extension).", diagnostics);
+  }
+  const offset = node.fields[2] ?? "";
+  if (offset !== "" && !/^\d+$/u.test(offset)) {
+    fieldError(node, 2, "Binfmt offset must be empty or an unsigned decimal integer.", diagnostics);
+  }
+  if ((node.fields[3] ?? "") === "") {
+    fieldError(node, 3, "A binfmt rule requires magic bytes or an extension.", diagnostics);
+  }
+  if ((node.fields[5] ?? "") === "") {
+    fieldError(node, 5, "A binfmt rule requires an interpreter.", diagnostics);
+  }
+  const flags = node.fields[6] ?? "";
+  if (!hasUniqueCharactersFrom(flags, "POCF")) {
+    fieldError(node, 6, "Binfmt flags may contain P, O, C, and F at most once.", diagnostics);
+  }
+}
+
+function validateTmpfilesFields(node: RecordNode, diagnostics: CoreDiagnostic[]): void {
+  const action = node.fields[0] ?? "";
+  const type = action[0] ?? "";
+  const modifiers = action.slice(1);
+  const path = node.fields[1] ?? "";
+  if (!path.startsWith("/") && !path.startsWith("%") && !containsTemplate(path)) {
+    fieldError(node, 1, "Tmpfiles paths must be absolute after specifier expansion.", diagnostics);
+  }
+  const argument = node.fields[6];
+  const hasArgument = argument !== undefined && argument !== "" && argument !== "-";
+  const requiresArgument = new Set(["w", "c", "b", "t", "T", "a", "A", "k", "K", "h", "H"]);
+  const rejectsArgument = new Set([
+    "d",
+    "D",
+    "v",
+    "q",
+    "Q",
+    "p",
+    "e",
+    "x",
+    "X",
+    "r",
+    "R",
+    "z",
+    "Z",
+    "m",
+  ]);
+  if (requiresArgument.has(type) && !hasArgument) {
+    fieldError(node, 6, "Tmpfiles type " + type + " requires an Argument field.", diagnostics);
+  } else if (rejectsArgument.has(type) && hasArgument) {
+    fieldError(
+      node,
+      6,
+      "Tmpfiles type " + type + " does not accept an Argument field.",
+      diagnostics,
+    );
+  }
+  if (modifiers.includes("$") && !"fFdDvqQpLcbCwe".includes(type)) {
+    fieldError(
+      node,
+      0,
+      "The tmpfiles '$' modifier is not supported by type " + type + ".",
+      diagnostics,
+    );
+  }
+  if (modifiers.includes("?") && type !== "L") {
+    fieldError(node, 0, "The tmpfiles '?' modifier is only supported by type L.", diagnostics);
+  }
+  if (modifiers.includes("~") && "LcbC".includes(type)) {
+    fieldError(
+      node,
+      0,
+      "The tmpfiles '~' modifier is not supported by type " + type + ".",
+      diagnostics,
+    );
+  }
+  if (modifiers.includes("^") && !hasArgument) {
+    fieldError(
+      node,
+      6,
+      "The tmpfiles '^' modifier requires a credential name in Argument.",
+      diagnostics,
+    );
+  }
+
+  const mode = node.fields[2];
+  if (mode !== undefined && mode !== "-" && !/^[~:]*(?:0?[0-7]{3,4})$/u.test(mode)) {
+    fieldError(node, 2, "Tmpfiles mode must be '-' or an octal file mode.", diagnostics);
+  }
+  const age = node.fields[5];
+  if (age !== undefined && age !== "-") {
+    const duration = age.replace(/^~/u, "").replace(/^[abcmABCM]+:/u, "");
+    if (!isDuration(duration)) fieldError(node, 5, "Invalid tmpfiles age.", diagnostics);
+  }
+}
+
+function hasUniqueCharactersFrom(value: string, allowed: string): boolean {
+  const seen = new Set<string>();
+  for (const character of value) {
+    if (!allowed.includes(character) || seen.has(character)) return false;
+    seen.add(character);
+  }
+  return true;
+}
+
+function validateTrustAnchor(
+  document: ParsedDocument,
+  node: RecordNode,
+  diagnostics: CoreDiagnostic[],
+): void {
+  if (document.kind === "systemd-dns-trust-anchor:negative") {
+    checkColumns(node, 1, 1, "negative trust anchor", diagnostics);
+    if (!isDnsName(node.fields[0] ?? "")) {
+      fieldError(node, 0, "Invalid DNS name in negative trust anchor.", diagnostics);
+    }
+    return;
+  }
+  if (document.kind !== "systemd-dns-trust-anchor:positive") return;
+  checkColumns(node, 7, 7, "positive trust anchor", diagnostics);
+  if (node.fields.length !== 7) return;
+  if (!isDnsName(node.fields[0] ?? "")) {
+    fieldError(node, 0, "Invalid DNS name in positive trust anchor.", diagnostics);
+  }
+  if ((node.fields[1] ?? "").toUpperCase() !== "IN") {
+    fieldError(node, 1, "Trust anchors only support the IN resource-record class.", diagnostics);
+  }
+  const type = (node.fields[2] ?? "").toUpperCase();
+  if (type !== "DS" && type !== "DNSKEY") {
+    fieldError(node, 2, "Positive trust anchors support DS and DNSKEY records.", diagnostics);
+    return;
+  }
+  if (type === "DS") validateDsTrustAnchor(node, diagnostics);
+  else validateDnskeyTrustAnchor(node, diagnostics);
+}
+
+function validateDsTrustAnchor(node: RecordNode, diagnostics: CoreDiagnostic[]): void {
+  if (!isUnsignedInteger(node.fields[3] ?? "", 65_535)) {
+    fieldError(node, 3, "DS key tag must be an unsigned 16-bit integer.", diagnostics);
+  }
+  if (!isDnssecAlgorithm(node.fields[4] ?? "")) {
+    fieldError(node, 4, "Unknown DNSSEC algorithm.", diagnostics);
+  }
+  if (!isDnssecDigest(node.fields[5] ?? "")) {
+    fieldError(node, 5, "Unknown DNSSEC digest algorithm.", diagnostics);
+  }
+  const digest = node.fields[6] ?? "";
+  if (digest === "" || digest.length % 2 !== 0 || !everyCharacter(digest, 0, isHexDigit)) {
+    fieldError(
+      node,
+      6,
+      "DS digest must contain an even number of hexadecimal digits.",
+      diagnostics,
+    );
+  }
+}
+
+function validateDnskeyTrustAnchor(node: RecordNode, diagnostics: CoreDiagnostic[]): void {
+  const flagsText = node.fields[3] ?? "";
+  if (!isUnsignedInteger(flagsText, 65_535)) {
+    fieldError(node, 3, "DNSKEY flags must be an unsigned 16-bit integer.", diagnostics);
+  } else {
+    const flags = Number(flagsText);
+    if ((flags & 0x100) === 0) {
+      fieldError(node, 3, "A trust-anchor DNSKEY must set the zone-key flag (256).", diagnostics);
+    } else if ((flags & 0x80) !== 0) {
+      fieldError(node, 3, "A revoked DNSKEY cannot be used as a trust anchor.", diagnostics);
+    }
+  }
+  if ((node.fields[4] ?? "") !== "3") {
+    fieldError(node, 4, "DNSKEY protocol must be 3.", diagnostics);
+  }
+  if (!isDnssecAlgorithm(node.fields[5] ?? "")) {
+    fieldError(node, 5, "Unknown DNSSEC algorithm.", diagnostics);
+  }
+  if (!isBase64(node.fields[6] ?? "")) {
+    fieldError(node, 6, "DNSKEY key data must be valid Base64.", diagnostics);
+  }
+}
+
+function isUnsignedInteger(value: string, maximum: number): boolean {
+  if (!/^\d+$/u.test(value)) return false;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed <= maximum;
+}
+
+function isDnssecAlgorithm(value: string): boolean {
+  if (isUnsignedInteger(value, 255)) return true;
+  return new Set([
+    "RSAMD5",
+    "DH",
+    "DSA",
+    "ECC",
+    "RSASHA1",
+    "DSA-NSEC3-SHA1",
+    "RSASHA1-NSEC3-SHA1",
+    "RSASHA256",
+    "RSASHA512",
+    "ECC-GOST",
+    "ECDSAP256SHA256",
+    "ECDSAP384SHA384",
+    "ED25519",
+    "ED448",
+    "INDIRECT",
+    "PRIVATEDNS",
+    "PRIVATEOID",
+  ]).has(value.toUpperCase());
+}
+
+function isDnssecDigest(value: string): boolean {
+  if (isUnsignedInteger(value, 255)) return true;
+  return new Set(["SHA-1", "SHA-256", "GOST_R_34.11-94", "SHA-384"]).has(value.toUpperCase());
+}
+
+function isBase64(value: string): boolean {
+  return (
+    value !== "" &&
+    value.length % 4 === 0 &&
+    /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value)
+  );
+}
+
+function isDnsName(value: string): boolean {
+  if (value === ".") return true;
+  const normalized = value.endsWith(".") ? value.slice(0, -1) : value;
+  if (normalized === "" || normalized.length > 253) return false;
+  return normalized.split(".").every((label) => {
+    if (label.length < 1 || label.length > 63) return false;
+    return /^[A-Za-z0-9](?:[A-Za-z0-9_-]*[A-Za-z0-9])?$/u.test(label);
+  });
+}
+
+function validateBootRecord(
+  document: ParsedDocument,
+  node: RecordNode,
+  diagnostics: CoreDiagnostic[],
+): void {
+  if (document.kind !== "systemd-boot:loader" && document.kind !== "systemd-boot:entry") return;
+  const permitsEmpty =
+    document.kind === "systemd-boot:entry" &&
+    new Set(["options", "devicetree-overlay"]).has(node.fields[0] ?? "");
+  if (node.fields.length !== 2 && !permitsEmpty) {
+    checkColumns(node, 2, 2, "boot configuration", diagnostics);
+    return;
+  }
+  const setting = node.fields[0] ?? "";
+  const known = document.kind === "systemd-boot:loader" ? loaderSettings : bootEntrySettings;
+  if (!known.has(setting)) {
+    fieldError(
+      node,
+      0,
+      "Unknown " + setting + " boot configuration option.",
+      diagnostics,
+      "warning",
+    );
+    return;
+  }
+  const value = node.fields[1] ?? "";
+  if (
+    document.kind === "systemd-boot:loader" &&
+    [
+      "editor",
+      "auto-entries",
+      "auto-firmware",
+      "auto-poweroff",
+      "auto-reboot",
+      "beep",
+      "reboot-for-bitlocker",
+    ].includes(setting) &&
+    !booleans.has(value.toLowerCase())
+  ) {
+    fieldError(node, 1, setting + " expects a boolean value.", diagnostics);
+  }
+  if (document.kind === "systemd-boot:entry" && setting === "profile" && !/^\d+$/u.test(value)) {
+    fieldError(node, 1, "Boot entry profile must be an unsigned integer.", diagnostics);
+  }
+}
+
+function validateEnvironmentRecord(
+  document: ParsedDocument,
+  node: RecordNode,
+  diagnostics: CoreDiagnostic[],
+): void {
+  if (document.kind === "systemd-environment:hostname") {
+    const hostname = node.fields[0] ?? "";
+    if (!isHostname(hostname) && !containsTemplate(hostname)) {
+      fieldError(node, 0, "Invalid static hostname.", diagnostics);
+    }
+    return;
+  }
+  diagnostics.push({
+    code: "missing-environment-assignment",
+    message: "This file expects a KEY=VALUE assignment.",
+    severity: "error",
+    span: node.span,
+  });
+}
+
+function isHostname(value: string): boolean {
+  if (value === "" || value.length > 64 || value.startsWith(".") || value.endsWith("."))
+    return false;
+  return value.split(".").every((label) => {
+    if (label.length < 1 || label.length > 63) return false;
+    return /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/u.test(label);
+  });
+}
+
+function validateSingleValueDocument(
+  document: ParsedDocument,
+  diagnostics: CoreDiagnostic[],
+): void {
+  if (
+    document.kind !== "systemd-environment:hostname" &&
+    document.kind !== "systemd-boot:entry-token"
+  ) {
+    return;
+  }
+  const values = document.nodes.filter((node) => node.kind === "record");
+  if (values.length <= 1) return;
+  for (const node of values.slice(1)) {
+    diagnostics.push({
+      code: "unexpected-extra-line",
+      message: "This file accepts a single value.",
+      severity: "error",
+      span: node.span,
+    });
+  }
+}
+
+function validateTable(
+  kind: ParsedDocument["kind"],
+  node: RecordNode,
+  diagnostics: CoreDiagnostic[],
+): void {
+  switch (kind) {
+    case "systemd-table:fstab":
+      checkColumns(node, 4, 6, "fstab", diagnostics);
+      break;
+    case "systemd-table:crypttab":
+      checkColumns(node, 2, 4, "crypttab", diagnostics);
+      break;
+    case "systemd-table:veritytab":
+      checkColumns(node, 4, 5, "veritytab", diagnostics);
+      break;
+    case "systemd-table:integritytab":
+      checkColumns(node, 2, 4, "integritytab", diagnostics);
+      break;
+    case "systemd-table:clonetab":
+      checkColumns(node, 4, 5, "clonetab", diagnostics);
+      break;
+    default:
+      checkColumns(node, 2, 6, "systemd table", diagnostics);
+      break;
+  }
 }
 
 function checkColumns(
@@ -564,11 +1036,12 @@ function fieldError(
   index: number,
   message: string,
   diagnostics: CoreDiagnostic[],
+  severity: CoreDiagnostic["severity"] = "error",
 ): void {
   diagnostics.push({
     code: "invalid-record-field",
     message,
-    severity: "error",
+    severity,
     span: node.fieldSpans[index] ?? node.span,
   });
 }

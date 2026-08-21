@@ -119,6 +119,54 @@ describe("lossless parsers", () => {
     });
   });
 
+  it("parses tmpfiles' seventh field as the complete argument", () => {
+    const document = parse(
+      "f~ /root/.ssh/authorized_keys 0600 root root - SSH key with spaces\n",
+      "systemd-tmpfiles",
+      "file:///etc/tmpfiles.d/ssh.conf",
+    );
+    expect(document.nodes[0]).toMatchObject({
+      kind: "record",
+      fields: [
+        "f~",
+        "/root/.ssh/authorized_keys",
+        "0600",
+        "root",
+        "root",
+        "-",
+        "SSH key with spaces",
+      ],
+    });
+  });
+
+  it("parses boot configuration according to each concrete file format", () => {
+    expect(
+      parse(
+        "timeout menu-hidden\ndefault arch-*\n",
+        "systemd-boot",
+        "file:///boot/loader/loader.conf",
+      ).nodes,
+    ).toMatchObject([
+      { kind: "record", fields: ["timeout", "menu-hidden"] },
+      { kind: "record", fields: ["default", "arch-*"] },
+      { kind: "blank" },
+    ]);
+    expect(
+      parse(
+        "title Linux rescue image\noptions quiet splash console=ttyS0\n",
+        "systemd-boot",
+        "file:///boot/loader/entries/rescue.conf",
+      ).nodes,
+    ).toMatchObject([
+      { kind: "record", fields: ["title", "Linux rescue image"] },
+      { kind: "record", fields: ["options", "quiet splash console=ttyS0"] },
+      { kind: "blank" },
+    ]);
+    expect(
+      parse("layout=uki\n", "systemd-boot", "file:///etc/kernel/install.conf").nodes[0],
+    ).toMatchObject({ kind: "assignment", name: "layout", value: "uki" });
+  });
+
   it("parses mkosi's indented multiline values and inline comments", () => {
     const source = [
       "[Content]",

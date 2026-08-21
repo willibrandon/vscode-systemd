@@ -288,7 +288,9 @@ describe("record and JSON semantic analysis", () => {
     expect(codes("w+ /tmp/app - - - - value\n", "systemd-tmpfiles")).not.toContain(
       "invalid-record-field",
     );
-    expect(codes("K$ /tmp/app\n", "systemd-tmpfiles")).not.toContain("invalid-record-field");
+    expect(codes("f$ /tmp/app - - - - payload\n", "systemd-tmpfiles")).not.toContain(
+      "invalid-record-field",
+    );
     expect(codes('ENV{ID_MODEL} == "demo"\n', "systemd-udev-rules")).not.toContain(
       "invalid-record-field",
     );
@@ -297,6 +299,12 @@ describe("record and JSON semantic analysis", () => {
     );
     expect(codes("f++ /tmp/app\n", "systemd-tmpfiles")).toContain("invalid-record-field");
     expect(codes("f# /tmp/app\n", "systemd-tmpfiles")).toContain("invalid-record-field");
+    expect(codes("K$ /tmp/app - - - - cap_net_bind_service=ep\n", "systemd-tmpfiles")).toContain(
+      "invalid-record-field",
+    );
+    expect(codes("L? /tmp/app - - - - /missing/target\n", "systemd-tmpfiles")).not.toContain(
+      "invalid-record-field",
+    );
     for (const operator of ["==", "!=", ":=", "+=", "-=", "="]) {
       expect(codes("ENV{ID_MODEL} " + operator + ' "demo"\n', "systemd-udev-rules")).not.toContain(
         "invalid-record-field",
@@ -308,6 +316,113 @@ describe("record and JSON semantic analysis", () => {
     expect(codes("usb:v0001*\n ID_MODEL=Demo\n", "systemd-hwdb")).not.toContain(
       "invalid-record-field",
     );
+  });
+
+  it("validates non-INI records using their concrete upstream formats", () => {
+    expect(
+      codes(
+        "f~ /root/.ssh/authorized_keys 0600 root root - SSH key with spaces\n",
+        "systemd-tmpfiles",
+        "file:///etc/tmpfiles.d/ssh.conf",
+      ),
+    ).toEqual([]);
+    expect(codes('u! httpd 404 "HTTP User"\n', "systemd-sysusers")).toEqual([]);
+    expect(codes("g! input -\n", "systemd-sysusers")).toContain("invalid-record-field");
+    expect(codes("m httpd input description\n", "systemd-sysusers")).toContain(
+      "invalid-record-field",
+    );
+    expect(
+      codes(":DOSWin:M::MZ::/usr/bin/wine:\n", "systemd-binfmt", "file:///etc/binfmt.d/wine.conf"),
+    ).toEqual([]);
+    expect(codes(":bad:X::magic::/bin/true:PP\n", "systemd-binfmt")).toEqual([
+      "invalid-record-field",
+      "invalid-record-field",
+    ]);
+  });
+
+  it.each([
+    ["file:///etc/fstab", "UUID=abc / ext4 defaults 0 1\n"],
+    ["file:///etc/crypttab", "home UUID=abc - luks\n"],
+    ["file:///etc/veritytab", "usr /dev/data /dev/hash deadbeef auto\n"],
+    ["file:///etc/integritytab", "home /dev/data - allow-discards\n"],
+    ["file:///etc/clonetab", "clone /dev/source /dev/dest /dev/meta region-size=8K\n"],
+  ] as const)("accepts the documented columns for %s", (uri, source) => {
+    expect(codes(source, "systemd-table", uri)).not.toContain("invalid-column-count");
+  });
+
+  it("rejects table records using another table format's column count", () => {
+    expect(codes("usr /dev/data /dev/hash\n", "systemd-table", "file:///etc/veritytab")).toContain(
+      "invalid-column-count",
+    );
+    expect(codes("clone /dev/source\n", "systemd-table", "file:///etc/clonetab")).toContain(
+      "invalid-column-count",
+    );
+  });
+
+  it("validates positive and negative DNSSEC trust anchors", () => {
+    expect(
+      codes(
+        ". IN DS 19036 8 2 49aac11d7b6f6446702e54a1607371607a1a41855200fd2ce1cdde32f24e8fb5\n",
+        "systemd-dns-trust-anchor",
+        "file:///etc/dnssec-trust-anchors.d/root.positive",
+      ),
+    ).toEqual([]);
+    expect(
+      codes(
+        ". IN DNSKEY 257 3 8 AQIDBA==\n",
+        "systemd-dns-trust-anchor",
+        "file:///etc/dnssec-trust-anchors.d/root.positive",
+      ),
+    ).toEqual([]);
+    expect(
+      codes(
+        "10.in-addr.arpa\nprivate.example\n",
+        "systemd-dns-trust-anchor",
+        "file:///etc/dnssec-trust-anchors.d/private.negative",
+      ),
+    ).toEqual([]);
+    expect(
+      codes(
+        ". CH DS nope 999 999 xyz\n",
+        "systemd-dns-trust-anchor",
+        "file:///etc/dnssec-trust-anchors.d/bad.positive",
+      ),
+    ).toEqual([
+      "invalid-record-field",
+      "invalid-record-field",
+      "invalid-record-field",
+      "invalid-record-field",
+      "invalid-record-field",
+    ]);
+  });
+
+  it("validates concrete boot and single-value files", () => {
+    expect(
+      codes(
+        "timeout 3\neditor no\nconsole-mode max\n",
+        "systemd-boot",
+        "file:///boot/loader/loader.conf",
+      ),
+    ).toEqual([]);
+    expect(
+      codes(
+        "title Linux\nlinux /vmlinuz-linux\ninitrd /initramfs-linux.img\noptions quiet splash\n",
+        "systemd-boot",
+        "file:///boot/loader/entries/linux.conf",
+      ),
+    ).toEqual([]);
+    expect(codes("unknown value\n", "systemd-boot", "file:///boot/loader/loader.conf")).toContain(
+      "invalid-record-field",
+    );
+    expect(codes("BAD=value\n", "systemd-boot", "file:///etc/kernel/install.conf")).toContain(
+      "unknown-boot-setting",
+    );
+    expect(codes("valid-host.example\n", "systemd-environment", "file:///etc/hostname")).toEqual(
+      [],
+    );
+    expect(
+      codes("one.example\ntwo.example\n", "systemd-environment", "file:///etc/hostname"),
+    ).toContain("unexpected-extra-line");
   });
 
   it("enforces format-specific JSON roots and stops after syntax errors", () => {

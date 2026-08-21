@@ -40,7 +40,7 @@ export function parse(
   const nodes =
     iniDialects.has(dialect) && kind !== "mkosi:version"
       ? parseIni(physical, dialect, kind, diagnostics)
-      : parseRecords(physical, dialect, diagnostics);
+      : parseRecords(physical, dialect, kind, diagnostics);
   return { uri, source, dialect, kind, nodes, diagnostics, lineStarts };
 }
 
@@ -261,6 +261,7 @@ function stripMkosiComment(text: string): string {
 function parseRecords(
   physical: readonly PhysicalLine[],
   dialect: DialectId,
+  documentKind: ParsedDocument["kind"],
   diagnostics: CoreDiagnostic[],
 ): SyntaxNode[] {
   const nodes: SyntaxNode[] = [];
@@ -271,7 +272,7 @@ function parseRecords(
       nodes.push({ kind: "blank", span, line: line.line, raw: line.text });
       continue;
     }
-    if (/^[#;]/u.test(trimmed)) {
+    if (isRecordComment(trimmed, dialect)) {
       nodes.push({
         kind: "comment",
         span,
@@ -301,11 +302,58 @@ function parseRecords(
       nodes.push(record(line, span, line.text, fields, fieldSpans(line, fields)));
       continue;
     }
+    if (dialect === "systemd-environment" && documentKind !== "systemd-environment:hostname") {
+      const assignment = parseSimpleAssignment(line, span);
+      if (assignment !== undefined) {
+        nodes.push(assignment);
+        continue;
+      }
+    }
+    if (dialect === "systemd-sysctl") {
+      const assignment = parseSimpleAssignment(line, span);
+      if (assignment !== undefined) {
+        nodes.push(assignment);
+        continue;
+      }
+    }
+    if (dialect === "systemd-boot" && documentKind === "systemd-boot:kernel-install") {
+      const assignment = parseSimpleAssignment(line, span);
+      if (assignment !== undefined) {
+        nodes.push(assignment);
+        continue;
+      }
+    }
     if (
-      dialect === "systemd-environment" ||
-      dialect === "systemd-sysctl" ||
-      dialect === "systemd-boot"
+      documentKind === "systemd-environment:hostname" ||
+      documentKind === "systemd-boot:entry-token"
     ) {
+      const token = wholeLineToken(line);
+      nodes.push(record(line, span, line.text, [token.text], [token.span]));
+      continue;
+    }
+    if (documentKind === "systemd-boot:loader" || documentKind === "systemd-boot:entry") {
+      const tokens = splitWhitespace(line, 2);
+      nodes.push(record(line, span, line.text, tokens.fields, tokens.spans));
+      continue;
+    }
+    if (dialect === "systemd-tmpfiles") {
+      const tokens = splitWhitespace(line, 7);
+      nodes.push(record(line, span, line.text, tokens.fields, tokens.spans));
+      continue;
+    }
+    if (
+      dialect === "systemd-sysusers" ||
+      dialect === "systemd-modules-load" ||
+      dialect === "systemd-preset" ||
+      dialect === "systemd-table" ||
+      dialect === "systemd-dns-trust-anchor" ||
+      documentKind === "systemd-boot:kernel-command-line"
+    ) {
+      const tokens = splitWhitespace(line);
+      nodes.push(record(line, span, line.text, tokens.fields, tokens.spans));
+      continue;
+    }
+    if (dialect === "systemd-boot") {
       const equals = line.text.indexOf("=");
       if (equals >= 0) {
         const name = line.text.slice(0, equals).trim();
@@ -336,6 +384,118 @@ function parseRecords(
     nodes.push(record(line, span, line.text, fields, fieldSpans(line, fields)));
   }
   return nodes;
+}
+
+function isRecordComment(trimmed: string, dialect: DialectId): boolean {
+  if (trimmed.startsWith("#")) return true;
+  return (
+    trimmed.startsWith(";") &&
+    [
+      "systemd-tmpfiles",
+      "systemd-sysusers",
+      "systemd-environment",
+      "systemd-sysctl",
+      "systemd-modules-load",
+      "systemd-binfmt",
+      "systemd-preset",
+      "systemd-dns-trust-anchor",
+    ].includes(dialect)
+  );
+}
+
+function parseSimpleAssignment(line: PhysicalLine, span: TextSpan): AssignmentNode | undefined {
+  const equals = line.text.indexOf("=");
+  if (equals < 0) return undefined;
+  const name = line.text.slice(0, equals).trim();
+  const value = line.text.slice(equals + 1).trim();
+  const nameOffset = line.text.indexOf(name);
+  const valueText = line.text.slice(equals + 1);
+  const valueLeading = valueText.search(/\S/u);
+  const valueStart =
+    value === "" ? line.start + equals + 1 : line.start + equals + 1 + Math.max(0, valueLeading);
+  return {
+    kind: "assignment",
+    span,
+    line: line.line,
+    raw: line.text,
+    section: null,
+    name,
+    nameSpan: {
+      start: line.start + Math.max(0, nameOffset),
+      end: line.start + Math.max(0, nameOffset) + name.length,
+    },
+    value,
+    valueSpan: { start: valueStart, end: line.end },
+    physicalLines: [line.line],
+  };
+}
+
+interface FieldTokens {
+  readonly fields: readonly string[];
+  readonly spans: readonly TextSpan[];
+}
+
+function wholeLineToken(line: PhysicalLine): { readonly text: string; readonly span: TextSpan } {
+  const text = line.text.trim();
+  const offset = line.text.indexOf(text);
+  return {
+    text,
+    span: {
+      start: line.start + Math.max(0, offset),
+      end: line.start + Math.max(0, offset) + text.length,
+    },
+  };
+}
+
+/**
+ * Split fields using systemd's whitespace-and-quoting lexical rules while retaining raw text.
+ * When maximumFields is reached, the final field owns the complete remaining text. This is
+ * required for tmpfiles' Argument column and boot-loader option values.
+ */
+function splitWhitespace(
+  line: PhysicalLine,
+  maximumFields = Number.POSITIVE_INFINITY,
+): FieldTokens {
+  const fields: string[] = [];
+  const spans: TextSpan[] = [];
+  let cursor = 0;
+  while (cursor < line.text.length) {
+    while (/\s/u.test(line.text[cursor] ?? "")) cursor += 1;
+    if (cursor >= line.text.length) break;
+    const start = cursor;
+    if (fields.length + 1 === maximumFields) {
+      const text = line.text.slice(start).trimEnd();
+      fields.push(text);
+      spans.push({ start: line.start + start, end: line.start + start + text.length });
+      break;
+    }
+    let quote = "";
+    let escaped = false;
+    while (cursor < line.text.length) {
+      const character = line.text[cursor] ?? "";
+      if (escaped) {
+        escaped = false;
+        cursor += 1;
+      } else if (character === "\\") {
+        escaped = true;
+        cursor += 1;
+      } else if (quote !== "") {
+        if (character === quote) quote = "";
+        cursor += 1;
+      } else if (character === '"' || character === "'") {
+        quote = character;
+        cursor += 1;
+      } else if (/\s/u.test(character)) {
+        break;
+      } else {
+        cursor += 1;
+      }
+    }
+    const text = line.text.slice(start, cursor);
+    fields.push(text);
+    spans.push({ start: line.start + start, end: line.start + cursor });
+  }
+  return { fields, spans };
 }
 
 function parseJson(

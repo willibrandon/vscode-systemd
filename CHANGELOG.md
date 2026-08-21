@@ -69,5 +69,9 @@ All notable changes to this project will be documented here. The format follows
 - Section, directive, completion, and quick-fix lookup is now constrained by the concrete unit,
   network, systemd configuration, Quadlet, or mkosi file kind; `mkosi.version` is parsed as a
   version record, and the `.link` snippet now uses link-file settings only.
+- Line-oriented formats now use their actual upstream grammars: tmpfiles preserves the complete
+  Argument column, sysusers understands `u!`, binfmt uses exactly seven fields, each fstab-family
+  table enforces its own layout, and DNSSEC trust anchors and boot-loader records receive
+  format-specific validation.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main
