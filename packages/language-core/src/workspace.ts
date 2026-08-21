@@ -268,6 +268,7 @@ export function mergeConfigurations(
         name: node.name,
         value: node.value,
         sourceUri: document.uri,
+        sourceLine: node.line + 1,
         span: node.span,
       };
       const existing = selected.get(key) ?? [];
@@ -295,7 +296,7 @@ export function renderEffectiveConfiguration(configuration: EffectiveConfigurati
     lines.push("[" + section + "]");
     for (const entry of entries) {
       lines.push(
-        "# " + entry.sourceUri + ":" + String(entry.span.start),
+        "# " + entry.sourceUri + ":" + String(entry.sourceLine),
         entry.name + "=" + entry.value,
       );
     }

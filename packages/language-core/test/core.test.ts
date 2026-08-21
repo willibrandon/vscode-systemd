@@ -149,5 +149,6 @@ describe("formatting and workspace semantics", () => {
     expect(rendered).toContain("Environment=TWO=2");
     expect(rendered).not.toContain("Environment=ONE=1");
     expect(rendered).toContain("override.conf");
+    expect(rendered).toContain("override.conf:3");
   });
 });

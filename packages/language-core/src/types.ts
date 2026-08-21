@@ -142,6 +142,7 @@ export interface EffectiveEntry {
   readonly name: string;
   readonly value: string;
   readonly sourceUri: string;
+  readonly sourceLine: number;
   readonly span: TextSpan;
 }
 
