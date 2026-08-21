@@ -105,5 +105,8 @@ All notable changes to this project will be documented here. The format follows
 - Installed validation now requires explicit systemd generator/man-page disabling, rejects failed
   capability probes, uses non-paging mkosi summaries only for source-audited v16–v26 releases, and
   keeps navigation alive when an index provider returns a malformed URI escape.
+- Deterministic property tests now exercise arbitrary and adversarial input across all 18 dialects,
+  including exact CRLF continuation round trips, and a packaged-LSP gate enforces p95 latency for
+  warm edits and completions over a large indexed project.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

@@ -25,6 +25,7 @@ interface PhysicalLine {
   readonly end: number;
   readonly fullEnd: number;
   readonly text: string;
+  readonly ending: "" | "\n" | "\r\n";
 }
 
 export function parse(
@@ -151,7 +152,11 @@ function parseIni(
       }
       text = mkosiLogicalText(logical);
     }
-    const raw = logical.map((line) => line.text).join("\n");
+    const raw = logical
+      .map((line, lineIndex) =>
+        lineIndex + 1 < logical.length ? line.text + line.ending : line.text,
+      )
+      .join("");
     const span = {
       start: first.start,
       end: logical.at(-1)?.end ?? first.end,
@@ -636,6 +641,7 @@ function physicalLines(source: string): PhysicalLine[] {
       end: end - carriage,
       fullEnd: end < source.length ? end + 1 : end,
       text: source.slice(start, end - carriage),
+      ending: end < source.length ? (carriage === 1 ? "\r\n" : "\n") : "",
     });
     if (end === source.length) break;
     start = end + 1;

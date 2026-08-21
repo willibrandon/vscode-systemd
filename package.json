@@ -728,6 +728,7 @@
     "test:remote": "npm run package && npm run test:remote:prepared",
     "test:remote:prepared": "node ./scripts/run-remote-ssh-smoke.mjs",
     "test:grammar": "vitest run test/grammar",
+    "test:performance": "npm run build && node ./test/performance/language-server.mjs",
     "test:package": "vitest run test/package",
     "test:docs": "npm --prefix docs-site run build && node ./scripts/test-docs-popup.mjs",
     "capture:docs": "npm run package && node ./scripts/capture-docs-screenshots.mjs",
@@ -744,7 +745,7 @@
     "package": "npm run build && npm run check:bundles && npm run check:licenses && npm run check:package && npm run package:artifacts",
     "package:artifacts": "node ./scripts/build-release-artifacts.mjs",
     "package:list": "vsce ls --no-dependencies",
-    "verify": "npm run check:generated && npm run check:coverage && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run check:bundles && npm run check:licenses && npm run check:package && npm run test:package && npm run audit && npm run audit:signatures"
+    "verify": "npm run check:generated && npm run check:coverage && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:performance && npm run check:bundles && npm run check:licenses && npm run check:package && npm run test:package && npm run audit && npm run audit:signatures"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
