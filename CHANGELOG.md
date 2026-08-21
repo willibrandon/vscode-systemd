@@ -94,5 +94,13 @@ All notable changes to this project will be documented here. The format follows
   network, volume, and CSV mount values; unresolved local resources are diagnosed, completion and
   navigation use only compatible Quadlet types, rename preserves the resource suffix, and effective
   configurations apply Podman's main-file and drop-in precedence.
+- Packaged desktop and language-server bundles now select dependency ESM entry points and reject
+  unresolved relative CommonJS imports before integration tests.
+- Network parser-table ownership now controls directive and section applicability instead of an
+  inferred documentation page, including legacy `[DHCP]` and shared `.network` match settings.
+- Source-generated value intelligence now includes the complete pinned signal, Linux capability,
+  syscall-group, and documented address-family catalogs, broader DocBook enum extraction, unit
+  specifier completion, and common duration and size values.
+- IPv4-embedded IPv6 addresses are accepted only in the final 32-bit position.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

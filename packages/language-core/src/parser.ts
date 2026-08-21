@@ -50,7 +50,7 @@ export function detectDialect(
   preferred?: DialectId,
 ): DialectId | undefined {
   if (preferred !== undefined) return preferred;
-  const normalized = decodeURIComponent(uri).replaceAll("\\", "/").toLowerCase();
+  const normalized = normalizedUriPath(uri);
   const basename = normalized.slice(normalized.lastIndexOf("/") + 1);
   const stripped = stripCompoundSuffixes(basename);
   const dropInCandidate = /\/([^/]+)\.d\/[^/]+(?:\.ignore)?$/u.exec(normalized)?.[1] ?? "";
@@ -107,6 +107,16 @@ export function detectDialect(
   if (/\.(?:positive|negative)$/u.test(effective)) return "systemd-dns-trust-anchor";
   if (/\.(?:pcrlock|rr)$/u.test(effective)) return "systemd-json";
   return detectFromContent(source);
+}
+
+function normalizedUriPath(uri: string): string {
+  let decoded = uri;
+  try {
+    decoded = decodeURIComponent(uri);
+  } catch {
+    // Preserve malformed escapes so detection cannot interrupt editor document handling.
+  }
+  return (decoded.split(/[?#]/u)[0] ?? decoded).replaceAll("\\", "/").toLowerCase();
 }
 
 function parseIni(

@@ -77,8 +77,8 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
     failures.push(name + " does not have a pinned 40-character Git revision");
   }
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 7) {
-  failures.push("upstream lock must use schema version 1 and adapter version 7");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 8) {
+  failures.push("upstream lock must use schema version 1 and adapter version 8");
 }
 for (const name of ["systemd", "podman", "mkosi"]) {
   const source = upstreamLock.sources?.[name];
@@ -147,6 +147,8 @@ for (const [dialect, section, name, choices] of [
     ["up", "always-up", "manual", "always-down", "down", "bound"],
   ],
   ["systemd-network", "Network", "IPMasquerade", ["ipv4", "ipv6", "both", "no"]],
+  ["systemd-network", "Network", "DHCP", ["yes", "no", "ipv4", "ipv6"]],
+  ["systemd-network", "Network", "LinkLocalAddressing", ["yes", "no", "ipv4", "ipv6"]],
 ]) {
   const definition = registry.directives.find(
     (directive) =>
@@ -154,6 +156,21 @@ for (const [dialect, section, name, choices] of [
   );
   if (JSON.stringify(definition?.choices) !== JSON.stringify(choices)) {
     failures.push("systemd enum choices are incomplete for [" + section + "] " + name + "=");
+  }
+}
+for (const [name, required] of [
+  ["KillSignal", ["SIGTERM", "SIGKILL", "SIGRTMIN"]],
+  ["CapabilityBoundingSet", ["CAP_CHOWN", "CAP_SYS_ADMIN", "CAP_BPF"]],
+  ["SystemCallFilter", ["@default", "@system-service", "@known"]],
+  ["RestrictAddressFamilies", ["AF_INET", "AF_INET6", "AF_UNIX"]],
+]) {
+  const definition = registry.directives.find(
+    (candidate) => candidate.dialect === "systemd-unit" && candidate.name === name,
+  );
+  for (const value of required) {
+    if (!definition?.choices?.includes(value)) {
+      failures.push("systemd value catalog for " + name + " is missing " + value);
+    }
   }
 }
 for (const [dialect, section, name, exclusive] of [

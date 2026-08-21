@@ -23,6 +23,7 @@
     "mkosi\u0000TriggerMatch\u0000Bootloader",
     "mkosi\u0000Validation\u0000SignInitrdPCRs",
     "podman-quadlet\u0000Container\u0000Umask",
+    "systemd-config\u0000*\u0000PolicyRef",
     "systemd-config\u0000*\u0000inhibit",
     "systemd-config\u0000*\u0000inhibit-why",
     "systemd-config\u0000*\u0000systemd.credentials_boot_policy",
@@ -151,6 +152,21 @@
       "mkosiScope": "main"
     },
     {
+      "dialect": "systemd-config",
+      "section": "*",
+      "name": "systemd.firstboot",
+      "valueKind": "string",
+      "since": "233",
+      "deprecated": false,
+      "documentation": "https://www.freedesktop.org/software/systemd/man/latest/homectl.html#systemd.firstboot=",
+      "summary": "systemd.firstboot in [*].",
+      "choices": [
+        "yes",
+        "no"
+      ],
+      "exclusiveChoices": false
+    },
+    {
       "dialect": "systemd-unit",
       "section": "*",
       "name": "NUMAPolicy",
@@ -165,6 +181,25 @@
         "bind",
         "interleave",
         "local"
+      ],
+      "exclusiveChoices": false
+    },
+    {
+      "dialect": "systemd-unit",
+      "section": "*",
+      "name": "SecureBits",
+      "valueKind": "command",
+      "since": null,
+      "deprecated": false,
+      "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#SecureBits=",
+      "summary": "SecureBits in [*].",
+      "choices": [
+        "keep-caps",
+        "keep-caps-locked",
+        "no-setuid-fixup",
+        "no-setuid-fixup-locked",
+        "noroot",
+        "noroot-locked"
       ],
       "exclusiveChoices": false
     },

@@ -117,6 +117,22 @@ describe("INI semantic analysis", () => {
     ).not.toContain("invalid-value");
   });
 
+  it("rejects values outside source-generated closed network enums", () => {
+    expect(
+      codes("[Network]\nDHCP=automatic\n", "systemd-network", "file:///10-app.network"),
+    ).toContain("invalid-value");
+    expect(
+      codes("[Network]\nLinkLocalAddressing=all\n", "systemd-network", "file:///10-app.network"),
+    ).toContain("invalid-value");
+    expect(
+      codes(
+        "[Network]\nDHCP=ipv4\nLinkLocalAddressing=ipv6\n",
+        "systemd-network",
+        "file:///10-app.network",
+      ),
+    ).toEqual([]);
+  });
+
   it("marks preview-only metadata unavailable for an explicit released target", () => {
     configureRegistryChannel("preview");
     const document = parse(

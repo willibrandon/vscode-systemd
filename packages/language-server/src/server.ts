@@ -354,7 +354,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     const assignment = assignmentAt(tree, offset);
     if (assignment !== undefined && offset >= assignment.valueSpan.start) {
-      return valueCompletions(tree, assignment, allParsed());
+      return valueCompletions(tree, assignment, allParsed(), offset);
     }
     const settings = await settingsFor(document.uri);
     return definitionsFor(tree.dialect, sectionAt(tree, offset), tree.kind)
@@ -1267,15 +1267,37 @@ function valueCompletions(
   tree: ParsedDocument,
   assignment: AssignmentNode,
   documents: readonly ParsedDocument[],
+  offset: number,
 ): CompletionItem[] {
   const definition = assignment.definition;
   if (definition === undefined) return [];
+  const valuePrefix = tree.source.slice(assignment.valueSpan.start, offset);
+  if (tree.dialect === "systemd-unit" && valuePrefix.endsWith("%")) {
+    return Object.entries(specifierMeanings).map(([specifier, meaning]): CompletionItem => ({
+      label: "%" + specifier,
+      kind: CompletionItemKind.Value,
+      detail: meaning,
+      insertText: specifier,
+      documentation: {
+        kind: MarkupKind.Markdown,
+        value:
+          "systemd unit specifier `%" +
+          specifier +
+          "` — " +
+          meaning +
+          "\n\n[Official documentation](https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Specifiers)",
+      },
+    }));
+  }
   const values =
     definition.choices.length > 0
       ? definition.choices
       : definition.valueKind === "boolean"
         ? ["yes", "no"]
-        : referenceCompletionValues(tree, assignment, documents);
+        : [
+            ...commonValueCompletions(definition.valueKind),
+            ...referenceCompletionValues(tree, assignment, documents),
+          ];
   const unique = values.filter(
     (value, index, candidates) => value !== "" && candidates.indexOf(value) === index,
   );
@@ -1285,6 +1307,12 @@ function valueCompletions(
     kind: CompletionItemKind.Value,
     detail: definition.name + "= value",
   }));
+}
+
+function commonValueCompletions(valueKind: DirectiveDefinition["valueKind"]): readonly string[] {
+  if (valueKind === "duration") return ["1s", "5s", "30s", "1min", "5min", "1h", "infinity"];
+  if (valueKind === "size") return ["1K", "1M", "1G", "10%", "infinity"];
+  return [];
 }
 
 function referenceCompletionValues(
@@ -1400,19 +1428,51 @@ function completionData(value: unknown): CompletionData | undefined {
 }
 
 function specifierMeaning(specifier: string): string | undefined {
-  return {
-    "%": "literal %",
-    f: "unescaped instance filename",
-    i: "instance name",
-    I: "unescaped instance name",
-    j: "final name component",
-    J: "unescaped final name component",
-    n: "full unit name",
-    N: "unit name without suffix",
-    p: "unit name prefix",
-    P: "unescaped unit name prefix",
-  }[specifier];
+  return specifierMeanings[specifier];
 }
+
+const specifierMeanings: Readonly<Record<string, string>> = {
+  a: "architecture",
+  A: "operating system image version",
+  b: "boot ID",
+  B: "operating system build ID",
+  C: "cache directory root",
+  d: "credentials directory",
+  D: "shared data directory",
+  E: "configuration directory root",
+  f: "unescaped instance filename",
+  g: "user group",
+  G: "user group ID",
+  h: "user home directory",
+  H: "host name",
+  i: "instance name",
+  I: "unescaped instance name",
+  j: "final unit-name prefix component",
+  J: "unescaped final unit-name prefix component",
+  l: "short host name",
+  L: "log directory root",
+  m: "machine ID",
+  M: "operating system image ID",
+  n: "full unit name",
+  N: "unit name without suffix",
+  o: "operating system ID",
+  p: "unit name prefix",
+  P: "unescaped unit name prefix",
+  q: "pretty host name",
+  s: "user shell",
+  S: "state directory root",
+  t: "runtime directory root",
+  T: "temporary directory",
+  u: "user name",
+  U: "user ID",
+  v: "kernel release",
+  V: "persistent temporary directory",
+  w: "operating system version ID",
+  W: "operating system variant ID",
+  y: "unit fragment path",
+  Y: "unit fragment directory",
+  "%": "literal %",
+};
 
 function directiveMarkdown(definition: DirectiveDefinition): string {
   const availability =

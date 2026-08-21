@@ -129,6 +129,38 @@ describe("registry queries", () => {
     expect(definitionFor("systemd-network", "Route", "GatewayOnLink")).toBeDefined();
     expect(definitionFor("systemd-network", "Network", "IPv4Forwarding")).toBeDefined();
     expect(definitionFor("systemd-network", "Network", "IPv6Forwarding")).toBeDefined();
+    expect(definitionFor("systemd-network", "Network", "DHCP")?.choices).toEqual([
+      "yes",
+      "no",
+      "ipv4",
+      "ipv6",
+    ]);
+    expect(definitionFor("systemd-network", "Network", "DHCP")?.exclusiveChoices).toBe(true);
+    expect(definitionFor("systemd-network", "Network", "LinkLocalAddressing")?.choices).toEqual([
+      "yes",
+      "no",
+      "ipv4",
+      "ipv6",
+    ]);
+    expect(definitionFor("systemd-unit", "Service", "KillSignal")?.choices).toEqual(
+      expect.arrayContaining(["SIGTERM", "SIGKILL", "SIGRTMIN"]),
+    );
+    const capabilities = definitionFor("systemd-unit", "Service", "CapabilityBoundingSet");
+    expect(capabilities?.valueKind).toBe("list");
+    expect(capabilities?.choices).toEqual(
+      expect.arrayContaining(["CAP_CHOWN", "CAP_SYS_ADMIN", "CAP_BPF"]),
+    );
+    const systemCalls = definitionFor("systemd-unit", "Service", "SystemCallFilter");
+    expect(systemCalls?.valueKind).toBe("list");
+    expect(systemCalls?.choices).toEqual(
+      expect.arrayContaining(["@default", "@system-service", "@known"]),
+    );
+    const addressFamilies = definitionFor("systemd-unit", "Service", "RestrictAddressFamilies");
+    expect(addressFamilies?.valueKind).toBe("list");
+    expect(addressFamilies?.choices).toEqual(
+      expect.arrayContaining(["AF_UNIX", "AF_INET", "AF_INET6"]),
+    );
+    expect(definitionFor("systemd-unit", "Service", "MemoryMax")?.valueKind).toBe("size");
     expect(definitionFor("podman-quadlet", "Container", "CgroupsMode")).toBeDefined();
     expect(definitionFor("podman-quadlet", "Build", "ImageTag")).toBeDefined();
     expect(definitionFor("systemd-unit", "Install", "ExecStart")).toBeUndefined();

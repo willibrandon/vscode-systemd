@@ -49,6 +49,13 @@ describe("complete dialect recognition", () => {
     expect(detectDialect("untitled:mkosi", "[Output]\nFormat=disk\n")).toBe("mkosi");
     expect(detectDialect("untitled:unknown", "plain text\n")).toBeUndefined();
   });
+
+  it("keeps detection total for malformed escapes and ignores URI query and fragment data", () => {
+    expect(detectDialect("file:///workspace/demo%ZZ.service", "")).toBe("systemd-unit");
+    expect(detectDialect("file:///workspace/demo.network?revision=2#preview", "")).toBe(
+      "systemd-network",
+    );
+  });
 });
 
 describe("lossless parsers", () => {

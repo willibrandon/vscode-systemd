@@ -10,7 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 7;
+const adapterVersion = 8;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -507,7 +507,7 @@ async function extractSystemd(source) {
       const names = new Set();
       for (const term of block.matchAll(/<term(?:\s[^>]*)?>([\s\S]*?)<\/term>/gu)) {
         for (const declaration of (term[1] ?? "").matchAll(
-          /<varname>([A-Za-z][A-Za-z0-9_:@{}.-]*)=<\/varname>/gu,
+          /<varname>([A-Za-z][A-Za-z0-9_:@{}.-]*)=[\s\S]*?<\/varname>/gu,
         )) {
           if (declaration[1] !== undefined) names.add(declaration[1]);
         }
@@ -537,6 +537,62 @@ async function extractSystemd(source) {
         });
       }
     }
+  }
+  await applySystemdValueCatalogs(source);
+}
+
+async function applySystemdValueCatalogs(source) {
+  const signalSource = await readFile(resolve(source, "src/basic/signal-util.c"), "utf8");
+  const signals = [...signalSource.matchAll(/\[SIG[A-Z0-9]+\]\s*=\s*"([A-Z0-9]+)"/gu)].map(
+    (match) => "SIG" + (match[1] ?? ""),
+  );
+  signals.push("SIGRTMIN", "SIGRTMAX");
+
+  const capabilitySource = await readFile(
+    resolve(source, "src/include/uapi/linux/capability.h"),
+    "utf8",
+  );
+  const capabilities = [
+    ...capabilitySource.matchAll(/^#define\s+(CAP_[A-Z0-9_]+)\s+\d+\s*$/gmu),
+  ].map((match) => match[1] ?? "");
+
+  const seccompSource = await readFile(resolve(source, "src/shared/seccomp-util.c"), "utf8");
+  const syscallGroups = [...seccompSource.matchAll(/\.name\s*=\s*"(@[a-z0-9-]+)"/gu)].map(
+    (match) => match[1] ?? "",
+  );
+
+  const execManual = await readFile(resolve(source, "man/systemd.exec.xml"), "utf8");
+  const addressFamilies = [...new Set(execManual.match(/AF_[A-Z0-9_]+/gu) ?? [])].sort();
+
+  applyValueCatalog(
+    new Set([
+      "KillSignal",
+      "RestartKillSignal",
+      "FinalKillSignal",
+      "WatchdogSignal",
+      "ReloadSignal",
+    ]),
+    signals,
+    "string",
+  );
+  applyValueCatalog(
+    new Set(["CapabilityBoundingSet", "AmbientCapabilities"]),
+    capabilities,
+    "list",
+  );
+  applyValueCatalog(new Set(["SystemCallFilter", "SystemCallLog"]), syscallGroups, "list");
+  applyValueCatalog(new Set(["RestrictAddressFamilies"]), addressFamilies, "list");
+}
+
+function applyValueCatalog(names, values, valueKind) {
+  const choices = [...new Set(values.filter((value) => value !== ""))];
+  for (const [key, definition] of records) {
+    if (!names.has(definition.name)) continue;
+    records.set(key, {
+      ...definition,
+      valueKind,
+      choices: [...new Set([...definition.choices, ...choices])],
+    });
   }
 }
 
@@ -572,7 +628,10 @@ function systemdManualDocumentKinds(manual) {
 function isClosedSystemdChoice(dialect, section, name) {
   return (
     (dialect === "systemd-unit" && section === "Service" && name === "Type") ||
-    (dialect === "systemd-network" && section === "Link" && name === "ActivationPolicy")
+    (dialect === "systemd-network" && section === "Link" && name === "ActivationPolicy") ||
+    (dialect === "systemd-network" &&
+      section === "Network" &&
+      ["DHCP", "LinkLocalAddressing"].includes(name))
   );
 }
 
@@ -589,7 +648,7 @@ function systemdChoices(block) {
   for (const match of block.matchAll(/<para(?:\s[^>]*)?>([\s\S]*?)<\/para>/gu)) {
     const paragraph = match[1] ?? "";
     const lead =
-      /\b(?:takes\s+|accepts\s+|must\s+be\s+|may\s+be\s+|should\s+be\s+)?one\s+of\b/iu.exec(
+      /\b(?:(?:takes|accepts)(?:\s+one\s+of)?|(?:must\s+be|may\s+be|should\s+be)\s+one\s+of|one\s+of)\b/iu.exec(
         paragraph,
       );
     if (lead === null) continue;
@@ -600,6 +659,7 @@ function systemdChoices(block) {
     const choices = [...sentence.matchAll(/<(literal|option)>([\s\S]*?)<\/\1>/gu)]
       .map((choice) => systemdChoiceToken(choice[2] ?? ""))
       .filter((choice) => /^[^\s<>&]+$/u.test(choice));
+    if (/\b(?:a\s+)?boolean\b/iu.test(sentence)) choices.unshift("yes", "no");
     const unique = [...new Set(choices)];
     if (unique.length >= 2 && unique.length <= 32) {
       return {
@@ -982,6 +1042,13 @@ function balancedCall(text, opening) {
 
 function parserKind(parser) {
   const normalized = parser.toLowerCase();
+  if (normalized === "config_parse_memory_limit") return "size";
+  if (normalized === "config_parse_dhcp" || normalized.endsWith("_address_family")) return "string";
+  if (normalized.endsWith("_address_families")) return "list";
+  if (/(?:^|_)(?:capability_set|syscall_filter|syscall_log)(?:_|$)/u.test(normalized)) {
+    return "list";
+  }
+  if (/(?:^|_)signal(?:_|$)/u.test(normalized)) return "string";
   if (/(?:^|_)(?:bool|boolean|tristate)(?:_|$)/u.test(normalized)) return "boolean";
   if (/(?:^|_)(?:sec|time|timespan|calendar)(?:_|$)/u.test(normalized)) return "duration";
   if (/(?:^|_)(?:size|bytes|iec)(?:_|$)/u.test(normalized)) return "size";

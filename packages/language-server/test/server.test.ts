@@ -507,6 +507,68 @@ describe("language server JSON-RPC contract", () => {
     }
   });
 
+  it("completes source-generated systemd value catalogs and all unit specifiers", async () => {
+    const catalogUri = "file:///workspace/catalog.service";
+    const catalogSource = [
+      "[Service]",
+      "ExecStart=/bin/echo %",
+      "KillSignal=",
+      "CapabilityBoundingSet=",
+      "SystemCallFilter=",
+      "RestrictAddressFamilies=",
+      "TimeoutStopSec=",
+      "MemoryMax=",
+      "",
+    ].join("\n");
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: catalogUri,
+        languageId: "systemd-unit",
+        version: 1,
+        text: catalogSource,
+      },
+    });
+
+    const completionLabels = async (line: number, character: number): Promise<string[]> =>
+      (
+        await request<CompletionItem[]>(client, "textDocument/completion", {
+          textDocument: { uri: catalogUri },
+          position: { line, character },
+        })
+      ).map(({ label }) => label);
+
+    const specifiers = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: catalogUri },
+      position: { line: 1, character: 21 },
+    });
+    expect(specifiers.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["%a", "%A", "%d", "%n", "%y", "%Y", "%%"]),
+    );
+    expect(specifiers.find(({ label }) => label === "%n")?.insertText).toBe("n");
+    expect(await completionLabels(2, 11)).toEqual(
+      expect.arrayContaining(["SIGTERM", "SIGKILL", "SIGRTMIN"]),
+    );
+    expect(await completionLabels(3, 22)).toEqual(
+      expect.arrayContaining(["CAP_CHOWN", "CAP_SYS_ADMIN", "CAP_BPF"]),
+    );
+    expect(await completionLabels(4, 17)).toEqual(
+      expect.arrayContaining(["@default", "@system-service", "@known"]),
+    );
+    expect(await completionLabels(5, 24)).toEqual(
+      expect.arrayContaining(["AF_UNIX", "AF_INET", "AF_INET6"]),
+    );
+    expect(await completionLabels(6, 15)).toEqual(
+      expect.arrayContaining(["1s", "30s", "5min", "infinity"]),
+    );
+    expect(await completionLabels(7, 10)).toEqual(
+      expect.arrayContaining(["1K", "1M", "1G", "10%"]),
+    );
+
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: catalogUri },
+    });
+  });
+
   it("navigates and renames structured Quadlet references without treating OCI names as files", async () => {
     const quadletDocuments = [
       ["base.image", "[Image]\nImage=quay.io/example/base:latest\n"],

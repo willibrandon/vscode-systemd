@@ -13,8 +13,10 @@ into the desktop and browser extension.
 
 - TextMate highlighting before the extension activates.
 - Built-in, error-tolerant parsing and validation for 18 configuration dialects.
-- Section, directive, indexed-reference, and value completion from 2,699 stable and 2,748 preview
+- Section, directive, indexed-reference, and value completion from 2,804 stable and 2,858 preview
   generated upstream records, with lazily resolved official documentation.
+- Source-generated completion for systemd signals, Linux capabilities, syscall groups, address
+  families, unit specifiers, durations, sizes, and documented closed enums.
 - Offline stable and preview metadata channels, with stable-release defaults and a compact bundled
   default-branch delta.
 - Hover documentation with direct links to official manuals.
