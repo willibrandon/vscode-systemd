@@ -36,6 +36,9 @@ All notable changes to this project will be documented here. The format follows
   metadata.
 - Bundled JSON schemas and source-aligned semantic diagnostics for PCR measurement components and
   systemd-resolved static DNS resource records.
+- Field-aware completion, hover, and signature help for line-oriented formats, including tmpfiles,
+  sysusers, systemd-boot, Boot Loader Specification entries, DNSSEC trust anchors, table files,
+  kernel-install, os-release, machine-info, locale, and virtual-console configuration.
 
 ### Fixed
 

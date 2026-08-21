@@ -419,6 +419,93 @@ describe("language server JSON-RPC contract", () => {
     ).toEqual({ changes: {} });
   });
 
+  it("serves field-aware intelligence for line-oriented formats", async () => {
+    const tmpfilesUri = "file:///workspace/tmpfiles.d/demo.conf";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: tmpfilesUri,
+        languageId: "systemd-tmpfiles",
+        version: 1,
+        text: "d /run/demo 0755 root root -\n",
+      },
+    });
+    const tmpfileTypes = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: tmpfilesUri },
+      position: { line: 1, character: 0 },
+    });
+    expect(tmpfileTypes.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["f+", "d", "L?", "K"]),
+    );
+    const tmpfilesHover = await request<Hover | null>(client, "textDocument/hover", {
+      textDocument: { uri: tmpfilesUri },
+      position: { line: 0, character: 4 },
+    });
+    expect(JSON.stringify(tmpfilesHover)).toContain("Absolute path or glob");
+    const tmpfilesSignature = await request<SignatureHelp | null>(
+      client,
+      "textDocument/signatureHelp",
+      {
+        textDocument: { uri: tmpfilesUri },
+        position: { line: 0, character: 23 },
+      },
+    );
+    expect(tmpfilesSignature?.signatures[0]?.label).toBe(
+      "Type Path [Mode] [User] [Group] [Age] [Argument]",
+    );
+
+    const loaderUri = "file:///workspace/boot/loader/loader.conf";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: loaderUri,
+        languageId: "systemd-boot",
+        version: 1,
+        text: "editor \n",
+      },
+    });
+    const loaderValues = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: loaderUri },
+      position: { line: 0, character: 7 },
+    });
+    expect(loaderValues.map(({ label }) => label)).toEqual(["yes", "no"]);
+    const loaderOptions = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: loaderUri },
+      position: { line: 1, character: 0 },
+    });
+    expect(loaderOptions.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["timeout", "editor", "secure-boot-enroll", "console-mode"]),
+    );
+
+    const installUri = "file:///workspace/etc/kernel/install.conf";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: installUri,
+        languageId: "systemd-boot",
+        version: 1,
+        text: "layout=\n",
+      },
+    });
+    const installValues = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: installUri },
+      position: { line: 0, character: 7 },
+    });
+    expect(installValues.map(({ label }) => label)).toEqual(["auto", "bls", "uki", "other"]);
+    const installSettings = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: installUri },
+      position: { line: 1, character: 0 },
+    });
+    expect(installSettings.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["MACHINE_ID", "BOOT_ROOT", "layout", "uki_generator"]),
+    );
+    const installHover = await request<Hover | null>(client, "textDocument/hover", {
+      textDocument: { uri: installUri },
+      position: { line: 0, character: 2 },
+    });
+    expect(JSON.stringify(installHover)).toContain("Boot-entry layout");
+    for (const openUri of [tmpfilesUri, loaderUri, installUri]) {
+      await client.sendNotification("textDocument/didClose", { textDocument: { uri: openUri } });
+    }
+  });
+
   it("completes systemd enum values from generated upstream metadata", async () => {
     const networkUri = "file:///workspace/example.network";
     const text = "[Link]\nActivationPolicy=\n\n[Network]\nIPMasquerade=both\n";

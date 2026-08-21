@@ -1,5 +1,6 @@
 import { definitionFor, isDynamicDirective, sectionsFor } from "./registry.js";
 import { analyzeSystemdJson } from "./json-analysis.js";
+import { lineSettingsFor, recordFormatFor } from "./line-formats.js";
 import type {
   AssignmentNode,
   CoreDiagnostic,
@@ -67,49 +68,6 @@ const tmpfilesTypes = new Set([
   "K",
 ]);
 const tmpfilesModifiers = new Set(["!", "+", "-", "=", "~", "^", "$", "?"]);
-const kernelInstallSettings = new Set([
-  "MACHINE_ID",
-  "BOOT_ROOT",
-  "layout",
-  "initrd_generator",
-  "uki_generator",
-  "entry_name_format",
-]);
-const loaderSettings = new Set([
-  "timeout",
-  "default",
-  "preferred",
-  "editor",
-  "auto-entries",
-  "auto-firmware",
-  "auto-poweroff",
-  "auto-reboot",
-  "beep",
-  "reboot-for-bitlocker",
-  "reboot-on-error",
-  "secure-boot-enroll",
-  "secure-boot-enroll-action",
-  "secure-boot-enroll-timeout-sec",
-  "console-mode",
-  "log-level",
-]);
-const bootEntrySettings = new Set([
-  "title",
-  "sort-key",
-  "version",
-  "machine-id",
-  "architecture",
-  "options",
-  "linux",
-  "efi",
-  "uki",
-  "uki-url",
-  "profile",
-  "initrd",
-  "devicetree",
-  "devicetree-overlay",
-  "extra",
-]);
 
 export function analyze(
   document: ParsedDocument,
@@ -592,7 +550,7 @@ function validateSimpleAssignment(
       });
     }
   } else if (document.kind === "systemd-boot:kernel-install") {
-    if (!kernelInstallSettings.has(node.name)) {
+    if (!lineSettingsFor(document.kind).some(({ name }) => name === node.name)) {
       diagnostics.push({
         code: "unknown-boot-setting",
         message: "Unknown kernel-install setting " + node.name + "=.",
@@ -898,8 +856,8 @@ function validateBootRecord(
     return;
   }
   const setting = node.fields[0] ?? "";
-  const known = document.kind === "systemd-boot:loader" ? loaderSettings : bootEntrySettings;
-  if (!known.has(setting)) {
+  const known = recordFormatFor(document.kind)?.keywords ?? [];
+  if (!known.some(({ name }) => name === setting)) {
     fieldError(
       node,
       0,

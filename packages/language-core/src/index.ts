@@ -3,6 +3,7 @@ export type { AnalysisOptions } from "./analysis.js";
 export { classifyDocument } from "./document-kind.js";
 export { applyTextEdits, format } from "./formatter.js";
 export { detectDialect, parse } from "./parser.js";
+export { lineSettingsFor, recordFormatFor } from "./line-formats.js";
 export {
   definitionFor,
   definitionsFor,
@@ -41,6 +42,10 @@ export type {
   EffectiveConfiguration,
   EffectiveEntry,
   FormatOptions,
+  LineFieldDefinition,
+  LineFormatDefinition,
+  LineKeywordDefinition,
+  LineSettingDefinition,
   MkosiDocumentType,
   NetworkDocumentType,
   ParseResult,

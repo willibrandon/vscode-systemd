@@ -10,8 +10,10 @@ import {
   findOrderingDependencyCycles,
   format,
   isDefinitionAvailable,
+  lineSettingsFor,
   mergeConfigurations,
   parse,
+  recordFormatFor,
   resolveConfigurationDocuments,
   resolveUnitConfigurations,
   renderEffectiveConfiguration,
@@ -22,8 +24,12 @@ import type {
   CoreDiagnostic,
   DialectId,
   DirectiveDefinition,
+  LineFieldDefinition,
+  LineFormatDefinition,
+  LineSettingDefinition,
   OrderingDependencyCycle,
   ParsedDocument,
+  RecordNode,
   Reference,
   SyntaxNode,
   TargetVersions,
@@ -307,6 +313,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       start: { line: params.position.line, character: 0 },
       end: params.position,
     });
+    const lineOriented = lineCompletions(tree, offset, line);
+    if (lineOriented !== undefined) return lineOriented;
     if (/^\s*\[[^\]]*$/u.test(line)) {
       return sectionsFor(tree.dialect, tree.kind).map((section): CompletionItem => ({
         label: section,
@@ -346,25 +354,55 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         contents: { kind: MarkupKind.Markdown, value: "[" + context.node.name + "] section" },
       };
     }
+    if (context.node.kind === "record")
+      return recordHover(context.document, context.tree, context.node, params.position);
     if (context.node.kind !== "assignment") return null;
+    const assignment = context.node;
     const definition =
-      context.node.definition ??
-      definitionFor(
-        context.tree.dialect,
-        context.node.section,
-        context.node.name,
-        context.tree.kind,
+      assignment.definition ??
+      definitionFor(context.tree.dialect, assignment.section, assignment.name, context.tree.kind);
+    if (definition === undefined) {
+      const setting = lineSettingsFor(context.tree.kind).find(
+        ({ name }) => name === assignment.name,
       );
-    if (definition === undefined) return null;
+      return setting === undefined
+        ? null
+        : {
+            contents: { kind: MarkupKind.Markdown, value: lineSettingMarkdown(setting) },
+            range: toRange(context.document, assignment.nameSpan),
+          };
+    }
     return {
       contents: { kind: MarkupKind.Markdown, value: directiveMarkdown(definition) },
-      range: toRange(context.document, context.node.nameSpan),
+      range: toRange(context.document, assignment.nameSpan),
     };
   });
   connection.onSignatureHelp((params): SignatureHelp | null => {
     const context = contextAt(documents, params.textDocument.uri, params.position, parsed);
-    if (context?.node.kind !== "assignment" || context.node.definition === undefined) return null;
-    const definition = context.node.definition;
+    if (context?.node.kind === "record") {
+      return recordSignature(context.document, context.tree, context.node, params.position);
+    }
+    if (context?.node.kind !== "assignment") return null;
+    const assignment = context.node;
+    if (assignment.definition === undefined) {
+      const setting = lineSettingsFor(context.tree.kind).find(
+        ({ name }) => name === assignment.name,
+      );
+      return setting === undefined
+        ? null
+        : {
+            signatures: [
+              {
+                label: setting.name + "=<value>",
+                documentation: setting.summary,
+                parameters: [{ label: "<value>" }],
+              },
+            ],
+            activeSignature: 0,
+            activeParameter: 0,
+          };
+    }
+    const definition = assignment.definition;
     return {
       signatures: [
         {
@@ -988,6 +1026,175 @@ function definitionCompletion(definition: DirectiveDefinition): CompletionItem {
     },
     ...(definition.deprecated ? { tags: [1] } : {}),
   };
+}
+
+function lineCompletions(
+  tree: ParsedDocument,
+  offset: number,
+  linePrefix: string,
+): CompletionItem[] | undefined {
+  const settings = lineSettingsFor(tree.kind);
+  const format = recordFormatFor(tree.kind);
+  if (settings.length === 0 && format === undefined) return undefined;
+
+  const node = nodeAt(tree, offset);
+  if (node?.kind === "comment") return [];
+  if (settings.length > 0) {
+    if (node?.kind === "assignment" && offset >= node.valueSpan.start) {
+      const setting = settings.find(({ name }) => name === node.name);
+      return setting?.choices.map((value) => lineValueCompletion(value, setting.name)) ?? [];
+    }
+    if (!linePrefix.includes("=")) return settings.map(lineSettingCompletion);
+  }
+  if (format === undefined) return [];
+
+  const recordNode = node?.kind === "record" ? node : undefined;
+  const fieldIndex =
+    recordNode === undefined ? 0 : recordFieldIndex(recordNode, format, offset, linePrefix);
+  if (fieldIndex === 0 && format.keywords.length > 0) {
+    return format.keywords.map((entry): CompletionItem => ({
+      label: entry.name,
+      kind: CompletionItemKind.Keyword,
+      detail: entry.summary,
+      insertText: entry.name + " ",
+      documentation: {
+        kind: MarkupKind.Markdown,
+        value: lineKeywordMarkdown(entry.name, entry.summary, format.documentation),
+      },
+    }));
+  }
+  const selectedKeyword =
+    recordNode === undefined
+      ? undefined
+      : format.keywords.find(({ name }) => name === recordNode.fields[0]);
+  const choices =
+    fieldIndex === 1 && selectedKeyword !== undefined
+      ? selectedKeyword.choices
+      : (lineField(format, fieldIndex)?.choices ?? []);
+  const fieldName = lineField(format, fieldIndex)?.name ?? format.name;
+  return choices.map((value) => lineValueCompletion(value, fieldName));
+}
+
+function lineSettingCompletion(definition: LineSettingDefinition): CompletionItem {
+  return {
+    label: definition.name,
+    kind: CompletionItemKind.Property,
+    detail: definition.summary,
+    insertText: definition.name + "=",
+    documentation: { kind: MarkupKind.Markdown, value: lineSettingMarkdown(definition) },
+  };
+}
+
+function lineValueCompletion(value: string, owner: string): CompletionItem {
+  return {
+    label: value === "" ? "(empty)" : value,
+    kind: CompletionItemKind.Value,
+    detail: owner + " value",
+    insertText: value,
+  };
+}
+
+function recordFieldIndex(
+  node: RecordNode,
+  format: LineFormatDefinition,
+  offset: number,
+  linePrefix: string,
+): number {
+  const containing = node.fieldSpans.findIndex(
+    ({ start, end }) => start <= offset && offset <= end,
+  );
+  if (containing >= 0) return containing;
+  const afterLast = linePrefix.length > 0 && /\s$/u.test(linePrefix);
+  const candidate = afterLast ? node.fields.length : Math.max(0, node.fields.length - 1);
+  if (format.repeatLastField) return Math.min(candidate, format.fields.length - 1);
+  return candidate;
+}
+
+function lineField(format: LineFormatDefinition, index: number): LineFieldDefinition | undefined {
+  if (index < format.fields.length) return format.fields[index];
+  return format.repeatLastField ? format.fields.at(-1) : undefined;
+}
+
+function recordHover(
+  document: TextDocument,
+  tree: ParsedDocument,
+  node: RecordNode,
+  position: Position,
+): Hover | null {
+  const format = recordFormatFor(tree.kind);
+  if (format === undefined) return null;
+  const offset = document.offsetAt(position);
+  const index = node.fieldSpans.findIndex(({ start, end }) => start <= offset && offset <= end);
+  if (index < 0) return null;
+  const field = lineField(format, index);
+  if (field === undefined) return null;
+  const selectedKeyword =
+    index === 0 ? format.keywords.find(({ name }) => name === node.fields[0]) : undefined;
+  const summary = selectedKeyword?.summary ?? field.summary;
+  return {
+    contents: {
+      kind: MarkupKind.Markdown,
+      value: lineKeywordMarkdown(field.name, summary, format.documentation),
+    },
+    range: toRange(document, node.fieldSpans[index] ?? node.span),
+  };
+}
+
+function recordSignature(
+  document: TextDocument,
+  tree: ParsedDocument,
+  node: RecordNode,
+  position: Position,
+): SignatureHelp | null {
+  const format = recordFormatFor(tree.kind);
+  if (format === undefined) return null;
+  const offset = document.offsetAt(position);
+  const prefix = document.getText({
+    start: { line: position.line, character: 0 },
+    end: position,
+  });
+  const fieldIndex = Math.min(
+    recordFieldIndex(node, format, offset, prefix),
+    format.fields.length - 1,
+  );
+  const labels = format.fields.map((field, index) => {
+    const label =
+      field.name + (format.repeatLastField && index === format.fields.length - 1 ? "…" : "");
+    return field.required ? label : "[" + label + "]";
+  });
+  return {
+    signatures: [
+      {
+        label: labels.join(" "),
+        documentation: format.summary,
+        parameters: format.fields.map((field) => ({
+          label: field.name,
+          documentation: field.summary,
+        })),
+      },
+    ],
+    activeSignature: 0,
+    activeParameter: fieldIndex,
+  };
+}
+
+function lineKeywordMarkdown(name: string, summary: string, documentation: string): string {
+  return "**" + name + "** — " + summary + "\n\n[Upstream documentation](" + documentation + ")";
+}
+
+function lineSettingMarkdown(definition: LineSettingDefinition): string {
+  const choices =
+    definition.choices.length === 0 ? "" : "\n\nValues: `" + definition.choices.join("`, `") + "`.";
+  return (
+    "**" +
+    definition.name +
+    "=** — " +
+    definition.summary +
+    choices +
+    "\n\n[Upstream documentation](" +
+    definition.documentation +
+    ")"
+  );
 }
 
 function valueCompletions(

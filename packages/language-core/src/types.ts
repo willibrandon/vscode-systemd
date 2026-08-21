@@ -183,6 +183,35 @@ export interface RecordNode extends BaseNode {
   readonly fieldSpans: readonly TextSpan[];
 }
 
+export interface LineFieldDefinition {
+  readonly name: string;
+  readonly summary: string;
+  readonly required: boolean;
+  readonly choices: readonly string[];
+}
+
+export interface LineKeywordDefinition {
+  readonly name: string;
+  readonly summary: string;
+  readonly choices: readonly string[];
+}
+
+export interface LineFormatDefinition {
+  readonly name: string;
+  readonly summary: string;
+  readonly documentation: string;
+  readonly fields: readonly LineFieldDefinition[];
+  readonly keywords: readonly LineKeywordDefinition[];
+  readonly repeatLastField: boolean;
+}
+
+export interface LineSettingDefinition {
+  readonly name: string;
+  readonly summary: string;
+  readonly documentation: string;
+  readonly choices: readonly string[];
+}
+
 export interface InvalidNode extends BaseNode {
   readonly kind: "invalid";
   readonly message: string;
