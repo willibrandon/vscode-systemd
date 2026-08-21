@@ -1,6 +1,8 @@
 import { parseTree } from "jsonc-parser";
 import type { Node } from "jsonc-parser";
 import type { CoreDiagnostic, ParsedDocument, TextSpan } from "./types.js";
+import { userDbDefinition } from "./userdb.js";
+import type { JsonValueType, UserDbFieldDefinition, UserDbRecordKind } from "./userdb.js";
 
 const supportedPcrHashes = new Set(["sha1", "sha256", "sha384", "sha512"]);
 const addressRecordTypes = new Set([1, 28]);
@@ -15,7 +17,171 @@ export function analyzeSystemdJson(document: ParsedDocument): readonly CoreDiagn
 
   if (document.kind === "systemd-json:pcrlock") return analyzePcrlock(document, root);
   if (document.kind === "systemd-json:rr") return analyzeResourceRecords(document, root);
+  if (document.kind === "systemd-json:user") return analyzeUserDbRecord(document, root, "user");
+  if (document.kind === "systemd-json:group") return analyzeUserDbRecord(document, root, "group");
+  if (document.kind === "systemd-json:membership") return analyzeMembership(document, root);
   return [];
+}
+
+function analyzeUserDbRecord(
+  document: ParsedDocument,
+  root: Node,
+  kind: UserDbRecordKind,
+): readonly CoreDiagnostic[] {
+  const diagnostics: CoreDiagnostic[] = [];
+  if (root.type !== "object") {
+    addDiagnostic(
+      diagnostics,
+      document,
+      root,
+      "invalid-userdb-root",
+      "A public ." + kind + " file must contain one JSON record object.",
+    );
+    return diagnostics;
+  }
+
+  const definition = userDbDefinition(kind);
+  for (const required of definition.required) {
+    if (propertyValue(root, required) === undefined) {
+      addDiagnostic(
+        diagnostics,
+        document,
+        root,
+        "userdb-field-required",
+        "A public ." + kind + " record requires " + required + ".",
+      );
+    }
+  }
+
+  const fields = new Map(definition.fields.map((field) => [field.name, field]));
+  for (const property of root.children ?? []) {
+    const keyNode = property.children?.[0];
+    const valueNode = property.children?.[1];
+    const key: unknown = keyNode?.value;
+    if (typeof key !== "string" || valueNode === undefined) continue;
+    const field = fields.get(key);
+    if (field === undefined) continue;
+    if (field.sensitive === true) {
+      addDiagnostic(
+        diagnostics,
+        document,
+        valueNode,
+        "userdb-sensitive-field",
+        key + " data must not be stored in a public ." + kind + " record.",
+      );
+      continue;
+    }
+    validateUserDbField(document, valueNode, field, diagnostics);
+  }
+  return diagnostics;
+}
+
+function validateUserDbField(
+  document: ParsedDocument,
+  node: Node,
+  field: UserDbFieldDefinition,
+  diagnostics: CoreDiagnostic[],
+): void {
+  if (!field.types.some((type) => jsonNodeHasType(node, type))) {
+    addDiagnostic(
+      diagnostics,
+      document,
+      node,
+      "invalid-userdb-field",
+      field.name + " must be " + describeJsonTypes(field.types) + ".",
+    );
+    return;
+  }
+  const value: unknown = node.value;
+  if (
+    field.choices !== undefined &&
+    (typeof value !== "string" || !field.choices.includes(value))
+  ) {
+    addDiagnostic(
+      diagnostics,
+      document,
+      node,
+      "invalid-userdb-field",
+      field.name + " must be one of: " + field.choices.join(", ") + ".",
+    );
+  }
+  if (
+    typeof value === "number" &&
+    ((field.minimum !== undefined && value < field.minimum) ||
+      (field.maximum !== undefined && value > field.maximum))
+  ) {
+    addDiagnostic(
+      diagnostics,
+      document,
+      node,
+      "invalid-userdb-field",
+      field.name +
+        " must be between " +
+        String(field.minimum ?? "the minimum supported value") +
+        " and " +
+        String(field.maximum ?? "the maximum supported value") +
+        ".",
+    );
+  }
+  if (node.type !== "array" || field.itemTypes === undefined) return;
+  for (const item of node.children ?? []) {
+    if (!field.itemTypes.some((type) => jsonNodeHasType(item, type))) {
+      addDiagnostic(
+        diagnostics,
+        document,
+        item,
+        "invalid-userdb-field",
+        field.name + " items must be " + describeJsonTypes(field.itemTypes) + ".",
+      );
+      continue;
+    }
+    const itemValue: unknown = item.value;
+    if (
+      field.itemChoices !== undefined &&
+      (typeof itemValue !== "string" || !field.itemChoices.includes(itemValue))
+    ) {
+      addDiagnostic(
+        diagnostics,
+        document,
+        item,
+        "invalid-userdb-field",
+        field.name + " items must be one of: " + field.itemChoices.join(", ") + ".",
+      );
+    }
+  }
+}
+
+function analyzeMembership(document: ParsedDocument, root: Node): readonly CoreDiagnostic[] {
+  const diagnostics: CoreDiagnostic[] = [];
+  if (root.type !== "object") {
+    addDiagnostic(
+      diagnostics,
+      document,
+      root,
+      "invalid-membership-root",
+      "A .membership marker should contain an empty JSON object.",
+    );
+  } else if ((root.children?.length ?? 0) > 0) {
+    diagnostics.push({
+      code: "ignored-membership-content",
+      message: "systemd uses only the .membership filename and ignores its object content; use {}.",
+      severity: "warning",
+      span: nodeSpan(document.source.length, root),
+    });
+  }
+  return diagnostics;
+}
+
+function jsonNodeHasType(node: Node, type: JsonValueType): boolean {
+  if (type === "integer") {
+    const value: unknown = node.value;
+    return node.type === "number" && typeof value === "number" && Number.isInteger(value);
+  }
+  return node.type === type;
+}
+
+function describeJsonTypes(types: readonly JsonValueType[]): string {
+  return types.map((type) => (type === "integer" ? "an integer" : "a " + type)).join(" or ");
 }
 
 function analyzePcrlock(document: ParsedDocument, root: Node): readonly CoreDiagnostic[] {

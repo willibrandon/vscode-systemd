@@ -42,6 +42,13 @@ All notable changes to this project will be documented here. The format follows
   metadata.
 - Bundled JSON schemas and source-aligned semantic diagnostics for PCR measurement components and
   systemd-resolved static DNS resource records.
+- Source-generated schemas, completion, hover, snippets, and semantic diagnostics for public systemd
+  userdb `.user`, `.group`, and `.membership` records, with secret and privileged fields excluded
+  from public authoring help.
+- First-class systemd v261 `.oomrule` recognition, `[Rule]` completion, validation, and snippets.
+- A checked inventory of 100 concrete authoring paths across all 18 language modes, including
+  drop-ins, templates, namespaced journals, every unit, network, Quadlet, and structured JSON kind,
+  and all supported mkosi layouts.
 - Field-aware completion, hover, and signature help for line-oriented formats, including tmpfiles,
   sysusers, systemd-boot, Boot Loader Specification entries, DNSSEC trust anchors, table files,
   kernel-install, os-release, machine-info, locale, and virtual-console configuration.
@@ -59,6 +66,8 @@ All notable changes to this project will be documented here. The format follows
 
 ### Fixed
 
+- Strict JSON editor configuration no longer inserts the `#` comments accepted by systemd's text
+  formats into JSON-based systemd files.
 - Effective-configuration provenance now reports one-based source line numbers instead of byte
   offsets.
 - Effective unit configurations now follow each systemd parser's repeated-assignment behavior:

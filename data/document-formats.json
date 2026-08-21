@@ -1,0 +1,734 @@
+{
+  "schemaVersion": 1,
+  "languages": [
+    "systemd-unit",
+    "systemd-network",
+    "systemd-config",
+    "systemd-tmpfiles",
+    "systemd-sysusers",
+    "systemd-udev-rules",
+    "systemd-hwdb",
+    "systemd-environment",
+    "systemd-sysctl",
+    "systemd-modules-load",
+    "systemd-binfmt",
+    "systemd-preset",
+    "systemd-table",
+    "systemd-boot",
+    "systemd-dns-trust-anchor",
+    "systemd-json",
+    "podman-quadlet",
+    "mkosi"
+  ],
+  "formats": [
+    {
+      "name": "service unit",
+      "uri": "file:///etc/systemd/system/demo.service",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:service",
+      "source": "[Service]\nExecStart=/bin/true\n"
+    },
+    {
+      "name": "socket unit",
+      "uri": "file:///etc/systemd/system/demo.socket",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:socket",
+      "source": "[Socket]\nListenStream=8080\n"
+    },
+    {
+      "name": "timer unit",
+      "uri": "file:///etc/systemd/system/demo.timer",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:timer",
+      "source": "[Timer]\nOnBootSec=1min\n"
+    },
+    {
+      "name": "path unit",
+      "uri": "file:///etc/systemd/system/demo.path",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:path",
+      "source": "[Path]\nPathExists=/tmp/demo\n"
+    },
+    {
+      "name": "mount unit",
+      "uri": "file:///etc/systemd/system/mnt-demo.mount",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:mount",
+      "source": "[Mount]\nWhat=/dev/null\nWhere=/mnt/demo\n"
+    },
+    {
+      "name": "automount unit",
+      "uri": "file:///etc/systemd/system/mnt-demo.automount",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:automount",
+      "source": "[Automount]\nWhere=/mnt/demo\n"
+    },
+    {
+      "name": "swap unit",
+      "uri": "file:///etc/systemd/system/dev-demo.swap",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:swap",
+      "source": "[Swap]\nWhat=/dev/demo\n"
+    },
+    {
+      "name": "target unit",
+      "uri": "file:///etc/systemd/system/demo.target",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:target",
+      "source": "[Unit]\nDescription=Demo\n"
+    },
+    {
+      "name": "device unit",
+      "uri": "file:///etc/systemd/system/dev-demo.device",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:device",
+      "source": "[Unit]\nDescription=Demo\n"
+    },
+    {
+      "name": "slice unit",
+      "uri": "file:///etc/systemd/system/demo.slice",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:slice",
+      "source": "[Slice]\nCPUWeight=100\n"
+    },
+    {
+      "name": "scope unit",
+      "uri": "file:///run/systemd/transient/demo.scope",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:scope",
+      "source": "[Scope]\nRuntimeMaxSec=1h\n"
+    },
+    {
+      "name": "unit drop-in",
+      "uri": "file:///etc/systemd/system/demo.service.d/override.conf",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:service",
+      "source": "[Service]\nRestart=on-failure\n"
+    },
+    {
+      "name": "templated unit source",
+      "uri": "file:///workspace/demo.service.in",
+      "language": "systemd-unit",
+      "kind": "systemd-unit:service",
+      "source": "[Service]\nExecStart=@PROGRAM@\n"
+    },
+
+    {
+      "name": "network file",
+      "uri": "file:///etc/systemd/network/20-demo.network",
+      "language": "systemd-network",
+      "kind": "systemd-network:network",
+      "source": "[Network]\nDHCP=yes\n"
+    },
+    {
+      "name": "netdev file",
+      "uri": "file:///etc/systemd/network/20-demo.netdev",
+      "language": "systemd-network",
+      "kind": "systemd-network:netdev",
+      "source": "[NetDev]\nName=demo0\nKind=bridge\n"
+    },
+    {
+      "name": "link file",
+      "uri": "file:///etc/systemd/network/20-demo.link",
+      "language": "systemd-network",
+      "kind": "systemd-network:link",
+      "source": "[Link]\nName=demo0\n"
+    },
+    {
+      "name": "DNS-SD file",
+      "uri": "file:///etc/systemd/dnssd/demo.dnssd",
+      "language": "systemd-network",
+      "kind": "systemd-network:dnssd",
+      "source": "[Service]\nName=Demo\n"
+    },
+    {
+      "name": "DNS delegation file",
+      "uri": "file:///etc/systemd/dns-delegate/demo.dns-delegate",
+      "language": "systemd-network",
+      "kind": "systemd-network:dns-delegate",
+      "source": "[Delegate]\n"
+    },
+    {
+      "name": "network drop-in",
+      "uri": "file:///etc/systemd/network/20-demo.network.d/override.conf",
+      "language": "systemd-network",
+      "kind": "systemd-network:network",
+      "source": "[Network]\nIPv6AcceptRA=no\n"
+    },
+
+    {
+      "name": "manager system config",
+      "uri": "file:///etc/systemd/system.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:system",
+      "source": "[Manager]\nDefaultTimeoutStartSec=1min\n"
+    },
+    {
+      "name": "manager user config",
+      "uri": "file:///etc/systemd/user.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:user",
+      "source": "[Manager]\nDefaultTimeoutStartSec=1min\n"
+    },
+    {
+      "name": "journal config",
+      "uri": "file:///etc/systemd/journald.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:journald",
+      "source": "[Journal]\nStorage=auto\n"
+    },
+    {
+      "name": "namespaced journal config",
+      "uri": "file:///etc/systemd/journald@audit.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:journald",
+      "source": "[Journal]\nStorage=persistent\n"
+    },
+    {
+      "name": "login config",
+      "uri": "file:///etc/systemd/logind.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:logind",
+      "source": "[Login]\nNAutoVTs=6\n"
+    },
+    {
+      "name": "resolver config",
+      "uri": "file:///etc/systemd/resolved.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:resolved",
+      "source": "[Resolve]\nDNSSEC=allow-downgrade\n"
+    },
+    {
+      "name": "time sync config",
+      "uri": "file:///etc/systemd/timesyncd.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:timesyncd",
+      "source": "[Time]\nNTP=time.example.com\n"
+    },
+    {
+      "name": "network daemon config",
+      "uri": "file:///etc/systemd/networkd.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:networkd",
+      "source": "[Network]\nManageForeignRoutes=yes\n"
+    },
+    {
+      "name": "core dump config",
+      "uri": "file:///etc/systemd/coredump.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:coredump",
+      "source": "[Coredump]\nStorage=external\n"
+    },
+    {
+      "name": "OOM daemon config",
+      "uri": "file:///etc/systemd/oomd.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:oomd",
+      "source": "[OOM]\nSwapUsedLimit=90%\n"
+    },
+    {
+      "name": "OOM ruleset",
+      "uri": "file:///etc/systemd/oomd/rules.d/pressure.oomrule",
+      "language": "systemd-config",
+      "kind": "systemd-config:oom-rule",
+      "source": "[Rule]\nMemoryPressureAbove=60%\nAction=kill-by-pgscan\n"
+    },
+    {
+      "name": "home config",
+      "uri": "file:///etc/systemd/homed.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:homed",
+      "source": "[Home]\nDefaultStorage=luks\n"
+    },
+    {
+      "name": "pstore config",
+      "uri": "file:///etc/systemd/pstore.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:pstore",
+      "source": "[PStore]\nStorage=external\n"
+    },
+    {
+      "name": "sleep config",
+      "uri": "file:///etc/systemd/systemd-sleep.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:sleep",
+      "source": "[Sleep]\nAllowSuspend=yes\n"
+    },
+    {
+      "name": "I/O cost config",
+      "uri": "file:///etc/systemd/iocost.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:iocost",
+      "source": "[IOCost]\n"
+    },
+    {
+      "name": "journal remote config",
+      "uri": "file:///etc/systemd/journal-remote.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:journal-remote",
+      "source": "[Remote]\nSplitMode=host\n"
+    },
+    {
+      "name": "journal upload config",
+      "uri": "file:///etc/systemd/journal-upload.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:journal-upload",
+      "source": "[Upload]\nURL=https://journal.example.com\n"
+    },
+    {
+      "name": "udev daemon config",
+      "uri": "file:///etc/systemd/udev.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:udev",
+      "source": "[Udev]\nChildrenMax=64\n"
+    },
+    {
+      "name": "system extension config",
+      "uri": "file:///etc/systemd/sysext.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:sysext",
+      "source": "[SysExt]\nMergeNoAuto=no\n"
+    },
+    {
+      "name": "configuration extension config",
+      "uri": "file:///etc/systemd/confext.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:confext",
+      "source": "[ConfExt]\nMergeNoAuto=no\n"
+    },
+    {
+      "name": "ukify config",
+      "uri": "file:///etc/systemd/ukify.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:ukify",
+      "source": "[UKI]\nLinux=/boot/vmlinuz\n"
+    },
+    {
+      "name": "UKI config",
+      "uri": "file:///etc/systemd/uki.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:uki",
+      "source": "[UKI]\nProfile=default\n"
+    },
+    {
+      "name": "nspawn config",
+      "uri": "file:///etc/systemd/nspawn/demo.nspawn",
+      "language": "systemd-config",
+      "kind": "systemd-config:nspawn",
+      "source": "[Exec]\nBoot=yes\n"
+    },
+    {
+      "name": "repart definition",
+      "uri": "file:///etc/repart.d/20-root.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:repart",
+      "source": "[Partition]\nType=root\n"
+    },
+    {
+      "name": "mkosi repart definition",
+      "uri": "file:///workspace/mkosi.repart/20-root.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:repart",
+      "source": "[Partition]\nType=root\n"
+    },
+    {
+      "name": "sysupdate transfer",
+      "uri": "file:///etc/sysupdate.d/demo.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:sysupdate",
+      "source": "[Transfer]\nVerify=no\n"
+    },
+    {
+      "name": "portable service profile",
+      "uri": "file:///etc/systemd/portable/profile/demo.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:portable-profile",
+      "source": "[Service]\nDynamicUser=yes\n"
+    },
+    {
+      "name": "daemon config drop-in",
+      "uri": "file:///etc/systemd/journald.conf.d/20-storage.conf",
+      "language": "systemd-config",
+      "kind": "systemd-config:journald",
+      "source": "[Journal]\nStorage=persistent\n"
+    },
+
+    {
+      "name": "tmpfiles rules",
+      "uri": "file:///etc/tmpfiles.d/demo.conf",
+      "language": "systemd-tmpfiles",
+      "kind": "systemd-tmpfiles:tmpfiles",
+      "source": "d /run/demo 0755 root root -\n"
+    },
+    {
+      "name": "sysusers rules",
+      "uri": "file:///etc/sysusers.d/demo.conf",
+      "language": "systemd-sysusers",
+      "kind": "systemd-sysusers:sysusers",
+      "source": "u demo - \"Demo\"\n"
+    },
+    {
+      "name": "udev rules",
+      "uri": "file:///etc/udev/rules.d/70-demo.rules",
+      "language": "systemd-udev-rules",
+      "kind": "systemd-udev-rules:rules",
+      "source": "SUBSYSTEM==\"block\", TAG+=\"systemd\"\n"
+    },
+    {
+      "name": "hardware database",
+      "uri": "file:///etc/udev/hwdb.d/70-demo.hwdb",
+      "language": "systemd-hwdb",
+      "kind": "systemd-hwdb:hwdb",
+      "source": "usb:v1234*\n ID_MODEL=Demo\n"
+    },
+    {
+      "name": "sysctl settings",
+      "uri": "file:///etc/sysctl.d/70-demo.conf",
+      "language": "systemd-sysctl",
+      "kind": "systemd-sysctl:sysctl",
+      "source": "kernel.domainname=example.com\n"
+    },
+    {
+      "name": "modules-load settings",
+      "uri": "file:///etc/modules-load.d/demo.conf",
+      "language": "systemd-modules-load",
+      "kind": "systemd-modules-load:modules-load",
+      "source": "br_netfilter\n"
+    },
+    {
+      "name": "binary-format settings",
+      "uri": "file:///etc/binfmt.d/demo.conf",
+      "language": "systemd-binfmt",
+      "kind": "systemd-binfmt:binfmt",
+      "source": ":demo:M::DEMO::/usr/bin/demo:\n"
+    },
+    {
+      "name": "unit preset",
+      "uri": "file:///etc/systemd/system-preset/70-demo.preset",
+      "language": "systemd-preset",
+      "kind": "systemd-preset:preset",
+      "source": "enable demo.service\n"
+    },
+
+    {
+      "name": "environment drop-in",
+      "uri": "file:///etc/environment.d/70-demo.conf",
+      "language": "systemd-environment",
+      "kind": "systemd-environment:environment",
+      "source": "DEMO=value\n"
+    },
+    {
+      "name": "extension release",
+      "uri": "file:///usr/lib/extension-release.d/extension-release.demo",
+      "language": "systemd-environment",
+      "kind": "systemd-environment:environment",
+      "source": "ID=demo\n"
+    },
+    {
+      "name": "OS release",
+      "uri": "file:///etc/os-release",
+      "language": "systemd-environment",
+      "kind": "systemd-environment:os-release",
+      "source": "ID=demo\n"
+    },
+    {
+      "name": "initrd release",
+      "uri": "file:///etc/initrd-release",
+      "language": "systemd-environment",
+      "kind": "systemd-environment:os-release",
+      "source": "ID=demo\n"
+    },
+    {
+      "name": "static hostname",
+      "uri": "file:///etc/hostname",
+      "language": "systemd-environment",
+      "kind": "systemd-environment:hostname",
+      "source": "demo\n"
+    },
+    {
+      "name": "machine information",
+      "uri": "file:///etc/machine-info",
+      "language": "systemd-environment",
+      "kind": "systemd-environment:machine-info",
+      "source": "PRETTY_HOSTNAME=Demo\n"
+    },
+    {
+      "name": "locale config",
+      "uri": "file:///etc/locale.conf",
+      "language": "systemd-environment",
+      "kind": "systemd-environment:locale",
+      "source": "LANG=en_US.UTF-8\n"
+    },
+    {
+      "name": "virtual console config",
+      "uri": "file:///etc/vconsole.conf",
+      "language": "systemd-environment",
+      "kind": "systemd-environment:vconsole",
+      "source": "KEYMAP=us\n"
+    },
+
+    {
+      "name": "fstab",
+      "uri": "file:///etc/fstab",
+      "language": "systemd-table",
+      "kind": "systemd-table:fstab",
+      "source": "/dev/root / ext4 defaults 0 1\n"
+    },
+    {
+      "name": "crypttab",
+      "uri": "file:///etc/crypttab",
+      "language": "systemd-table",
+      "kind": "systemd-table:crypttab",
+      "source": "cryptroot /dev/root none luks\n"
+    },
+    {
+      "name": "veritytab",
+      "uri": "file:///etc/veritytab",
+      "language": "systemd-table",
+      "kind": "systemd-table:veritytab",
+      "source": "root /dev/root /dev/hash -\n"
+    },
+    {
+      "name": "integritytab",
+      "uri": "file:///etc/integritytab",
+      "language": "systemd-table",
+      "kind": "systemd-table:integritytab",
+      "source": "data /dev/data -\n"
+    },
+    {
+      "name": "clonetab",
+      "uri": "file:///etc/clonetab",
+      "language": "systemd-table",
+      "kind": "systemd-table:clonetab",
+      "source": "/dev/source /dev/target\n"
+    },
+
+    {
+      "name": "boot loader config",
+      "uri": "file:///boot/loader/loader.conf",
+      "language": "systemd-boot",
+      "kind": "systemd-boot:loader",
+      "source": "default linux.conf\n"
+    },
+    {
+      "name": "boot entry",
+      "uri": "file:///boot/loader/entries/linux.conf",
+      "language": "systemd-boot",
+      "kind": "systemd-boot:entry",
+      "source": "title Linux\nlinux /vmlinuz\n"
+    },
+    {
+      "name": "kernel command line",
+      "uri": "file:///etc/kernel/cmdline",
+      "language": "systemd-boot",
+      "kind": "systemd-boot:kernel-command-line",
+      "source": "quiet\n"
+    },
+    {
+      "name": "kernel entry token",
+      "uri": "file:///etc/kernel/entry-token",
+      "language": "systemd-boot",
+      "kind": "systemd-boot:entry-token",
+      "source": "machine-id\n"
+    },
+    {
+      "name": "kernel install config",
+      "uri": "file:///etc/kernel/install.conf",
+      "language": "systemd-boot",
+      "kind": "systemd-boot:kernel-install",
+      "source": "layout=bls\n"
+    },
+    {
+      "name": "kernel install drop-in",
+      "uri": "file:///etc/kernel/install.conf.d/70-layout.conf",
+      "language": "systemd-boot",
+      "kind": "systemd-boot:kernel-install",
+      "source": "layout=uki\n"
+    },
+    {
+      "name": "positive DNSSEC trust anchor",
+      "uri": "file:///etc/dnssec-trust-anchors.d/demo.positive",
+      "language": "systemd-dns-trust-anchor",
+      "kind": "systemd-dns-trust-anchor:positive",
+      "source": ". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D\n"
+    },
+    {
+      "name": "negative DNSSEC trust anchor",
+      "uri": "file:///etc/dnssec-trust-anchors.d/demo.negative",
+      "language": "systemd-dns-trust-anchor",
+      "kind": "systemd-dns-trust-anchor:negative",
+      "source": "example.test\n"
+    },
+
+    {
+      "name": "PCR lock component",
+      "uri": "file:///etc/pcrlock.d/demo.pcrlock",
+      "language": "systemd-json",
+      "kind": "systemd-json:pcrlock",
+      "source": "[{\"pcr\":11,\"digests\":[]}]\n"
+    },
+    {
+      "name": "static DNS record",
+      "uri": "file:///etc/systemd/resolve/static.d/demo.rr",
+      "language": "systemd-json",
+      "kind": "systemd-json:rr",
+      "source": "{\"key\":{\"type\":1,\"name\":\"demo\"},\"address\":\"192.0.2.1\"}\n"
+    },
+    {
+      "name": "public userdb user",
+      "uri": "file:///etc/userdb/demo.user",
+      "language": "systemd-json",
+      "kind": "systemd-json:user",
+      "source": "{\"userName\":\"demo\"}\n"
+    },
+    {
+      "name": "public userdb group",
+      "uri": "file:///etc/userdb/demo.group",
+      "language": "systemd-json",
+      "kind": "systemd-json:group",
+      "source": "{\"groupName\":\"demo\"}\n"
+    },
+    {
+      "name": "userdb membership marker",
+      "uri": "file:///etc/userdb/demo:wheel.membership",
+      "language": "systemd-json",
+      "kind": "systemd-json:membership",
+      "source": "{}\n"
+    },
+
+    {
+      "name": "Quadlet artifact",
+      "uri": "file:///etc/containers/systemd/demo.artifact",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:artifact",
+      "source": "[Artifact]\nSource=docker://example/demo\n"
+    },
+    {
+      "name": "Quadlet build",
+      "uri": "file:///etc/containers/systemd/demo.build",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:build",
+      "source": "[Build]\nFile=Containerfile\n"
+    },
+    {
+      "name": "Quadlet container",
+      "uri": "file:///etc/containers/systemd/demo.container",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:container",
+      "source": "[Container]\nImage=demo.image\n"
+    },
+    {
+      "name": "Quadlet image",
+      "uri": "file:///etc/containers/systemd/demo.image",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:image",
+      "source": "[Image]\nImage=docker.io/library/alpine\n"
+    },
+    {
+      "name": "Quadlet kube",
+      "uri": "file:///etc/containers/systemd/demo.kube",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:kube",
+      "source": "[Kube]\nYaml=demo.yaml\n"
+    },
+    {
+      "name": "Quadlet network",
+      "uri": "file:///etc/containers/systemd/demo.network",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:network",
+      "source": "[Network]\nNetworkName=demo\n"
+    },
+    {
+      "name": "Quadlet pod",
+      "uri": "file:///etc/containers/systemd/demo.pod",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:pod",
+      "source": "[Pod]\nPodName=demo\n"
+    },
+    {
+      "name": "Quadlet volume",
+      "uri": "file:///etc/containers/systemd/demo.volume",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:volume",
+      "source": "[Volume]\nVolumeName=demo\n"
+    },
+    {
+      "name": "Quadlet drop-in",
+      "uri": "file:///etc/containers/systemd/demo.container.d/override.conf",
+      "language": "podman-quadlet",
+      "kind": "podman-quadlet:container",
+      "source": "[Container]\nEnvironment=DEMO=1\n"
+    },
+
+    {
+      "name": "mkosi main config",
+      "uri": "file:///workspace/mkosi.conf",
+      "language": "mkosi",
+      "kind": "mkosi:main",
+      "source": "[Distribution]\nDistribution=fedora\n"
+    },
+    {
+      "name": "mkosi local config",
+      "uri": "file:///workspace/mkosi.local.conf",
+      "language": "mkosi",
+      "kind": "mkosi:local",
+      "source": "[Output]\nFormat=disk\n"
+    },
+    {
+      "name": "mkosi tools config",
+      "uri": "file:///workspace/mkosi.tools.conf",
+      "language": "mkosi",
+      "kind": "mkosi:tools",
+      "source": "[Distribution]\nDistribution=fedora\n"
+    },
+    {
+      "name": "mkosi initrd config",
+      "uri": "file:///workspace/mkosi.initrd.conf",
+      "language": "mkosi",
+      "kind": "mkosi:initrd",
+      "source": "[Content]\nPackages=systemd\n"
+    },
+    {
+      "name": "mkosi version",
+      "uri": "file:///workspace/mkosi.version",
+      "language": "mkosi",
+      "kind": "mkosi:version",
+      "source": "1\n"
+    },
+    {
+      "name": "mkosi drop-in",
+      "uri": "file:///workspace/mkosi.conf.d/20-output.conf",
+      "language": "mkosi",
+      "kind": "mkosi:drop-in",
+      "source": "[Output]\nFormat=disk\n"
+    },
+    {
+      "name": "mkosi preset",
+      "uri": "file:///workspace/mkosi.presets/server.conf",
+      "language": "mkosi",
+      "kind": "mkosi:preset",
+      "source": "[Distribution]\nDistribution=fedora\n"
+    },
+    {
+      "name": "mkosi profile",
+      "uri": "file:///workspace/mkosi.profiles/server/mkosi.conf",
+      "language": "mkosi",
+      "kind": "mkosi:profile",
+      "source": "[Content]\nPackages=nginx\n"
+    },
+    {
+      "name": "mkosi subimage",
+      "uri": "file:///workspace/mkosi.images/rescue.conf",
+      "language": "mkosi",
+      "kind": "mkosi:subimage",
+      "source": "[Distribution]\nDistribution=fedora\n"
+    },
+    {
+      "name": "mkosi UKI profile",
+      "uri": "file:///workspace/mkosi.uki-profiles/secure.conf",
+      "language": "mkosi",
+      "kind": "mkosi:uki-profile",
+      "source": "[UKIProfile]\nProfile=secure\n"
+    }
+  ]
+}

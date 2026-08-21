@@ -1,4 +1,5 @@
 import type { AssignmentNode, FormatOptions, ParsedDocument, TextEdit } from "./types.js";
+import { format as formatJson } from "jsonc-parser";
 
 export function format(
   document: ParsedDocument,
@@ -8,6 +9,23 @@ export function format(
     trimTrailingWhitespace: true,
   },
 ): readonly TextEdit[] {
+  if (document.dialect === "systemd-json") {
+    return formatJson(
+      document.source,
+      options.range === undefined
+        ? undefined
+        : { offset: options.range.start, length: options.range.end - options.range.start },
+      {
+        insertSpaces: options.insertSpaces,
+        tabSize: options.tabSize,
+        eol: document.source.includes("\r\n") ? "\r\n" : "\n",
+        insertFinalNewline: /\r?\n$/u.test(document.source),
+      },
+    ).map((edit) => ({
+      span: { start: edit.offset, end: edit.offset + edit.length },
+      newText: edit.content,
+    }));
+  }
   const lineEnding = document.source.includes("\r\n") ? "\r\n" : "\n";
   const selected = options.range;
   const edits: TextEdit[] = [];

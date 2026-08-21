@@ -65,6 +65,15 @@ const configCases: readonly SnippetCase[] = [
   { name: "System update transfer", uri: "file:///workspace/sysupdate.d/example.conf" },
   { name: "Login manager configuration", uri: "file:///workspace/logind.conf" },
   { name: "Core dump configuration", uri: "file:///workspace/coredump.conf" },
+  { name: "OOM ruleset", uri: "file:///workspace/pressure.oomrule", requiredSection: "Rule" },
+];
+
+const jsonCases: readonly SnippetCase[] = [
+  { name: "Public user record", uri: "file:///workspace/demo.user" },
+  { name: "Public group record", uri: "file:///workspace/demo.group" },
+  { name: "Userdb membership marker", uri: "file:///workspace/demo.membership" },
+  { name: "PCR measurement record", uri: "file:///workspace/demo.pcrlock" },
+  { name: "Static DNS A record", uri: "file:///workspace/demo.rr" },
 ];
 
 const mkosiCases: readonly SnippetCase[] = [
@@ -101,10 +110,17 @@ describe("shipped snippets", () => {
     );
   });
 
+  it("covers every structured systemd JSON format", async () => {
+    expect(Object.keys(await readSnippets("snippets/json.json"))).toEqual(
+      jsonCases.map(({ name }) => name),
+    );
+  });
+
   it.each([
     ["snippets/systemd.json", "systemd-unit", unitCases],
     ["snippets/network.json", "systemd-network", networkCases],
     ["snippets/config.json", "systemd-config", configCases],
+    ["snippets/json.json", "systemd-json", jsonCases],
     ["snippets/quadlet.json", "podman-quadlet", quadletCases],
     ["snippets/mkosi.json", "mkosi", mkosiCases],
   ] as const)(
@@ -142,6 +158,7 @@ describe("shipped snippets", () => {
       readSnippets("snippets/systemd.json"),
       readSnippets("snippets/network.json"),
       readSnippets("snippets/config.json"),
+      readSnippets("snippets/json.json"),
       readSnippets("snippets/quadlet.json"),
       readSnippets("snippets/mkosi.json"),
     ]);

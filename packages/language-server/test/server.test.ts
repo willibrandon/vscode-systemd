@@ -7,7 +7,7 @@ import {
 } from "vscode-jsonrpc/node";
 import type { CancellationToken, MessageConnection } from "vscode-jsonrpc/node";
 import { createConnection } from "vscode-languageserver/node";
-import { CompletionItemKind } from "vscode-languageserver";
+import { CompletionItemKind, SymbolKind } from "vscode-languageserver";
 import type {
   CodeAction,
   CodeLens,
@@ -471,6 +471,186 @@ describe("language server JSON-RPC contract", () => {
         newName: "new.service",
       }),
     ).toEqual({ changes: {} });
+  });
+
+  it("serves source-backed completions, hover, and signatures for systemd JSON", async () => {
+    const jsonUri = "file:///workspace/demo.user";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: jsonUri,
+        languageId: "systemd-json",
+        version: 1,
+        text: "{\n  \n}\n",
+      },
+    });
+
+    const properties = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: jsonUri },
+      position: { line: 1, character: 2 },
+    });
+    expect(properties.length).toBeGreaterThan(90);
+    expect(properties.find(({ label }) => label === "userName")).toMatchObject({
+      insertText: '"userName": "${1}"',
+      kind: CompletionItemKind.Property,
+    });
+    expect(properties.map(({ label }) => label)).not.toContain("secret");
+
+    const userSource = '{"disposition": "dyn"}';
+    await client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: jsonUri, version: 2 },
+      contentChanges: [{ text: userSource }],
+    });
+    const values = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: jsonUri },
+      position: { line: 0, character: 20 },
+    });
+    expect(values.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["dynamic", "regular", "system"]),
+    );
+    expect(values.find(({ label }) => label === "dynamic")?.textEdit).toEqual({
+      range: {
+        start: { line: 0, character: 17 },
+        end: { line: 0, character: 20 },
+      },
+      newText: "dynamic",
+    });
+
+    const hover = await request<Hover | null>(client, "textDocument/hover", {
+      textDocument: { uri: jsonUri },
+      position: { line: 0, character: 5 },
+    });
+    expect(JSON.stringify(hover)).toContain("disposition");
+    expect(JSON.stringify(hover)).toContain("Official documentation");
+    const signature = await request<SignatureHelp | null>(client, "textDocument/signatureHelp", {
+      textDocument: { uri: jsonUri },
+      position: { line: 0, character: 20 },
+    });
+    expect(signature?.signatures[0]?.label).toBe('"disposition": <string>');
+
+    const typedUserSource = '{"userName":"demo","uid":1000,"locked":true,"rebalanceWeight":null}';
+    await client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: jsonUri, version: 3 },
+      contentChanges: [{ text: typedUserSource }],
+    });
+    const typedSymbols = await request<DocumentSymbol[]>(client, "textDocument/documentSymbol", {
+      textDocument: { uri: jsonUri },
+    });
+    expect(typedSymbols.map(({ name, kind }) => [name, kind])).toEqual([
+      ["userName", SymbolKind.String],
+      ["uid", SymbolKind.Number],
+      ["locked", SymbolKind.Boolean],
+      ["rebalanceWeight", SymbolKind.Null],
+    ]);
+    const typedSemantics = await request<SemanticTokens>(
+      client,
+      "textDocument/semanticTokens/full",
+      { textDocument: { uri: jsonUri } },
+    );
+    expect(typedSemantics.data.length).toBeGreaterThan(typedSymbols.length * 5);
+
+    const booleanSource = '{"locked": }';
+    await client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: jsonUri, version: 4 },
+      contentChanges: [{ text: booleanSource }],
+    });
+    const booleanValues = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: jsonUri },
+      position: { line: 0, character: booleanSource.indexOf("}") },
+    });
+    expect(booleanValues.map(({ label }) => label)).toEqual(["true", "false"]);
+
+    const membershipUri = "file:///workspace/demo.membership";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: membershipUri,
+        languageId: "systemd-json",
+        version: 1,
+        text: "{\n  \n}",
+      },
+    });
+    await expect(
+      request<CompletionItem[]>(client, "textDocument/completion", {
+        textDocument: { uri: membershipUri },
+        position: { line: 1, character: 2 },
+      }),
+    ).resolves.toEqual([]);
+    await expect(
+      request<Hover | null>(client, "textDocument/hover", {
+        textDocument: { uri: membershipUri },
+        position: { line: 0, character: 0 },
+      }),
+    ).resolves.toBeNull();
+
+    const pcrlockUri = "file:///workspace/demo.pcrlock";
+    const pcrlockSource = '[{"digests": [{\n  \n}]}]';
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: pcrlockUri,
+        languageId: "systemd-json",
+        version: 1,
+        text: pcrlockSource,
+      },
+    });
+    const digestFields = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: pcrlockUri },
+      position: { line: 1, character: 2 },
+    });
+    expect(digestFields.map(({ label }) => label)).toEqual(["hashAlg", "digest"]);
+    const jsonSymbols = await request<DocumentSymbol[]>(client, "textDocument/documentSymbol", {
+      textDocument: { uri: pcrlockUri },
+    });
+    expect(jsonSymbols[0]).toMatchObject({
+      name: "[0]",
+      children: [{ name: "digests", children: [{ name: "[0]" }] }],
+    });
+    const jsonWorkspaceSymbols = await request<SymbolInformation[]>(client, "workspace/symbol", {
+      query: "digest",
+    });
+    const digestSymbol = jsonWorkspaceSymbols.find(({ name }) => name === "digests");
+    expect(digestSymbol).toMatchObject({ name: "digests" });
+    expect(digestSymbol?.location.uri).toBe(pcrlockUri);
+    const jsonFolds = await request<FoldingRange[]>(client, "textDocument/foldingRange", {
+      textDocument: { uri: pcrlockUri },
+    });
+    expect(jsonFolds.length).toBeGreaterThan(0);
+    const jsonSelections = await request<SelectionRange[]>(client, "textDocument/selectionRange", {
+      textDocument: { uri: pcrlockUri },
+      positions: [{ line: 1, character: 1 }],
+    });
+    expect(jsonSelections[0]?.parent?.parent).toBeDefined();
+    const jsonSemantics = await request<SemanticTokens>(
+      client,
+      "textDocument/semanticTokens/full",
+      { textDocument: { uri: pcrlockUri } },
+    );
+    expect(jsonSemantics.data.length).toBeGreaterThan(0);
+    const jsonFormatting = await request<TextEdit[]>(client, "textDocument/formatting", {
+      textDocument: { uri: pcrlockUri },
+      options: { insertSpaces: true, tabSize: 2 },
+    });
+    expect(jsonFormatting.length).toBeGreaterThan(0);
+
+    const rrUri = "file:///workspace/demo.rr";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: rrUri,
+        languageId: "systemd-json",
+        version: 1,
+        text: '{"key": {"type": }}',
+      },
+    });
+    const recordTypes = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: rrUri },
+      position: { line: 0, character: 17 },
+    });
+    expect(recordTypes.map(({ label }) => label)).toEqual(["1", "2", "5", "12", "28", "39"]);
+
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: jsonUri } });
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: membershipUri },
+    });
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: pcrlockUri } });
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: rrUri } });
   });
 
   it("serves field-aware intelligence for line-oriented formats", async () => {

@@ -1,0 +1,61 @@
+{
+  "Public user record": {
+    "prefix": "json-user",
+    "description": "Define a public systemd userdb user record",
+    "body": [
+      "{",
+      "  \"userName\": \"${1:demo}\",",
+      "  \"uid\": ${2:1000},",
+      "  \"gid\": ${3:1000},",
+      "  \"realName\": \"${4:Demo User}\"",
+      "}$0"
+    ]
+  },
+  "Public group record": {
+    "prefix": "json-group",
+    "description": "Define a public systemd userdb group record",
+    "body": [
+      "{",
+      "  \"groupName\": \"${1:demo}\",",
+      "  \"gid\": ${2:1000},",
+      "  \"members\": [\"${3:demo}\"]",
+      "}$0"
+    ]
+  },
+  "Userdb membership marker": {
+    "prefix": "json-membership",
+    "description": "Create an empty userdb membership marker",
+    "body": ["{}$0"]
+  },
+  "PCR measurement record": {
+    "prefix": "json-pcrlock",
+    "description": "Define a CEL-JSON PCR measurement record",
+    "body": [
+      "[",
+      "  {",
+      "    \"pcr\": ${1:11},",
+      "    \"digests\": [",
+      "      {",
+      "        \"hashAlg\": \"${2|sha256,sha384,sha512,sha1|}\",",
+      "        \"digest\": \"${3:0000000000000000000000000000000000000000000000000000000000000000}\"",
+      "      }",
+      "    ]",
+      "  }",
+      "]$0"
+    ]
+  },
+  "Static DNS A record": {
+    "prefix": "json-dns-a",
+    "description": "Define a static systemd-resolved IPv4 DNS record",
+    "body": [
+      "{",
+      "  \"key\": {",
+      "    \"class\": 1,",
+      "    \"type\": 1,",
+      "    \"name\": \"${1:host.example.com}\"",
+      "  },",
+      "  \"address\": \"${2:192.0.2.1}\"",
+      "}$0"
+    ]
+  }
+}

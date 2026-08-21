@@ -1,4 +1,4 @@
-# systemd Unit Files for Visual Studio Code
+# systemd for Visual Studio Code
 
 Complete, self-contained language support for systemd unit files and configuration,
 systemd-networkd, udev, tmpfiles, sysusers, Podman Quadlet, and mkosi.
@@ -13,7 +13,7 @@ into the desktop and browser extension.
 
 - TextMate highlighting before the extension activates.
 - Built-in, error-tolerant parsing and validation for 18 configuration dialects.
-- Section, directive, indexed-reference, and value completion from 2,804 stable and 2,858 preview
+- Section, directive, indexed-reference, and value completion from 2,873 stable and 2,928 preview
   generated upstream records, with lazily resolved official documentation.
 - Workspace-file and directory completion for path-valued settings on desktop, remote, and browser
   hosts through a bounded workspace-only filesystem bridge.
@@ -29,7 +29,8 @@ into the desktop and browser extension.
 - Unknown-section, unknown-directive, value-type, required-section, version, and deprecation
   diagnostics.
 - Valid file-skeleton snippets for every author-configurable unit type, major systemd network and
-  configuration families, all eight Quadlet types, and common mkosi image formats.
+  configuration families, all structured systemd JSON formats, all eight Quadlet types, and common
+  mkosi image formats.
 - Required-setting diagnostics for the inputs Podman's Quadlet converter needs to generate a unit.
 - Quick fixes for likely directive misspellings.
 - Go to definition, references, highlights, and safe textual rename for unit and resource
@@ -63,12 +64,13 @@ The extension has dedicated language IDs for:
 - system and user units: `.service`, `.socket`, `.timer`, `.path`, `.mount`, `.automount`, `.swap`,
   `.target`, `.device`, `.slice`, and `.scope`;
 - networkd files: `.network`, `.netdev`, `.link`, `.dnssd`, and `.dns-delegate`;
-- systemd daemon configuration and `.nspawn` files;
+- systemd daemon configuration, systemd-oomd `.oomrule` rulesets, and `.nspawn` files;
 - `tmpfiles.d`, `sysusers.d`, `sysctl.d`, `modules-load.d`, `binfmt.d`, presets, boot configuration,
   and fstab-family tables;
 - udev `.rules` and hardware database `.hwdb` files;
 - environment, release, locale, machine-info, and vconsole files;
-- DNS trust anchors, plus schema-backed PCR lock files and DNS resource-record JSON;
+- DNS trust anchors, plus schema-backed PCR lock files, DNS resource-record JSON, and public userdb
+  `.user`, `.group`, and `.membership` records;
 - all current Quadlet types: artifact, build, container, image, kube, network, pod, and volume;
 - mkosi main, drop-in, historical preset, profile, image, local, tools, initrd, version, and
   UKI-profile configuration.

@@ -59,6 +59,10 @@ jobs:
             data/upstream.lock.json
             packages/language-core/src/generated/registry.json
             packages/language-core/src/generated/stable-delta.json
+            packages/language-core/src/generated/userdb.json
+            schemas/systemd-user.schema.json
+            schemas/systemd-group.schema.json
+            schemas/systemd-membership.schema.json
           )
           if git diff --quiet -- "${paths[@]}"; then
             echo "changed=false" >> "$GITHUB_OUTPUT"

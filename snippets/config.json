@@ -86,5 +86,16 @@
       "ProcessSizeMax=${3:2G}",
       "$0"
     ]
+  },
+  "OOM ruleset": {
+    "prefix": "config-oom-rule",
+    "description": "Define a systemd-oomd pressure rule and action",
+    "body": [
+      "[Rule]",
+      "MemoryPressureAbove=${1:60%}",
+      "LastingSec=${2:30s}",
+      "Action=${3|kill-by-pgscan,kill-by-swap,kill-all|}",
+      "$0"
+    ]
   }
 }

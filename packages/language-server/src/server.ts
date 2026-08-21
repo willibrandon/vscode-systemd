@@ -32,6 +32,13 @@ import {
   resolveUnitConfigurations,
   renderEffectiveConfiguration,
   sectionsFor,
+  systemdJsonFieldContext,
+  systemdJsonFoldingSpans,
+  systemdJsonOutline,
+  systemdJsonPropertyContext,
+  systemdJsonSelectionSpans,
+  systemdJsonSemanticSpans,
+  systemdJsonValueContext,
   udevRuleKeys,
 } from "@systemd/language-core";
 import type {
@@ -50,6 +57,9 @@ import type {
   SyntaxNode,
   TargetVersions,
   TextSpan,
+  SystemdJsonFieldDefinition,
+  SystemdJsonNodeType,
+  SystemdJsonOutlineNode,
 } from "@systemd/language-core";
 import {
   CodeActionKind,
@@ -296,7 +306,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
         completionProvider: {
-          triggerCharacters: ["[", "=", " ", ".", "/"],
+          triggerCharacters: ["[", "=", " ", ".", "/", "{", '"', ":", ","],
           resolveProvider: true,
         },
         hoverProvider: true,
@@ -352,6 +362,9 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const tree = document === undefined ? undefined : parsed(document);
     if (document === undefined || tree === undefined) return [];
     const offset = document.offsetAt(params.position);
+    if (tree.dialect === "systemd-json") {
+      return systemdJsonCompletions(document, tree, offset);
+    }
     const line = document.getText({
       start: { line: params.position.line, character: 0 },
       end: params.position,
@@ -391,6 +404,24 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         };
   });
   connection.onHover((params): Hover | null => {
+    const jsonDocument = documents.get(params.textDocument.uri);
+    const jsonTree = jsonDocument === undefined ? undefined : parsed(jsonDocument);
+    if (jsonDocument !== undefined && jsonTree?.dialect === "systemd-json") {
+      const context = systemdJsonFieldContext(
+        jsonDocument.getText(),
+        jsonTree.kind,
+        jsonDocument.offsetAt(params.position),
+      );
+      return context === undefined
+        ? null
+        : {
+            contents: {
+              kind: MarkupKind.Markdown,
+              value: systemdJsonFieldMarkdown(context.field),
+            },
+            range: toRange(jsonDocument, context.span),
+          };
+    }
     const context = contextAt(documents, params.textDocument.uri, params.position, parsed);
     if (context === undefined) return null;
     if (context.node.kind === "section") {
@@ -422,6 +453,31 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     };
   });
   connection.onSignatureHelp((params): SignatureHelp | null => {
+    const jsonDocument = documents.get(params.textDocument.uri);
+    const jsonTree = jsonDocument === undefined ? undefined : parsed(jsonDocument);
+    if (jsonDocument !== undefined && jsonTree?.dialect === "systemd-json") {
+      const context = systemdJsonValueContext(
+        jsonDocument.getText(),
+        jsonTree.kind,
+        jsonDocument.offsetAt(params.position),
+      );
+      if (context === undefined) return null;
+      const types = context.arrayItem
+        ? (context.field.itemTypes ?? ["value"])
+        : context.field.types;
+      const valueLabel = "<" + types.join(" | ") + ">";
+      return {
+        signatures: [
+          {
+            label: JSON.stringify(context.field.name) + ": " + valueLabel,
+            documentation: context.field.description,
+            parameters: [{ label: valueLabel }],
+          },
+        ],
+        activeSignature: 0,
+        activeParameter: 0,
+      };
+    }
     const context = contextAt(documents, params.textDocument.uri, params.position, parsed);
     if (context?.node.kind === "record") {
       return recordSignature(context.document, context.tree, context.node, params.position);
@@ -462,7 +518,11 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   connection.onDocumentSymbol((params): DocumentSymbol[] => {
     const document = documents.get(params.textDocument.uri);
     const tree = document === undefined ? undefined : parsed(document);
-    return document === undefined || tree === undefined ? [] : documentSymbols(document, tree);
+    return document === undefined || tree === undefined
+      ? []
+      : tree.dialect === "systemd-json"
+        ? systemdJsonDocumentSymbols(document)
+        : documentSymbols(document, tree);
   });
   connection.onWorkspaceSymbol((params, token): SymbolInformation[] => {
     const query = params.query.toLowerCase();
@@ -471,6 +531,19 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       if (requestCancelled(token)) return result;
       const document =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
+      if (tree.dialect === "systemd-json") {
+        for (const node of flattenSystemdJsonOutline(systemdJsonOutline(document.getText()))) {
+          if (requestCancelled(token)) return result;
+          if (!node.name.toLowerCase().includes(query)) continue;
+          result.push({
+            name: node.name,
+            kind: systemdJsonSymbolKind(node.type),
+            location: { uri: tree.uri, range: toRange(document, node.selectionSpan) },
+          });
+          if (result.length >= 500) return result;
+        }
+        continue;
+      }
       for (const node of tree.nodes) {
         if (requestCancelled(token)) return result;
         const name =
@@ -494,6 +567,19 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const document = documents.get(params.textDocument.uri);
     const tree = document === undefined ? undefined : parsed(document);
     if (document === undefined || tree === undefined) return [];
+    if (tree.dialect === "systemd-json") {
+      return systemdJsonFoldingSpans(document.getText())
+        .map((span): FoldingRange => {
+          const start = document.positionAt(span.start);
+          const end = document.positionAt(span.end);
+          return {
+            startLine: start.line,
+            endLine: Math.max(start.line, end.line - 1),
+            kind: FoldingRangeKind.Region,
+          };
+        })
+        .filter((range) => range.endLine > range.startLine);
+    }
     const sections = tree.nodes.filter((node) => node.kind === "section");
     return sections
       .map((section, index): FoldingRange => ({
@@ -508,6 +594,17 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const tree = document === undefined ? undefined : parsed(document);
     if (document === undefined || tree === undefined) return [];
     return params.positions.map((position): SelectionRange => {
+      if (tree.dialect === "systemd-json") {
+        const spans = systemdJsonSelectionSpans(document.getText(), document.offsetAt(position));
+        let selection: SelectionRange | undefined;
+        for (const span of [...spans].reverse()) {
+          selection = {
+            range: toRange(document, span),
+            ...(selection === undefined ? {} : { parent: selection }),
+          };
+        }
+        if (selection !== undefined) return selection;
+      }
       const node = nodeAt(tree, document.offsetAt(position));
       const lineText = document
         .getText({
@@ -629,7 +726,19 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const tree = document === undefined ? undefined : parsed(document);
     const builder = new SemanticTokensBuilder();
     if (document !== undefined && tree !== undefined) {
-      for (const node of tree.nodes) addSemanticTokens(builder, document, node);
+      if (tree.dialect === "systemd-json") {
+        for (const token of systemdJsonSemanticSpans(document.getText())) {
+          const type =
+            token.type === "property" || token.type === "keyword"
+              ? 0
+              : token.type === "string"
+                ? 1
+                : 2;
+          pushToken(builder, document, token.span, type, 0);
+        }
+      } else {
+        for (const node of tree.nodes) addSemanticTokens(builder, document, node);
+      }
     }
     return builder.build();
   });
@@ -1151,6 +1260,100 @@ function definitionCompletion(definition: DirectiveDefinition): CompletionItem {
     },
     ...(definition.deprecated ? { tags: [1] } : {}),
   };
+}
+
+function systemdJsonCompletions(
+  document: TextDocument,
+  tree: ParsedDocument,
+  offset: number,
+): CompletionItem[] {
+  const source = document.getText();
+  const propertyContext = systemdJsonPropertyContext(source, tree.kind, offset);
+  if (propertyContext !== undefined) {
+    return propertyContext.fields.map((field): CompletionItem => ({
+      label: field.name,
+      kind: CompletionItemKind.Property,
+      detail: field.types.join(" | ") + (field.required === true ? " · required" : " · optional"),
+      documentation: { kind: MarkupKind.Markdown, value: systemdJsonFieldMarkdown(field) },
+      insertText: systemdJsonPropertySnippet(field),
+      insertTextFormat: InsertTextFormat.Snippet,
+    }));
+  }
+
+  const valueContext = systemdJsonValueContext(source, tree.kind, offset);
+  if (valueContext === undefined) return [];
+  const choices = valueContext.arrayItem
+    ? (valueContext.field.itemChoices ?? [])
+    : (valueContext.field.choices ?? booleanJsonChoices(valueContext.field));
+  return choices.map((choice): CompletionItem => {
+    const inserted =
+      valueContext.quoted && typeof choice === "string" ? choice : JSON.stringify(choice);
+    return {
+      label: String(choice),
+      kind: CompletionItemKind.EnumMember,
+      detail: valueContext.field.name + " value",
+      documentation: valueContext.field.description,
+      ...(valueContext.replaceSpan === undefined
+        ? { insertText: inserted }
+        : {
+            textEdit: {
+              range: toRange(document, valueContext.replaceSpan),
+              newText: inserted,
+            },
+          }),
+    };
+  });
+}
+
+function booleanJsonChoices(field: SystemdJsonFieldDefinition): readonly (boolean | null)[] {
+  return field.types.includes("boolean")
+    ? field.types.includes("null")
+      ? [true, false, null]
+      : [true, false]
+    : field.types.includes("null")
+      ? [null]
+      : [];
+}
+
+function systemdJsonPropertySnippet(field: SystemdJsonFieldDefinition): string {
+  const type = field.types.find((candidate) => candidate !== "null") ?? "null";
+  const value =
+    field.choices?.[0] !== undefined
+      ? snippetChoice(field.choices[0])
+      : type === "string"
+        ? '"${1}"'
+        : type === "integer"
+          ? "${1:0}"
+          : type === "boolean"
+            ? "${1:true}"
+            : type === "array"
+              ? "[${1}]"
+              : type === "object"
+                ? "{\n\t$0\n}"
+                : "null";
+  return JSON.stringify(field.name) + ": " + value;
+}
+
+function snippetChoice(choice: string | number | boolean | null): string {
+  if (typeof choice !== "string") return JSON.stringify(choice);
+  return '"${1:' + escapeSnippet(choice) + '}"';
+}
+
+function escapeSnippet(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll("$", "\\$").replaceAll("}", "\\}");
+}
+
+function systemdJsonFieldMarkdown(field: SystemdJsonFieldDefinition): string {
+  const requirement = field.required === true ? "Required" : "Optional";
+  const choices = field.choices ?? field.itemChoices;
+  return [
+    "**" + field.name + "** — `" + field.types.join(" | ") + "` (" + requirement + ")",
+    field.description,
+    ...(choices === undefined || choices.length === 0
+      ? []
+      : ["Allowed values: " + choices.map((value) => "`" + String(value) + "`").join(", ") + "."]),
+    "[Official documentation](" + field.documentation + ")",
+  ].join("\n\n");
 }
 
 function lineCompletions(
@@ -1975,6 +2178,53 @@ function documentSymbols(document: TextDocument, tree: ParsedDocument): Document
     }
   }
   return roots;
+}
+
+function systemdJsonDocumentSymbols(document: TextDocument): DocumentSymbol[] {
+  return systemdJsonOutline(document.getText()).map((node) =>
+    systemdJsonDocumentSymbol(document, node),
+  );
+}
+
+function systemdJsonDocumentSymbol(
+  document: TextDocument,
+  node: SystemdJsonOutlineNode,
+): DocumentSymbol {
+  return {
+    name: node.name,
+    ...(node.detail === undefined ? {} : { detail: node.detail }),
+    kind: systemdJsonSymbolKind(node.type),
+    range: toRange(document, node.span),
+    selectionRange: toRange(document, node.selectionSpan),
+    ...(node.children.length === 0
+      ? {}
+      : {
+          children: node.children.map((child) => systemdJsonDocumentSymbol(document, child)),
+        }),
+  };
+}
+
+function systemdJsonSymbolKind(type: SystemdJsonNodeType): SymbolKind {
+  switch (type) {
+    case "object":
+      return SymbolKind.Object;
+    case "array":
+      return SymbolKind.Array;
+    case "string":
+      return SymbolKind.String;
+    case "number":
+      return SymbolKind.Number;
+    case "boolean":
+      return SymbolKind.Boolean;
+    case "null":
+      return SymbolKind.Null;
+  }
+}
+
+function flattenSystemdJsonOutline(
+  nodes: readonly SystemdJsonOutlineNode[],
+): readonly SystemdJsonOutlineNode[] {
+  return nodes.flatMap((node) => [node, ...flattenSystemdJsonOutline(node.children)]);
 }
 
 function documentLocations(

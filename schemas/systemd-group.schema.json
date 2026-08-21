@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://willibrandon.github.io/vscode-systemd/schemas/systemd-group.schema.json",
+  "title": "systemd JSON Group Record",
+  "description": "Public .group JSON drop-in consumed from systemd userdb directories.",
+  "$comment": "Generated from the pinned systemd group record dispatch table; specification: https://systemd.io/GROUP_RECORD/",
+  "type": "object",
+  "properties": {
+    "groupName": {
+      "type": "string",
+      "description": "UNIX group name for this public group record."
+    },
+    "realm": { "type": "string", "description": "Source-defined JSON group record field realm." },
+    "uuid": { "type": "string", "description": "Source-defined JSON group record field uuid." },
+    "description": {
+      "type": "string",
+      "description": "Source-defined JSON group record field description."
+    },
+    "disposition": {
+      "type": "string",
+      "description": "Source-defined account disposition.",
+      "enum": ["intrinsic", "system", "dynamic", "regular", "container", "foreign", "reserved"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Source-defined JSON group record field service."
+    },
+    "lastChangeUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON group record field lastChangeUSec."
+    },
+    "gid": {
+      "type": "integer",
+      "description": "Numeric UNIX group ID.",
+      "minimum": 0,
+      "maximum": 4294967294
+    },
+    "members": {
+      "type": "array",
+      "description": "UNIX users that belong to this group.",
+      "items": { "type": "string" }
+    },
+    "administrators": {
+      "type": "array",
+      "description": "UNIX users that administer this group.",
+      "items": { "type": "string" }
+    },
+    "perMachine": {
+      "type": "array",
+      "description": "Machine-matched overrides for this record.",
+      "items": { "type": "object" }
+    },
+    "binding": {
+      "type": "object",
+      "description": "Machine-specific binding data for this record."
+    },
+    "status": {
+      "type": "object",
+      "description": "Machine-specific runtime status data for this record."
+    },
+    "signature": {
+      "type": "array",
+      "description": "Cryptographic signatures covering the signable record fields.",
+      "items": { "type": "object" }
+    }
+  },
+  "required": ["groupName"],
+  "not": { "anyOf": [{ "required": ["privileged"] }, { "required": ["secret"] }] },
+  "additionalProperties": true
+}

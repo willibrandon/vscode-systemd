@@ -56,6 +56,12 @@ dynamic keyboard and evdev property families. Their record separators, comments,
 and required property relationships are validated against the pinned upstream parsers while custom
 vendor properties remain supported.
 
+Structured systemd JSON files receive their own source-backed editing help. Public userdb records
+complete every non-sensitive field from systemd's pinned parser tables, validate required names and
+field types, and deliberately reject `secret` and `privileged` objects in public files. PCR lock and
+static DNS record completion follows nested record, digest, content, and DNS-key objects. Hover and
+signature help describe those fields and link directly to the relevant upstream manual.
+
 ## File skeletons
 
 At the start of an empty file, type a snippet prefix such as `service-unit`, `network-static`,
@@ -63,7 +69,9 @@ At the start of an empty file, type a snippet prefix such as `service-unit`, `ne
 points for every unit type that systemd allows developers to configure in a file; common networkd,
 DNS-SD, DNS delegation, daemon, container, repart, and sysupdate configurations; every current
 Quadlet type; and common mkosi outputs. Placeholder choices cover details such as service type,
-network policy, user or system installation target, image format, and bootloader.
+network policy, user or system installation target, image format, and bootloader. The `json-user`,
+`json-group`, `json-membership`, `json-pcrlock`, and `json-dns-a` prefixes provide valid starting
+points for every structured systemd JSON format.
 
 There is intentionally no `.scope` file skeleton: systemd creates scope units programmatically and
 does not load them from unit configuration files. Existing scope units remain recognized for

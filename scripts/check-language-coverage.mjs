@@ -11,6 +11,12 @@ const stableDelta = JSON.parse(
 registry.directives = (registry.directives ?? []).map(hydrateDirective);
 const upstreamLock = JSON.parse(await readFile(resolve(root, "data/upstream.lock.json"), "utf8"));
 const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
+const formatInventory = JSON.parse(
+  await readFile(resolve(root, "data/document-formats.json"), "utf8"),
+);
+const userDb = JSON.parse(
+  await readFile(resolve(root, "packages/language-core/src/generated/userdb.json"), "utf8"),
+);
 const failures = [];
 const minimums = {
   "systemd-unit": 500,
@@ -65,8 +71,74 @@ const expectedQuadlet = [
 if (JSON.stringify(registry.quadletExtensions) !== JSON.stringify(expectedQuadlet)) {
   failures.push("Quadlet extension coverage is incomplete");
 }
-if (manifest.contributes.languages.length !== 18) {
-  failures.push("manifest must contribute exactly 18 explicit configuration dialects");
+const expectedLanguages = [
+  "systemd-unit",
+  "systemd-network",
+  "systemd-config",
+  "systemd-tmpfiles",
+  "systemd-sysusers",
+  "systemd-udev-rules",
+  "systemd-hwdb",
+  "systemd-environment",
+  "systemd-sysctl",
+  "systemd-modules-load",
+  "systemd-binfmt",
+  "systemd-preset",
+  "systemd-table",
+  "systemd-boot",
+  "systemd-dns-trust-anchor",
+  "systemd-json",
+  "podman-quadlet",
+  "mkosi",
+];
+const contributedLanguages = manifest.contributes.languages.map(({ id }) => id);
+if (JSON.stringify(contributedLanguages) !== JSON.stringify(expectedLanguages)) {
+  failures.push("manifest language IDs differ from the exact supported dialect inventory");
+}
+if (
+  formatInventory.schemaVersion !== 1 ||
+  JSON.stringify(formatInventory.languages) !== JSON.stringify(expectedLanguages) ||
+  !Array.isArray(formatInventory.formats) ||
+  formatInventory.formats.length < 90
+) {
+  failures.push("authoring format inventory is missing or incomplete");
+} else {
+  for (const language of expectedLanguages) {
+    if (!formatInventory.formats.some((format) => format.language === language)) {
+      failures.push("authoring format inventory has no example for " + language);
+    }
+  }
+  if (
+    new Set(formatInventory.formats.map(({ name }) => name)).size !==
+      formatInventory.formats.length ||
+    new Set(formatInventory.formats.map(({ uri }) => uri)).size !== formatInventory.formats.length
+  ) {
+    failures.push("authoring format inventory contains duplicate names or URIs");
+  }
+}
+if (
+  userDb.schemaVersion !== 1 ||
+  userDb.upstream !== upstreamLock.sources?.systemd?.revision ||
+  !Array.isArray(userDb.user?.fields) ||
+  userDb.user.fields.length < 90 ||
+  !Array.isArray(userDb.group?.fields) ||
+  userDb.group.fields.length < 15
+) {
+  failures.push("source-generated stable systemd userdb metadata is incomplete");
+} else {
+  for (const [record, required] of [
+    [userDb.user, "userName"],
+    [userDb.group, "groupName"],
+  ]) {
+    if (!record.required?.includes(required)) {
+      failures.push("systemd userdb metadata is missing required field " + required);
+    }
+    for (const sensitive of ["secret", "privileged"]) {
+      if (!record.fields.some((field) => field.name === sensitive && field.sensitive === true)) {
+        failures.push("systemd userdb metadata does not mark " + sensitive + " as sensitive");
+      }
+    }
+  }
 }
 for (const grammar of manifest.contributes.grammars) {
   try {
@@ -82,6 +154,13 @@ for (const snippet of manifest.contributes.snippets) {
     failures.push("missing snippets: " + snippet.path);
   }
 }
+for (const validation of manifest.contributes.jsonValidation) {
+  try {
+    await access(resolve(root, validation.url));
+  } catch {
+    failures.push("missing JSON schema: " + validation.url);
+  }
+}
 for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
   if (!/^[0-9a-f]{40}$/u.test(revision)) {
     failures.push(name + " does not have a pinned 40-character Git revision");
@@ -90,8 +169,8 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
 if (registry.schemaVersion !== 2) {
   failures.push("generated registry must use schema version 2");
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 12) {
-  failures.push("upstream lock must use schema version 1 and adapter version 12");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 13) {
+  failures.push("upstream lock must use schema version 1 and adapter version 13");
 }
 if ((registry.hwdbProperties?.length ?? 0) < 80) {
   failures.push("generated hwdb property coverage is incomplete");
@@ -131,6 +210,17 @@ if (
   (stableDelta.hwdbMatchPrefixes !== undefined && !Array.isArray(stableDelta.hwdbMatchPrefixes))
 ) {
   failures.push("stable registry delta is missing or invalid");
+}
+for (const name of ["MemoryPressureAbove", "SwapUsageMax", "Action", "LastingSec"]) {
+  const definition = registry.directives.find(
+    (candidate) =>
+      candidate.dialect === "systemd-config" &&
+      candidate.section === "Rule" &&
+      candidate.name === name,
+  );
+  if (!definition?.documentKinds?.includes("systemd-config:oom-rule")) {
+    failures.push("systemd OOM ruleset metadata is missing [Rule] " + name + "=");
+  }
 }
 for (const [section, name, expected] of [
   ["Distribution", "Distribution", "fedora"],

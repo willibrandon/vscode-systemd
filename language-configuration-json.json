@@ -1,0 +1,17 @@
+{
+  "brackets": [
+    ["{", "}"],
+    ["[", "]"]
+  ],
+  "autoClosingPairs": [
+    { "open": "{", "close": "}", "notIn": ["string"] },
+    { "open": "[", "close": "]", "notIn": ["string"] },
+    { "open": "\"", "close": "\"", "notIn": ["string"] }
+  ],
+  "surroundingPairs": [
+    ["{", "}"],
+    ["[", "]"],
+    ["\"", "\""]
+  ],
+  "wordPattern": "(?:[A-Za-z_][A-Za-z0-9_]*)"
+}

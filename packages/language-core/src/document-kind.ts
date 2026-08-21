@@ -87,7 +87,13 @@ export function classifyDocument(uri: string, dialect: DialectId): DocumentKind 
         ? "systemd-json:pcrlock"
         : effective.endsWith(".rr")
           ? "systemd-json:rr"
-          : "systemd-json:unknown";
+          : effective.endsWith(".user")
+            ? "systemd-json:user"
+            : effective.endsWith(".group")
+              ? "systemd-json:group"
+              : effective.endsWith(".membership")
+                ? "systemd-json:membership"
+                : "systemd-json:unknown";
     case "podman-quadlet": {
       const type = /\.(artifact|build|container|image|kube|network|pod|volume)$/u.exec(
         effective,
@@ -139,6 +145,7 @@ export function documentAllowsSection(kind: DocumentKind, section: string): bool
 
 function classifySystemdConfig(normalized: string, effective: string): DocumentKind {
   if (effective.endsWith(".nspawn")) return "systemd-config:nspawn";
+  if (effective.endsWith(".oomrule")) return "systemd-config:oom-rule";
   if (normalized.includes("/mkosi.repart/") || normalized.includes("/repart.d/")) {
     return "systemd-config:repart";
   }
@@ -171,6 +178,8 @@ function systemdConfigSections(kind: DocumentKind): readonly string[] | undefine
       return ["Coredump"];
     case "systemd-config:oomd":
       return ["OOM"];
+    case "systemd-config:oom-rule":
+      return ["Rule"];
     case "systemd-config:homed":
       return ["Home"];
     case "systemd-config:pstore":

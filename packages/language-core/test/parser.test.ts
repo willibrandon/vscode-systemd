@@ -25,6 +25,8 @@ describe("complete dialect recognition", () => {
     ["file:///etc/kernel/install.conf.d/10-layout.conf", "", "systemd-boot"],
     ["file:///etc/dnssec-trust-anchors.d/example.positive", "", "systemd-dns-trust-anchor"],
     ["file:///etc/systemd/pcrlock.d/app.pcrlock", "[]", "systemd-json"],
+    ["file:///etc/userdb/example.user", "{}", "systemd-json"],
+    ["file:///etc/systemd/oomd/rules.d/pressure.oomrule", "[Rule]\n", "systemd-config"],
     ["file:///etc/containers/systemd/app.volume", "", "podman-quadlet"],
     ["file:///workspace/mkosi.profiles/server/mkosi.conf", "", "mkosi"],
     ["file:///workspace/mkosi.profiles/debug", "", "mkosi"],
@@ -88,6 +90,12 @@ describe("lossless parsers", () => {
     ["file:///workspace/mkosi.initrd.conf/mkosi.conf", "mkosi", "mkosi:initrd"],
     ["file:///workspace/mkosi.uki-profiles/secure.conf", "mkosi", "mkosi:uki-profile"],
     ["file:///etc/pcrlock.d/app.pcrlock", "systemd-json", "systemd-json:pcrlock"],
+    ["file:///etc/userdb/example.user", "systemd-json", "systemd-json:user"],
+    [
+      "file:///etc/systemd/oomd/rules.d/pressure.oomrule",
+      "systemd-config",
+      "systemd-config:oom-rule",
+    ],
   ] as const)("classifies %s as %s", (uri, dialect, expected) => {
     expect(classifyDocument(uri, dialect)).toBe(expected);
     expect(parse("", dialect, uri).kind).toBe(expected);

@@ -15,6 +15,7 @@ interface Manifest {
     readonly commands: readonly { readonly command: string }[];
     readonly languages: readonly {
       readonly id: string;
+      readonly configuration: string;
       readonly filenames?: readonly string[];
       readonly filenamePatterns?: readonly string[];
     }[];
@@ -61,13 +62,19 @@ describe("extension manifest", () => {
     expect(manifest.activationEvents).toBeUndefined();
   });
 
-  it("bundles schemas for both systemd JSON formats", async () => {
+  it("bundles schemas for every systemd JSON format with a defined structure", async () => {
     expect(manifest.contributes.jsonValidation).toEqual([
       {
         fileMatch: "*.pcrlock",
         url: "./schemas/systemd-pcrlock.schema.json",
       },
       { fileMatch: "*.rr", url: "./schemas/systemd-rr.schema.json" },
+      { fileMatch: "*.user", url: "./schemas/systemd-user.schema.json" },
+      { fileMatch: "*.group", url: "./schemas/systemd-group.schema.json" },
+      {
+        fileMatch: "*.membership",
+        url: "./schemas/systemd-membership.schema.json",
+      },
     ]);
     for (const { url } of manifest.contributes.jsonValidation) {
       const schema = JSON.parse(
@@ -76,6 +83,23 @@ describe("extension manifest", () => {
       expect(schema).toMatchObject({
         $schema: "https://json-schema.org/draft/2020-12/schema",
       });
+    }
+  });
+
+  it("uses strict JSON editing behavior for JSON-based systemd formats", async () => {
+    const jsonLanguage = manifest.contributes.languages.find(
+      (candidate) => candidate.id === "systemd-json",
+    );
+    expect(jsonLanguage?.configuration).toBe("./language-configuration-json.json");
+    const configuration = JSON.parse(
+      await readFile(resolve(root, "language-configuration-json.json"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(configuration).not.toHaveProperty("comments");
+
+    for (const language of manifest.contributes.languages) {
+      if (language.id !== "systemd-json") {
+        expect(language.configuration).toBe("./language-configuration.json");
+      }
     }
   });
 

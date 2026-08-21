@@ -8982,24 +8982,6 @@
     [
       "systemd-config",
       "*",
-      "Action",
-      "string",
-      "261",
-      0,
-      "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#Action=",
-      "Action in [*].",
-      [
-        "kill-all",
-        "kill-by-pgscan",
-        "kill-by-swap"
-      ],
-      {
-        "x": false
-      }
-    ],
-    [
-      "systemd-config",
-      "*",
       "AllowHibernation",
       "string",
       "240",
@@ -10998,17 +10980,6 @@
     [
       "systemd-config",
       "*",
-      "LastingSec",
-      "string",
-      "261",
-      0,
-      "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#LastingSec=",
-      "LastingSec in [*].",
-      []
-    ],
-    [
-      "systemd-config",
-      "*",
       "locale.LANG",
       "string",
       "186",
@@ -11358,24 +11329,6 @@
       "https://www.freedesktop.org/software/systemd/man/latest/journal-remote.conf.html#MaxFileSize=",
       "MaxFileSize in [*].",
       []
-    ],
-    [
-      "systemd-config",
-      "*",
-      "MemoryPressureAbove",
-      "string",
-      "261",
-      0,
-      "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#MemoryPressureAbove=",
-      "MemoryPressureAbove in [*].",
-      [
-        "%",
-        "‰",
-        "‱"
-      ],
-      {
-        "x": false
-      }
     ],
     [
       "systemd-config",
@@ -12635,24 +12588,6 @@
       "https://www.freedesktop.org/software/systemd/man/latest/systemd-sleep.conf.html#SuspendState=",
       "SuspendState in [*].",
       []
-    ],
-    [
-      "systemd-config",
-      "*",
-      "SwapUsageMax",
-      "string",
-      "261",
-      0,
-      "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#SwapUsageMax=",
-      "SwapUsageMax in [*].",
-      [
-        "%",
-        "‰",
-        "‱"
-      ],
-      {
-        "x": false
-      }
     ],
     [
       "systemd-config",
@@ -18390,6 +18325,75 @@
       "https://www.freedesktop.org/software/systemd/man/latest/resolved.conf.html#StaleRetentionSec=",
       "StaleRetentionSec in [Resolve].",
       []
+    ],
+    [
+      "systemd-config",
+      "Rule",
+      "Action",
+      "string",
+      "261",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#Action=",
+      "Action in [Rule].",
+      [
+        "kill-all",
+        "kill-by-pgscan",
+        "kill-by-swap"
+      ],
+      {
+        "k": [
+          "systemd-config:oom-rule"
+        ],
+        "x": true
+      }
+    ],
+    [
+      "systemd-config",
+      "Rule",
+      "LastingSec",
+      "duration",
+      "261",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#LastingSec=",
+      "LastingSec in [Rule].",
+      [],
+      {
+        "k": [
+          "systemd-config:oom-rule"
+        ]
+      }
+    ],
+    [
+      "systemd-config",
+      "Rule",
+      "MemoryPressureAbove",
+      "string",
+      "261",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#MemoryPressureAbove=",
+      "MemoryPressureAbove in [Rule].",
+      [],
+      {
+        "k": [
+          "systemd-config:oom-rule"
+        ]
+      }
+    ],
+    [
+      "systemd-config",
+      "Rule",
+      "SwapUsageMax",
+      "string",
+      "261",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#SwapUsageMax=",
+      "SwapUsageMax in [Rule].",
+      [],
+      {
+        "k": [
+          "systemd-config:oom-rule"
+        ]
+      }
     ],
     [
       "systemd-config",

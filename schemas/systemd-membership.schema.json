@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://willibrandon.github.io/vscode-systemd/schemas/systemd-membership.schema.json",
+  "title": "systemd User/Group Membership Marker",
+  "description": "A username:groupname.membership marker. systemd currently uses the filename and recommends an empty JSON object as its content.",
+  "$comment": "Derived from nss-systemd(8) and src/shared/userdb.c at the pinned systemd revision.",
+  "type": "object",
+  "additionalProperties": true
+}

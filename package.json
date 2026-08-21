@@ -117,7 +117,8 @@
           "systemd-config"
         ],
         "extensions": [
-          ".nspawn"
+          ".nspawn",
+          ".oomrule"
         ],
         "filenames": [
           "system.conf",
@@ -314,9 +315,12 @@
         ],
         "extensions": [
           ".pcrlock",
-          ".rr"
+          ".rr",
+          ".user",
+          ".group",
+          ".membership"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration-json.json"
       },
       {
         "id": "podman-quadlet",
@@ -475,6 +479,18 @@
       {
         "fileMatch": "*.rr",
         "url": "./schemas/systemd-rr.schema.json"
+      },
+      {
+        "fileMatch": "*.user",
+        "url": "./schemas/systemd-user.schema.json"
+      },
+      {
+        "fileMatch": "*.group",
+        "url": "./schemas/systemd-group.schema.json"
+      },
+      {
+        "fileMatch": "*.membership",
+        "url": "./schemas/systemd-membership.schema.json"
       }
     ],
     "snippets": [
@@ -489,6 +505,10 @@
       {
         "language": "systemd-config",
         "path": "./snippets/config.json"
+      },
+      {
+        "language": "systemd-json",
+        "path": "./snippets/json.json"
       },
       {
         "language": "podman-quadlet",
@@ -803,6 +823,7 @@
     "schemas/",
     "media/icon.png",
     "language-configuration.json",
+    "language-configuration-json.json",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",

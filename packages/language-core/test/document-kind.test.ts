@@ -36,6 +36,9 @@ describe("document kind classification", () => {
     ["file:///tmp/app.txt", "systemd-dns-trust-anchor", "systemd-dns-trust-anchor:unknown"],
     ["file:///etc/pcrlock.d/app.pcrlock", "systemd-json", "systemd-json:pcrlock"],
     ["file:///etc/systemd/resolve/static.d/app.rr", "systemd-json", "systemd-json:rr"],
+    ["file:///etc/userdb/example.user", "systemd-json", "systemd-json:user"],
+    ["file:///etc/userdb/example.group", "systemd-json", "systemd-json:group"],
+    ["file:///etc/userdb/example:wheel.membership", "systemd-json", "systemd-json:membership"],
     ["file:///tmp/app.json", "systemd-json", "systemd-json:unknown"],
     ["file:///etc/containers/systemd/app.pod", "podman-quadlet", "podman-quadlet:pod"],
     ["file:///tmp/app.conf", "podman-quadlet", "podman-quadlet:unknown"],
@@ -149,6 +152,9 @@ describe("document kind classification", () => {
     expect(
       classifyDocument("file:///etc/systemd/portable/profile/app.conf", "systemd-config"),
     ).toBe("systemd-config:portable-profile");
+    expect(
+      classifyDocument("file:///etc/systemd/oomd/rules.d/pressure.oomrule", "systemd-config"),
+    ).toBe("systemd-config:oom-rule");
     expect(classifyDocument("file:///tmp/app.conf", "systemd-config")).toBe(
       "systemd-config:generic",
     );
@@ -187,6 +193,7 @@ describe("fixed document sections", () => {
     ],
     ["systemd-config:coredump", ["Coredump"]],
     ["systemd-config:oomd", ["OOM"]],
+    ["systemd-config:oom-rule", ["Rule"]],
     ["systemd-config:homed", ["Home"]],
     ["systemd-config:pstore", ["PStore"]],
     ["systemd-config:sleep", ["Sleep"]],

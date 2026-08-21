@@ -4,13 +4,18 @@ import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:f
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import process from "node:process";
+import { format as formatWithPrettier } from "prettier";
 
 const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "packages/language-core/src/generated/registry.json");
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
+const userDbOutput = resolve(root, "packages/language-core/src/generated/userdb.json");
+const userSchemaOutput = resolve(root, "schemas/systemd-user.schema.json");
+const groupSchemaOutput = resolve(root, "schemas/systemd-group.schema.json");
+const membershipSchemaOutput = resolve(root, "schemas/systemd-membership.schema.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 12;
+const adapterVersion = 13;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -94,6 +99,10 @@ if (unavailable.length > 0) {
   if (!checking) throw new Error("Missing upstream trees: " + unavailable.join(", "));
   const bundled = JSON.parse(await readFile(output, "utf8"));
   const stableDelta = JSON.parse(await readFile(stableDeltaOutput, "utf8"));
+  const bundledUserDb = JSON.parse(await readFile(userDbOutput, "utf8"));
+  const bundledUserSchema = JSON.parse(await readFile(userSchemaOutput, "utf8"));
+  const bundledGroupSchema = JSON.parse(await readFile(groupSchemaOutput, "utf8"));
+  const bundledMembershipSchema = JSON.parse(await readFile(membershipSchemaOutput, "utf8"));
   const lock = JSON.parse(await readFile(lockOutput, "utf8"));
   if (!Array.isArray(bundled.directives) || bundled.directives.length < 100) {
     throw new Error("Bundled registry is missing or incomplete.");
@@ -102,6 +111,21 @@ if (unavailable.length > 0) {
     throw new Error("Bundled hwdb language data is missing or incomplete.");
   }
   validateLock(lock, bundled.upstream, stableDelta.upstream);
+  if (
+    bundledUserDb.schemaVersion !== 1 ||
+    bundledUserDb.upstream !== lock.sources?.systemd?.revision ||
+    !Array.isArray(bundledUserDb.user?.fields) ||
+    bundledUserDb.user.fields.length < 90 ||
+    !Array.isArray(bundledUserDb.group?.fields) ||
+    bundledUserDb.group.fields.length < 15
+  ) {
+    throw new Error("Bundled systemd userdb metadata is missing or incomplete.");
+  }
+  for (const schema of [bundledUserSchema, bundledGroupSchema, bundledMembershipSchema]) {
+    if (schema.$schema !== "https://json-schema.org/draft/2020-12/schema") {
+      throw new Error("Bundled systemd userdb schema is missing or invalid.");
+    }
+  }
   console.log(
     "Validated bundled registry with " +
       bundled.directives.length +
@@ -121,9 +145,11 @@ const stableTags = {
 const stableSources = await extractStableSources(sources, stableTags);
 let stableDirectives;
 let stableHwdbLanguage;
+let stableUserDbFields;
 try {
   stableDirectives = await generateDirectives(stableSources.sources);
   stableHwdbLanguage = await extractHwdbLanguage(stableSources.sources.systemd);
+  stableUserDbFields = await extractUserDbFields(stableSources.sources.systemd);
 } finally {
   await rm(stableSources.temporaryDirectory, { recursive: true, force: true });
 }
@@ -164,6 +190,16 @@ const stableUpstream = {
   podman: revision(sources.podman, stableTags.podman),
   mkosi: revision(sources.mkosi, stableTags.mkosi),
 };
+const userDb = {
+  schemaVersion: 1,
+  upstream: stableUpstream.systemd,
+  user: stableUserDbFields.user,
+  group: stableUserDbFields.group,
+};
+const serializedUserDb = JSON.stringify(userDb, null, 2) + "\n";
+const serializedUserSchema = await serializeSchema(userDbSchema("user", userDb.user));
+const serializedGroupSchema = await serializeSchema(userDbSchema("group", userDb.group));
+const serializedMembershipSchema = await serializeSchema(membershipSchema());
 const stableDelta = createRegistryDelta(
   directives,
   stableDirectives,
@@ -221,6 +257,25 @@ if (checking) {
       "Upstream lock is stale (" + digest(currentLock) + " != " + digest(serializedLock) + ").",
     );
   }
+  for (const [path, expected] of [
+    [userDbOutput, serializedUserDb],
+    [userSchemaOutput, serializedUserSchema],
+    [groupSchemaOutput, serializedGroupSchema],
+    [membershipSchemaOutput, serializedMembershipSchema],
+  ]) {
+    const current = await readFile(path, "utf8");
+    if (current !== expected) {
+      throw new Error(
+        "Generated userdb data is stale at " +
+          path +
+          " (" +
+          digest(current) +
+          " != " +
+          digest(expected) +
+          ").",
+      );
+    }
+  }
   console.log(
     "Generated registries are current with " +
       stableDirectives.length +
@@ -232,6 +287,11 @@ if (checking) {
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, serialized, "utf8");
   await writeFile(stableDeltaOutput, serializedStableDelta, "utf8");
+  await writeFile(userDbOutput, serializedUserDb, "utf8");
+  await mkdir(dirname(userSchemaOutput), { recursive: true });
+  await writeFile(userSchemaOutput, serializedUserSchema, "utf8");
+  await writeFile(groupSchemaOutput, serializedGroupSchema, "utf8");
+  await writeFile(membershipSchemaOutput, serializedMembershipSchema, "utf8");
   await mkdir(dirname(lockOutput), { recursive: true });
   await writeFile(lockOutput, serializedLock, "utf8");
   console.log(
@@ -245,6 +305,13 @@ if (checking) {
       lockOutput +
       ".",
   );
+}
+
+async function serializeSchema(schema) {
+  return formatWithPrettier(JSON.stringify(schema), {
+    parser: "json",
+    printWidth: 100,
+  });
 }
 
 function revision(source, ref = "HEAD") {
@@ -668,6 +735,189 @@ function earliestVersion(left, right) {
   return leftNumber <= rightNumber ? left : right;
 }
 
+async function extractUserDbFields(source) {
+  const [userSource, groupSource] = await Promise.all([
+    readFile(resolve(source, "src/shared/user-record.c"), "utf8"),
+    readFile(resolve(source, "src/shared/group-record.c"), "utf8"),
+  ]);
+  return {
+    user: userDbDispatchFields(userSource, "user", "userName"),
+    group: userDbDispatchFields(groupSource, "group", "groupName"),
+  };
+}
+
+function userDbDispatchFields(source, kind, requiredName) {
+  const table = new RegExp(
+    "static const sd_json_dispatch_field " +
+      kind +
+      "_dispatch_table\\[\\] = \\{([\\s\\S]*?)\\n        \\};",
+    "u",
+  ).exec(source)?.[1];
+  if (table === undefined) throw new Error("Missing source userdb " + kind + " dispatch table.");
+  const fields = [];
+  for (const match of table.matchAll(/\{\s*"([^"]+)"\s*,\s*([^,]+),\s*([^,]+),/gu)) {
+    const name = match[1] ?? "";
+    const variant = (match[2] ?? "").trim();
+    const parser = (match[3] ?? "").trim();
+    fields.push(userDbField(kind, name, variant, parser));
+  }
+  if (!fields.some(({ name }) => name === requiredName)) {
+    throw new Error("Source userdb " + kind + " dispatch table lacks " + requiredName + ".");
+  }
+  return {
+    documentation:
+      kind === "user" ? "https://systemd.io/USER_RECORD/" : "https://systemd.io/GROUP_RECORD/",
+    required: [requiredName],
+    fields,
+  };
+}
+
+function userDbField(kind, name, variant, parser) {
+  const field = {
+    name,
+    types: userDbTypes(variant, parser),
+    description: userDbFieldDescription(kind, name),
+  };
+  if (variant === "SD_JSON_VARIANT_ARRAY") {
+    field.itemTypes = ["perMachine", "signature"].includes(name) ? ["object"] : ["string"];
+  }
+  if (name === "disposition") {
+    field.choices = [
+      "intrinsic",
+      "system",
+      "dynamic",
+      "regular",
+      "container",
+      "foreign",
+      "reserved",
+    ];
+  }
+  if (name === "storage") {
+    field.choices = ["classic", "luks", "directory", "subvolume", "fscrypt", "cifs"];
+  }
+  if (name === "autoResizeMode") field.choices = ["off", "grow", "shrink-and-grow"];
+  if (name === "recoveryKeyType") field.itemChoices = ["modhex64"];
+  if (["uid", "gid"].includes(name)) {
+    field.minimum = 0;
+    field.maximum = 4_294_967_294;
+  }
+  if (name === "niceLevel") {
+    field.minimum = -20;
+    field.maximum = 19;
+  }
+  if (["umask", "accessMode"].includes(name)) {
+    field.minimum = 0;
+    field.maximum = 511;
+  }
+  if (["cpuWeight", "ioWeight"].includes(name)) {
+    field.minimum = 1;
+    field.maximum = 10_000;
+  }
+  if (["secret", "privileged"].includes(name)) field.sensitive = true;
+  return field;
+}
+
+function userDbTypes(variant, parser) {
+  if (variant === "SD_JSON_VARIANT_STRING") return ["string"];
+  if (variant === "SD_JSON_VARIANT_BOOLEAN") return ["boolean"];
+  if (variant === "SD_JSON_VARIANT_ARRAY") return ["array"];
+  if (variant === "SD_JSON_VARIANT_OBJECT") return ["object"];
+  if (variant === "SD_JSON_VARIANT_UNSIGNED") return ["integer"];
+  if (parser.includes("rlimit")) return ["object"];
+  if (parser.includes("auto_resize_mode")) return ["string"];
+  if (parser.includes("rebalance_weight") || parser.includes("tmpfs_limit")) {
+    return ["integer", "boolean", "null"];
+  }
+  if (parser.includes("tristate")) return ["boolean"];
+  if (
+    parser.includes("uint") ||
+    parser.includes("access_mode") ||
+    parser.includes("nice") ||
+    parser.includes("weight")
+  ) {
+    return ["integer"];
+  }
+  return ["string", "integer", "boolean", "array", "object", "null"];
+}
+
+function userDbFieldDescription(kind, name) {
+  const specific = {
+    userName: "UNIX user name for this public user record.",
+    groupName: "UNIX group name for this public group record.",
+    uid: "Numeric UNIX user ID.",
+    gid: kind === "user" ? "Numeric primary UNIX group ID." : "Numeric UNIX group ID.",
+    memberOf: "UNIX groups that include this user.",
+    members: "UNIX users that belong to this group.",
+    administrators: "UNIX users that administer this group.",
+    disposition: "Source-defined account disposition.",
+    storage: "Storage mechanism for the user's home directory.",
+    perMachine: "Machine-matched overrides for this record.",
+    binding: "Machine-specific binding data for this record.",
+    status: "Machine-specific runtime status data for this record.",
+    signature: "Cryptographic signatures covering the signable record fields.",
+    secret: "Secret data must not be stored in a public userdb record.",
+    privileged: "Privileged data belongs in a separately protected companion record.",
+  }[name];
+  return specific ?? "Source-defined JSON " + kind + " record field " + name + ".";
+}
+
+function userDbSchema(kind, definition) {
+  const title = kind === "user" ? "systemd JSON User Record" : "systemd JSON Group Record";
+  const suffix = kind === "user" ? ".user" : ".group";
+  return {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "https://willibrandon.github.io/vscode-systemd/schemas/systemd-" + kind + ".schema.json",
+    title,
+    description: "Public " + suffix + " JSON drop-in consumed from systemd userdb directories.",
+    $comment:
+      "Generated from the pinned systemd " +
+      kind +
+      " record dispatch table; specification: " +
+      definition.documentation,
+    type: "object",
+    properties: Object.fromEntries(
+      definition.fields
+        .filter(({ sensitive }) => sensitive !== true)
+        .map((field) => [field.name, userDbFieldSchema(field)]),
+    ),
+    required: definition.required,
+    not: {
+      anyOf: [{ required: ["privileged"] }, { required: ["secret"] }],
+    },
+    additionalProperties: true,
+  };
+}
+
+function userDbFieldSchema(field) {
+  const schema = {
+    type: field.types.length === 1 ? field.types[0] : field.types,
+    description: field.description,
+  };
+  if (field.choices !== undefined) schema.enum = field.choices;
+  if (field.minimum !== undefined) schema.minimum = field.minimum;
+  if (field.maximum !== undefined) schema.maximum = field.maximum;
+  if (field.itemTypes !== undefined) {
+    schema.items = {
+      type: field.itemTypes.length === 1 ? field.itemTypes[0] : field.itemTypes,
+      ...(field.itemChoices === undefined ? {} : { enum: field.itemChoices }),
+    };
+  }
+  return schema;
+}
+
+function membershipSchema() {
+  return {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "https://willibrandon.github.io/vscode-systemd/schemas/systemd-membership.schema.json",
+    title: "systemd User/Group Membership Marker",
+    description:
+      "A username:groupname.membership marker. systemd currently uses the filename and recommends an empty JSON object as its content.",
+    $comment: "Derived from nss-systemd(8) and src/shared/userdb.c at the pinned systemd revision.",
+    type: "object",
+    additionalProperties: true,
+  };
+}
+
 async function extractSystemd(source) {
   const semantics = new Map();
   for (const file of (await walk(resolve(source, "src"))).filter((name) =>
@@ -722,14 +972,16 @@ async function extractSystemd(source) {
         : /^systemd\.(?:network|netdev|link|dnssd|dns-delegate)\.xml$/u.test(manual)
           ? "systemd-network"
           : "systemd-config";
-    const documentKinds = systemdManualDocumentKinds(manual);
     const defaultSection = manualDefaultSection(manual);
     let section = defaultSection;
     const tokens =
       /<title>([\s\S]*?)<\/title>|<varlistentry(?:\s[^>]*)?>([\s\S]*?)<\/varlistentry>/gu;
     for (const match of text.matchAll(tokens)) {
       if (match[1] !== undefined) {
-        section = /^\s*\[([A-Za-z0-9_:.-]+)\]/u.exec(match[1])?.[1] ?? defaultSection;
+        section =
+          manual === "oomd.conf.xml" && match[1].trim() === "OOM Rulesets"
+            ? "Rule"
+            : (/^\s*\[([A-Za-z0-9_:.-]+)\]/u.exec(match[1])?.[1] ?? defaultSection);
         continue;
       }
       const block = match[2];
@@ -751,11 +1003,17 @@ async function extractSystemd(source) {
           dialect,
           section: resolvedSection,
           name,
-          documentKinds,
+          documentKinds: systemdManualDocumentKinds(manual, resolvedSection),
+          valueKind: systemdManualValueKind(manual, resolvedSection, name),
           assignmentMode: inherited?.assignmentMode,
           resetGroup: inherited?.resetGroup,
           since: /xpointer="v(\d+)"/u.exec(block)?.[1] ?? null,
-          choices: choiceMetadata.choices,
+          choices:
+            manual === "oomd.conf.xml" &&
+            resolvedSection === "Rule" &&
+            ["MemoryPressureAbove", "SwapUsageMax"].includes(name)
+              ? []
+              : choiceMetadata.choices,
           exclusiveChoices:
             choiceMetadata.exclusive && isClosedSystemdChoice(dialect, resolvedSection, name),
           documentation:
@@ -843,7 +1101,10 @@ function classifySystemdParserTable(file) {
   return { dialect: "systemd-config" };
 }
 
-function systemdManualDocumentKinds(manual) {
+function systemdManualDocumentKinds(manual, section) {
+  if (manual === "oomd.conf.xml" && section === "Rule") {
+    return ["systemd-config:oom-rule"];
+  }
   const kind =
     {
       "systemd.network.xml": "systemd-network:network",
@@ -855,9 +1116,17 @@ function systemdManualDocumentKinds(manual) {
   return kind === undefined ? undefined : [kind];
 }
 
+function systemdManualValueKind(manual, section, name) {
+  if (manual === "oomd.conf.xml" && section === "Rule" && name === "LastingSec") {
+    return "duration";
+  }
+  return undefined;
+}
+
 function isClosedSystemdChoice(dialect, section, name) {
   return (
     (dialect === "systemd-unit" && section === "Service" && name === "Type") ||
+    (dialect === "systemd-config" && section === "Rule" && name === "Action") ||
     (dialect === "systemd-network" && section === "Link" && name === "ActivationPolicy") ||
     (dialect === "systemd-network" &&
       section === "Network" &&

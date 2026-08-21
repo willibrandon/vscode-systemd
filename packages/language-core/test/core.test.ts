@@ -51,6 +51,8 @@ describe("dialect detection", () => {
       "systemd-udev-rules",
     ],
     ["file:///etc/systemd/pcrlock.d/app.pcrlock", "[]\n", "systemd-json"],
+    ["file:///etc/userdb/example.group", "{}\n", "systemd-json"],
+    ["file:///etc/systemd/oomd/rules.d/pressure.oomrule", "[Rule]\n", "systemd-config"],
   ] as const)("%s is %s", (uri, source, expected) => {
     expect(detectDialect(uri, source)).toBe(expected);
   });

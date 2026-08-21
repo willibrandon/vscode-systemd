@@ -2,7 +2,7 @@ export function configurationWorkspaceGlobs(suffixes: readonly string[]): readon
   const typedExtensions =
     "service,socket,timer,path,mount,automount,swap,target,device,slice,scope," +
     "network,netdev,link,dnssd,dns-delegate,nspawn,container,volume,pod,kube,image,build," +
-    "artifact,rules,hwdb,preset,pcrlock,rr,positive,negative";
+    "artifact,rules,hwdb,preset,pcrlock,rr,user,group,membership,oomrule,positive,negative";
   const dropInExtensions =
     "service,socket,timer,path,mount,automount,swap,target,device,slice,scope," +
     "network,netdev,link,dnssd,dns-delegate,nspawn,container,volume,pod,kube,image,build,artifact";

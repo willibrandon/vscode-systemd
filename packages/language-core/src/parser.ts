@@ -83,7 +83,11 @@ export function detectDialect(
   if (/\.(?:network|netdev|link|dnssd|dns-delegate)$/u.test(effective)) {
     return "systemd-network";
   }
-  if (effective.endsWith(".nspawn") || isSystemdIniName(effective, normalized)) {
+  if (
+    effective.endsWith(".nspawn") ||
+    effective.endsWith(".oomrule") ||
+    isSystemdIniName(effective, normalized)
+  ) {
     return "systemd-config";
   }
   if (normalized.includes("/tmpfiles.d/")) return "systemd-tmpfiles";
@@ -114,7 +118,7 @@ export function detectDialect(
     return "systemd-boot";
   }
   if (/\.(?:positive|negative)$/u.test(effective)) return "systemd-dns-trust-anchor";
-  if (/\.(?:pcrlock|rr)$/u.test(effective)) return "systemd-json";
+  if (/\.(?:pcrlock|rr|user|group|membership)$/u.test(effective)) return "systemd-json";
   return detectFromContent(source);
 }
 
@@ -853,6 +857,7 @@ function detectFromContent(source: string): DialectId | undefined {
   if (/^\s*\[(?:Match|Network|NetDev|Link|DHCPv4|DHCPv6|Route)\]\s*$/mu.test(source)) {
     return "systemd-network";
   }
+  if (/^\s*\[Rule\]\s*$/mu.test(source)) return "systemd-config";
   if (/^\s*\[(?:Container|Volume|Kube|Image|Build|Pod|Artifact|Quadlet)\]\s*$/mu.test(source)) {
     return "podman-quadlet";
   }

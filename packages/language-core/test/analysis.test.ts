@@ -48,6 +48,39 @@ describe("INI semantic analysis", () => {
     expect(extensionSection).not.toContain("unknown-setting");
   });
 
+  it("validates source-defined systemd-oomd rulesets", () => {
+    const uri = "file:///etc/systemd/oomd/rules.d/pressure.oomrule";
+    expect(
+      codes(
+        "[Rule]\nMemoryPressureAbove=55.53%\nLastingSec=30s\nAction=kill-by-pgscan\n",
+        "systemd-config",
+        uri,
+      ),
+    ).toEqual([]);
+    expect(codes("[Rule]\nAction=kill-all\n", "systemd-config", uri)).toContain(
+      "missing-oom-rule-condition",
+    );
+    expect(codes("[Rule]\nSwapUsageMax=500‰\n", "systemd-config", uri)).toContain(
+      "missing-required-setting",
+    );
+    expect(
+      codes(
+        "[Rule]\nMemoryPressureAbove=100%\nLastingSec=infinity\nAction=kill-all\n",
+        "systemd-config",
+        uri,
+      ),
+    ).toEqual(
+      expect.arrayContaining(["ineffective-oom-rule-threshold", "ineffective-oom-rule-duration"]),
+    );
+    expect(
+      codes("[Rule]\nMemoryPressureAbove=55.555%\nAction=kill-all\n", "systemd-config", uri),
+    ).toContain("invalid-value");
+    expect(
+      codes("[Rule]\nMemoryPressureAbove=60%\nAction=terminate\n", "systemd-config", uri),
+    ).toContain("invalid-value");
+    expect(codes("", "systemd-config", uri)).toContain("missing-required-section");
+  });
+
   it("accepts dynamic names, resets, templates, and supported target aliases", () => {
     for (const value of ["", "{{ enabled }}", "@ENABLED@", "{% if enabled %}yes{% endif %}"]) {
       expect(codes("[Coredump]\nCompress=" + value + "\n", "systemd-config")).not.toContain(
@@ -638,6 +671,61 @@ describe("record and JSON semantic analysis", () => {
       "invalid-pcrlock-root",
     );
     expect(codes("{", "systemd-json", "file:///app.pcrlock")).toEqual(["systemd-json-syntax"]);
+  });
+
+  it("validates public systemd userdb records from generated parser metadata", () => {
+    expect(
+      codes(
+        JSON.stringify({
+          userName: "example",
+          uid: 1000,
+          gid: 1000,
+          aliases: ["example-user"],
+          disposition: "regular",
+          storage: "directory",
+          perMachine: [{ matchHostname: ["workstation"] }],
+          futureField: true,
+        }),
+        "systemd-json",
+        "file:///etc/userdb/example.user",
+      ),
+    ).toEqual([]);
+    expect(
+      codes(
+        JSON.stringify({ groupName: "example", gid: 1000, members: ["example"] }),
+        "systemd-json",
+        "file:///etc/userdb/example.group",
+      ),
+    ).toEqual([]);
+
+    const invalidUser = codes(
+      JSON.stringify({
+        uid: 4_294_967_295,
+        aliases: ["valid", 1],
+        disposition: "person",
+        privileged: {},
+      }),
+      "systemd-json",
+      "file:///etc/userdb/example.user",
+    );
+    expect(invalidUser).toEqual(
+      expect.arrayContaining([
+        "userdb-field-required",
+        "invalid-userdb-field",
+        "userdb-sensitive-field",
+      ]),
+    );
+    expect(invalidUser.filter((code) => code === "invalid-userdb-field")).toHaveLength(3);
+    expect(codes("[]", "systemd-json", "file:///etc/userdb/example.group")).toEqual([
+      "invalid-userdb-root",
+    ]);
+  });
+
+  it("keeps userdb membership diagnostics conservative", () => {
+    const uri = "file:///etc/userdb/example:wheel.membership";
+    expect(codes("{}", "systemd-json", uri)).toEqual([]);
+    expect(codes('{"ignored":true}', "systemd-json", uri)).toEqual(["ignored-membership-content"]);
+    expect(codes("[]", "systemd-json", uri)).toEqual(["invalid-membership-root"]);
   });
 
   it("validates .pcrlock records using systemd parser constraints", () => {

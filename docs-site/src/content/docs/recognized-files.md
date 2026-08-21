@@ -13,11 +13,12 @@ actual configuration grammar.
 - Network configuration: `.network`, `.netdev`, `.link`, `.dnssd`, and `.dns-delegate`, including
   drop-ins.
 - Daemon configuration: recognized systemd `*.conf` names, their `*.conf.d` drop-ins, `.nspawn`,
-  repart, sysupdate, and portable-service profiles.
+  systemd-oomd `.oomrule` rulesets, repart, sysupdate, and portable-service profiles.
 - Line-oriented formats: `tmpfiles.d`, `sysusers.d`, `sysctl.d`, `modules-load.d`, `binfmt.d`,
   presets, udev rules, hwdb, environment files, boot configuration, and fstab-family tables.
-- Specialized data: DNSSEC trust anchors, plus schema-backed PCR lock files and DNS resource-record
-  JSON with source-aligned semantic diagnostics.
+- Specialized data: DNSSEC trust anchors, plus schema-backed PCR lock files, DNS resource records,
+  and public userdb `.user`, `.group`, and `.membership` JSON with source-aligned semantic
+  diagnostics. Secret-bearing `.user-privileged` and `.group-privileged` companions are excluded.
 
 ## Podman Quadlet and mkosi
 

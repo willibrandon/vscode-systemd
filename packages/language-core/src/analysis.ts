@@ -298,6 +298,102 @@ function validateRequiredStructure(document: ParsedDocument, diagnostics: CoreDi
   if (document.dialect === "podman-quadlet" && required !== undefined) {
     validateRequiredQuadletSettings(document, required, diagnostics);
   }
+  if (document.kind === "systemd-config:oom-rule") {
+    validateOomRule(document, diagnostics);
+  }
+}
+
+function validateOomRule(document: ParsedDocument, diagnostics: CoreDiagnostic[]): void {
+  const section = document.nodes.find((node) => node.kind === "section" && node.name === "Rule");
+  const span = section?.span ?? { start: 0, end: Math.min(document.source.length, 1) };
+  if (section === undefined) {
+    diagnostics.push({
+      code: "missing-required-section",
+      message: "This file requires a [Rule] section.",
+      severity: "error",
+      span,
+    });
+    return;
+  }
+
+  const assignments = document.nodes.filter(
+    (node): node is AssignmentNode =>
+      node.kind === "assignment" && node.section === "Rule" && node.value !== "",
+  );
+  const setting = (name: string): AssignmentNode | undefined =>
+    assignments.find((node) => node.name === name);
+  if (setting("MemoryPressureAbove") === undefined && setting("SwapUsageMax") === undefined) {
+    diagnostics.push({
+      code: "missing-oom-rule-condition",
+      message: "[Rule] requires MemoryPressureAbove= or SwapUsageMax=.",
+      severity: "error",
+      span,
+    });
+  }
+  if (setting("Action") === undefined) {
+    diagnostics.push({
+      code: "missing-required-setting",
+      message: "[Rule] requires Action=.",
+      severity: "error",
+      span,
+    });
+  }
+
+  for (const name of ["MemoryPressureAbove", "SwapUsageMax"]) {
+    const node = setting(name);
+    if (node === undefined) continue;
+    const permyriad = parsePermyriad(node.value);
+    if (permyriad === undefined) {
+      diagnostics.push({
+        code: "invalid-value",
+        message: name + "= expects 0–100% (or the equivalent permille or permyriad value).",
+        severity: "error",
+        span: node.valueSpan,
+        documentation:
+          "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#OOM%20Rulesets",
+      });
+    } else if (permyriad === 10_000) {
+      diagnostics.push({
+        code: "ineffective-oom-rule-threshold",
+        message: name + "= at 100% can never be exceeded, so systemd-oomd ignores the ruleset.",
+        severity: "warning",
+        span: node.valueSpan,
+        documentation:
+          "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#OOM%20Rulesets",
+      });
+    }
+  }
+
+  const lasting = setting("LastingSec");
+  if (lasting?.value.toLowerCase() === "infinity") {
+    diagnostics.push({
+      code: "ineffective-oom-rule-duration",
+      message: "LastingSec=infinity can never be satisfied, so systemd-oomd ignores the ruleset.",
+      severity: "warning",
+      span: lasting.valueSpan,
+      documentation:
+        "https://www.freedesktop.org/software/systemd/man/latest/oomd.conf.html#OOM%20Rulesets",
+    });
+  }
+}
+
+function parsePermyriad(value: string): number | undefined {
+  const percent = /^(\d+(?:\.\d{1,2})?)%$/u.exec(value)?.[1];
+  if (percent !== undefined) {
+    const parsed = Number(percent) * 100;
+    return parsed <= 10_000 ? parsed : undefined;
+  }
+  const permille = /^(\d+(?:\.\d)?)‰$/u.exec(value)?.[1];
+  if (permille !== undefined) {
+    const parsed = Number(permille) * 10;
+    return parsed <= 10_000 ? parsed : undefined;
+  }
+  const permyriad = /^(\d+)‱$/u.exec(value)?.[1];
+  if (permyriad !== undefined) {
+    const parsed = Number(permyriad);
+    return parsed <= 10_000 ? parsed : undefined;
+  }
+  return undefined;
 }
 
 function validateRequiredQuadletSettings(

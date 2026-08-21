@@ -93,6 +93,7 @@ const configManualsByKind: Readonly<Partial<Record<DocumentKind, readonly string
   "systemd-config:networkd": ["networkd.conf"],
   "systemd-config:coredump": ["coredump.conf"],
   "systemd-config:oomd": ["oomd.conf"],
+  "systemd-config:oom-rule": ["oomd.conf"],
   "systemd-config:homed": ["homed.conf"],
   "systemd-config:pstore": ["pstore.conf"],
   "systemd-config:sleep": ["systemd-sleep.conf"],

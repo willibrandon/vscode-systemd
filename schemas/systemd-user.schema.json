@@ -1,0 +1,421 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://willibrandon.github.io/vscode-systemd/schemas/systemd-user.schema.json",
+  "title": "systemd JSON User Record",
+  "description": "Public .user JSON drop-in consumed from systemd userdb directories.",
+  "$comment": "Generated from the pinned systemd user record dispatch table; specification: https://systemd.io/USER_RECORD/",
+  "type": "object",
+  "properties": {
+    "userName": { "type": "string", "description": "UNIX user name for this public user record." },
+    "aliases": {
+      "type": "array",
+      "description": "Source-defined JSON user record field aliases.",
+      "items": { "type": "string" }
+    },
+    "realm": { "type": "string", "description": "Source-defined JSON user record field realm." },
+    "uuid": { "type": "string", "description": "Source-defined JSON user record field uuid." },
+    "blobDirectory": {
+      "type": "string",
+      "description": "Source-defined JSON user record field blobDirectory."
+    },
+    "blobManifest": {
+      "type": "object",
+      "description": "Source-defined JSON user record field blobManifest."
+    },
+    "realName": {
+      "type": "string",
+      "description": "Source-defined JSON user record field realName."
+    },
+    "emailAddress": {
+      "type": "string",
+      "description": "Source-defined JSON user record field emailAddress."
+    },
+    "iconName": {
+      "type": "string",
+      "description": "Source-defined JSON user record field iconName."
+    },
+    "location": {
+      "type": "string",
+      "description": "Source-defined JSON user record field location."
+    },
+    "birthDate": {
+      "type": "string",
+      "description": "Source-defined JSON user record field birthDate."
+    },
+    "disposition": {
+      "type": "string",
+      "description": "Source-defined account disposition.",
+      "enum": ["intrinsic", "system", "dynamic", "regular", "container", "foreign", "reserved"]
+    },
+    "lastChangeUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field lastChangeUSec."
+    },
+    "lastPasswordChangeUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field lastPasswordChangeUSec."
+    },
+    "shell": { "type": "string", "description": "Source-defined JSON user record field shell." },
+    "umask": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field umask.",
+      "minimum": 0,
+      "maximum": 511
+    },
+    "environment": {
+      "type": "array",
+      "description": "Source-defined JSON user record field environment.",
+      "items": { "type": "string" }
+    },
+    "timeZone": {
+      "type": "string",
+      "description": "Source-defined JSON user record field timeZone."
+    },
+    "preferredLanguage": {
+      "type": "string",
+      "description": "Source-defined JSON user record field preferredLanguage."
+    },
+    "additionalLanguages": {
+      "type": "array",
+      "description": "Source-defined JSON user record field additionalLanguages.",
+      "items": { "type": "string" }
+    },
+    "niceLevel": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field niceLevel.",
+      "minimum": -20,
+      "maximum": 19
+    },
+    "resourceLimits": {
+      "type": "object",
+      "description": "Source-defined JSON user record field resourceLimits."
+    },
+    "locked": { "type": "boolean", "description": "Source-defined JSON user record field locked." },
+    "notBeforeUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field notBeforeUSec."
+    },
+    "notAfterUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field notAfterUSec."
+    },
+    "storage": {
+      "type": "string",
+      "description": "Storage mechanism for the user's home directory.",
+      "enum": ["classic", "luks", "directory", "subvolume", "fscrypt", "cifs"]
+    },
+    "diskSize": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field diskSize."
+    },
+    "diskSizeRelative": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field diskSizeRelative."
+    },
+    "skeletonDirectory": {
+      "type": "string",
+      "description": "Source-defined JSON user record field skeletonDirectory."
+    },
+    "accessMode": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field accessMode.",
+      "minimum": 0,
+      "maximum": 511
+    },
+    "tasksMax": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field tasksMax."
+    },
+    "memoryHigh": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field memoryHigh."
+    },
+    "memoryMax": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field memoryMax."
+    },
+    "cpuWeight": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field cpuWeight.",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "ioWeight": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field ioWeight.",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "mountNoDevices": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field mountNoDevices."
+    },
+    "mountNoSuid": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field mountNoSuid."
+    },
+    "mountNoExecute": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field mountNoExecute."
+    },
+    "cifsDomain": {
+      "type": "string",
+      "description": "Source-defined JSON user record field cifsDomain."
+    },
+    "cifsUserName": {
+      "type": "string",
+      "description": "Source-defined JSON user record field cifsUserName."
+    },
+    "cifsService": {
+      "type": "string",
+      "description": "Source-defined JSON user record field cifsService."
+    },
+    "cifsExtraMountOptions": {
+      "type": "string",
+      "description": "Source-defined JSON user record field cifsExtraMountOptions."
+    },
+    "imagePath": {
+      "type": "string",
+      "description": "Source-defined JSON user record field imagePath."
+    },
+    "homeDirectory": {
+      "type": "string",
+      "description": "Source-defined JSON user record field homeDirectory."
+    },
+    "uid": {
+      "type": "integer",
+      "description": "Numeric UNIX user ID.",
+      "minimum": 0,
+      "maximum": 4294967294
+    },
+    "gid": {
+      "type": "integer",
+      "description": "Numeric primary UNIX group ID.",
+      "minimum": 0,
+      "maximum": 4294967294
+    },
+    "memberOf": {
+      "type": "array",
+      "description": "UNIX groups that include this user.",
+      "items": { "type": "string" }
+    },
+    "capabilityBoundingSet": {
+      "type": "array",
+      "description": "Source-defined JSON user record field capabilityBoundingSet.",
+      "items": { "type": "string" }
+    },
+    "capabilityAmbientSet": {
+      "type": "array",
+      "description": "Source-defined JSON user record field capabilityAmbientSet.",
+      "items": { "type": "string" }
+    },
+    "fileSystemType": {
+      "type": "string",
+      "description": "Source-defined JSON user record field fileSystemType."
+    },
+    "partitionUuid": {
+      "type": "string",
+      "description": "Source-defined JSON user record field partitionUuid."
+    },
+    "luksUuid": {
+      "type": "string",
+      "description": "Source-defined JSON user record field luksUuid."
+    },
+    "fileSystemUuid": {
+      "type": "string",
+      "description": "Source-defined JSON user record field fileSystemUuid."
+    },
+    "luksDiscard": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field luksDiscard."
+    },
+    "luksOfflineDiscard": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field luksOfflineDiscard."
+    },
+    "luksCipher": {
+      "type": "string",
+      "description": "Source-defined JSON user record field luksCipher."
+    },
+    "luksCipherMode": {
+      "type": "string",
+      "description": "Source-defined JSON user record field luksCipherMode."
+    },
+    "luksVolumeKeySize": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field luksVolumeKeySize."
+    },
+    "luksPbkdfHashAlgorithm": {
+      "type": "string",
+      "description": "Source-defined JSON user record field luksPbkdfHashAlgorithm."
+    },
+    "luksPbkdfType": {
+      "type": "string",
+      "description": "Source-defined JSON user record field luksPbkdfType."
+    },
+    "luksPbkdfForceIterations": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field luksPbkdfForceIterations."
+    },
+    "luksPbkdfTimeCostUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field luksPbkdfTimeCostUSec."
+    },
+    "luksPbkdfMemoryCost": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field luksPbkdfMemoryCost."
+    },
+    "luksPbkdfParallelThreads": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field luksPbkdfParallelThreads."
+    },
+    "luksSectorSize": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field luksSectorSize."
+    },
+    "luksExtraMountOptions": {
+      "type": "string",
+      "description": "Source-defined JSON user record field luksExtraMountOptions."
+    },
+    "dropCaches": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field dropCaches."
+    },
+    "autoResizeMode": {
+      "type": "string",
+      "description": "Source-defined JSON user record field autoResizeMode.",
+      "enum": ["off", "grow", "shrink-and-grow"]
+    },
+    "rebalanceWeight": {
+      "type": ["integer", "boolean", "null"],
+      "description": "Source-defined JSON user record field rebalanceWeight."
+    },
+    "service": {
+      "type": "string",
+      "description": "Source-defined JSON user record field service."
+    },
+    "rateLimitIntervalUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field rateLimitIntervalUSec."
+    },
+    "rateLimitBurst": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field rateLimitBurst."
+    },
+    "enforcePasswordPolicy": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field enforcePasswordPolicy."
+    },
+    "autoLogin": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field autoLogin."
+    },
+    "preferredSessionType": {
+      "type": "string",
+      "description": "Source-defined JSON user record field preferredSessionType."
+    },
+    "preferredSessionLauncher": {
+      "type": "string",
+      "description": "Source-defined JSON user record field preferredSessionLauncher."
+    },
+    "stopDelayUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field stopDelayUSec."
+    },
+    "killProcesses": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field killProcesses."
+    },
+    "passwordChangeMinUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field passwordChangeMinUSec."
+    },
+    "passwordChangeMaxUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field passwordChangeMaxUSec."
+    },
+    "passwordChangeWarnUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field passwordChangeWarnUSec."
+    },
+    "passwordChangeInactiveUSec": {
+      "type": "integer",
+      "description": "Source-defined JSON user record field passwordChangeInactiveUSec."
+    },
+    "passwordChangeNow": {
+      "type": "boolean",
+      "description": "Source-defined JSON user record field passwordChangeNow."
+    },
+    "pkcs11TokenUri": {
+      "type": "array",
+      "description": "Source-defined JSON user record field pkcs11TokenUri.",
+      "items": { "type": "string" }
+    },
+    "fido2HmacCredential": {
+      "type": "array",
+      "description": "Source-defined JSON user record field fido2HmacCredential.",
+      "items": { "type": "string" }
+    },
+    "recoveryKeyType": {
+      "type": "array",
+      "description": "Source-defined JSON user record field recoveryKeyType.",
+      "items": { "type": "string", "enum": ["modhex64"] }
+    },
+    "selfModifiableFields": {
+      "type": "array",
+      "description": "Source-defined JSON user record field selfModifiableFields.",
+      "items": { "type": "string" }
+    },
+    "selfModifiableBlobs": {
+      "type": "array",
+      "description": "Source-defined JSON user record field selfModifiableBlobs.",
+      "items": { "type": "string" }
+    },
+    "selfModifiablePrivileged": {
+      "type": "array",
+      "description": "Source-defined JSON user record field selfModifiablePrivileged.",
+      "items": { "type": "string" }
+    },
+    "tmpLimit": {
+      "type": ["integer", "boolean", "null"],
+      "description": "Source-defined JSON user record field tmpLimit."
+    },
+    "tmpLimitScale": {
+      "type": ["integer", "boolean", "null"],
+      "description": "Source-defined JSON user record field tmpLimitScale."
+    },
+    "devShmLimit": {
+      "type": ["integer", "boolean", "null"],
+      "description": "Source-defined JSON user record field devShmLimit."
+    },
+    "devShmLimitScale": {
+      "type": ["integer", "boolean", "null"],
+      "description": "Source-defined JSON user record field devShmLimitScale."
+    },
+    "defaultArea": {
+      "type": "string",
+      "description": "Source-defined JSON user record field defaultArea."
+    },
+    "perMachine": {
+      "type": "array",
+      "description": "Machine-matched overrides for this record.",
+      "items": { "type": "object" }
+    },
+    "binding": {
+      "type": "object",
+      "description": "Machine-specific binding data for this record."
+    },
+    "status": {
+      "type": "object",
+      "description": "Machine-specific runtime status data for this record."
+    },
+    "signature": {
+      "type": "array",
+      "description": "Cryptographic signatures covering the signable record fields.",
+      "items": { "type": "object" }
+    }
+  },
+  "required": ["userName"],
+  "not": { "anyOf": [{ "required": ["privileged"] }, { "required": ["secret"] }] },
+  "additionalProperties": true
+}

@@ -48,6 +48,7 @@ export type SystemdConfigFamily =
   | "networkd"
   | "coredump"
   | "oomd"
+  | "oom-rule"
   | "homed"
   | "pstore"
   | "sleep"
@@ -97,7 +98,7 @@ export type DocumentKind =
   | `systemd-table:${"fstab" | "crypttab" | "veritytab" | "integritytab" | "clonetab"}`
   | `systemd-boot:${"loader" | "entry" | "kernel-command-line" | "entry-token" | "kernel-install"}`
   | `systemd-dns-trust-anchor:${"positive" | "negative"}`
-  | `systemd-json:${"pcrlock" | "rr"}`
+  | `systemd-json:${"pcrlock" | "rr" | "user" | "group" | "membership"}`
   | `podman-quadlet:${QuadletDocumentType}`
   | `mkosi:${MkosiDocumentType}`
   | `${DialectId}:unknown`;

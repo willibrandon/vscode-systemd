@@ -3,6 +3,33 @@ export type { AnalysisOptions } from "./analysis.js";
 export { classifyDocument } from "./document-kind.js";
 export { applyTextEdits, format } from "./formatter.js";
 export { detectDialect, parse } from "./parser.js";
+export {
+  systemdJsonFieldContext,
+  systemdJsonFieldsFor,
+  systemdJsonFoldingSpans,
+  systemdJsonOutline,
+  systemdJsonPropertyContext,
+  systemdJsonSelectionSpans,
+  systemdJsonSemanticSpans,
+  systemdJsonValueContext,
+} from "./json-intelligence.js";
+export type {
+  SystemdJsonFieldContext,
+  SystemdJsonFieldDefinition,
+  SystemdJsonNodeType,
+  SystemdJsonOutlineNode,
+  SystemdJsonPropertyContext,
+  SystemdJsonSemanticSpan,
+  SystemdJsonValueContext,
+} from "./json-intelligence.js";
+export { parseUserDbMetadata, userDbDefinition, userDbFieldFor, userDbMetadata } from "./userdb.js";
+export type {
+  JsonValueType,
+  RawUserDbFile,
+  UserDbFieldDefinition,
+  UserDbRecordDefinition,
+  UserDbRecordKind,
+} from "./userdb.js";
 export { lineSettingsFor, recordFormatFor } from "./line-formats.js";
 export { udevRuleKeys } from "./line-formats.js";
 export {

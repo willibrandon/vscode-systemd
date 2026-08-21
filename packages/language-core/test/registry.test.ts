@@ -10,6 +10,7 @@ import {
   registryDialect,
   sectionsFor,
   registryMetadata,
+  userDbMetadata,
 } from "../src/index.js";
 
 describe("registry queries", () => {
@@ -98,6 +99,10 @@ describe("registry queries", () => {
       "SR-IOV",
     ]);
     expect(sectionsFor("mkosi", "mkosi:uki-profile")).toEqual(["UKIProfile"]);
+    expect(sectionsFor("systemd-config", "systemd-config:oom-rule")).toEqual(["Rule"]);
+    expect(
+      definitionFor("systemd-config", "Rule", "MemoryPressureAbove", "systemd-config:oom-rule"),
+    ).toMatchObject({ since: "261", documentKinds: ["systemd-config:oom-rule"] });
 
     expect(
       definitionFor("systemd-network", "Route", "Gateway", "systemd-network:link"),
@@ -137,6 +142,32 @@ describe("registry queries", () => {
         ({ name }) => name === "ExecStart",
       ),
     ).toBe(false);
+  });
+
+  it("exposes complete stable userdb dispatch metadata", () => {
+    expect(userDbMetadata.upstream).toMatch(/^[0-9a-f]{40}$/u);
+    expect(userDbMetadata.user.required).toEqual(["userName"]);
+    expect(userDbMetadata.user.fields.length).toBeGreaterThan(90);
+    expect(userDbMetadata.user.fields.find(({ name }) => name === "uid")).toMatchObject({
+      types: ["integer"],
+      minimum: 0,
+      maximum: 4_294_967_294,
+    });
+    expect(userDbMetadata.user.fields.find(({ name }) => name === "secret")?.sensitive).toBe(true);
+    expect(userDbMetadata.group.required).toEqual(["groupName"]);
+    expect(userDbMetadata.group.fields.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(["gid", "members", "administrators", "perMachine"]),
+    );
+  });
+
+  it("keeps OOM rule actions closed without suggesting bare threshold unit symbols", () => {
+    expect(definitionFor("systemd-config", "Rule", "Action")).toMatchObject({
+      choices: ["kill-all", "kill-by-pgscan", "kill-by-swap"],
+      exclusiveChoices: true,
+      documentKinds: ["systemd-config:oom-rule"],
+    });
+    expect(definitionFor("systemd-config", "Rule", "MemoryPressureAbove")?.choices).toEqual([]);
+    expect(definitionFor("systemd-config", "Rule", "SwapUsageMax")?.choices).toEqual([]);
   });
 
   it("preserves predecessor issue regressions in generated stable metadata", () => {
