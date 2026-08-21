@@ -1,10 +1,11 @@
 import { PassThrough } from "node:stream";
 import {
+  CancellationTokenSource,
   createMessageConnection,
   StreamMessageReader,
   StreamMessageWriter,
 } from "vscode-jsonrpc/node";
-import type { MessageConnection } from "vscode-jsonrpc/node";
+import type { CancellationToken, MessageConnection } from "vscode-jsonrpc/node";
 import { createConnection } from "vscode-languageserver/node";
 import { CompletionItemKind } from "vscode-languageserver";
 import type {
@@ -57,6 +58,12 @@ describe("language server JSON-RPC contract", () => {
     readonly { readonly name: string; readonly type: "file" | "directory" | "other" }[]
   >;
   let directoryRequests: string[];
+  let directoryResponder: (
+    uri: string,
+    token: CancellationToken,
+  ) =>
+    | readonly { readonly name: string; readonly type: "file" | "directory" | "other" }[]
+    | Promise<readonly { readonly name: string; readonly type: "file" | "directory" | "other" }[]>;
 
   beforeEach(async () => {
     clientInput = new PassThrough();
@@ -80,9 +87,10 @@ describe("language server JSON-RPC contract", () => {
     client.listen();
     workspaceDirectories = new Map();
     directoryRequests = [];
-    client.onRequest(readDirectoryRequest, ({ uri: requestedUri }) => {
+    directoryResponder = (requestedUri) => workspaceDirectories.get(requestedUri) ?? [];
+    client.onRequest(readDirectoryRequest, ({ uri: requestedUri }, token) => {
       directoryRequests.push(requestedUri);
-      return workspaceDirectories.get(requestedUri) ?? [];
+      return directoryResponder(requestedUri, token);
     });
     const initialization = await client.sendRequest<InitializeResult>("initialize", {
       processId: null,
@@ -942,6 +950,49 @@ describe("language server JSON-RPC contract", () => {
       CompletionItemKind.File,
       CompletionItemKind.File,
     ]);
+    await client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: quadletUri },
+    });
+  });
+
+  it("cancels an in-flight workspace filesystem completion request", async () => {
+    const quadletUri = "file:///workspace/cancelled.build";
+    let releaseRequest: (() => void) | undefined;
+    const requestStarted = new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
+    let observedCancellation = false;
+    directoryResponder = (_requestedUri, token) =>
+      new Promise((resolve) => {
+        releaseRequest?.();
+        token.onCancellationRequested(() => {
+          observedCancellation = true;
+          resolve([]);
+        });
+      });
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: quadletUri,
+        languageId: "podman-quadlet",
+        version: 1,
+        text: "[Build]\nImageTag=demo\nFile=config/\n",
+      },
+    });
+    const cancellation = new CancellationTokenSource();
+    const completion = client.sendRequest<CompletionItem[]>(
+      "textDocument/completion",
+      {
+        textDocument: { uri: quadletUri },
+        position: { line: 2, character: "File=config/".length },
+      },
+      cancellation.token,
+    );
+
+    await requestStarted;
+    cancellation.cancel();
+
+    await expect(completion).resolves.toEqual([]);
+    expect(observedCancellation).toBe(true);
     await client.sendNotification("textDocument/didClose", {
       textDocument: { uri: quadletUri },
     });

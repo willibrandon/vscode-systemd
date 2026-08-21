@@ -35,7 +35,8 @@ into the desktop and browser extension.
 - Go to definition, references, highlights, and safe textual rename for unit and resource
   references.
 - Workspace indexing, a static Systemd Explorer, read-only effective-configuration documents, and
-  dependency graphs.
+  dependency graphs. Indexing and cross-workspace LSP scans are cancellable, including nested
+  filesystem requests used by path completion.
 - Exact unit/template/drop-in precedence and systemd-aware scalar, list, command, and reset merging,
   plus ordering-cycle diagnostics with related locations, specifier inlay hints, and CodeLens entry
   points.

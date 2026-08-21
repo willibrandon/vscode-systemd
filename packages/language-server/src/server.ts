@@ -88,6 +88,7 @@ import type {
   SymbolInformation,
   TextEdit,
   WorkspaceEdit,
+  CancellationToken,
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
@@ -340,7 +341,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   connection.onNotification(dataChannelNotification, ({ channel }): void => {
     selectDataChannel(channel);
   });
-  connection.onCompletion(async (params): Promise<CompletionItem[]> => {
+  connection.onCompletion(async (params, token): Promise<CompletionItem[]> => {
+    if (requestCancelled(token)) return [];
     const document = documents.get(params.textDocument.uri);
     const tree = document === undefined ? undefined : parsed(document);
     if (document === undefined || tree === undefined) return [];
@@ -361,9 +363,10 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     const assignment = assignmentAt(tree, offset);
     if (assignment !== undefined && offset >= assignment.valueSpan.start) {
-      return valueCompletions(connection, tree, assignment, allParsed(), offset);
+      return valueCompletions(connection, tree, assignment, allParsed(), offset, token);
     }
     const settings = await settingsFor(document.uri);
+    if (requestCancelled(token)) return [];
     return definitionsFor(tree.dialect, sectionAt(tree, offset), tree.kind)
       .filter((definition) =>
         isDefinitionAvailable(definition, targetVersionForDefinition(definition, settings)),
@@ -456,13 +459,15 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const tree = document === undefined ? undefined : parsed(document);
     return document === undefined || tree === undefined ? [] : documentSymbols(document, tree);
   });
-  connection.onWorkspaceSymbol((params): SymbolInformation[] => {
+  connection.onWorkspaceSymbol((params, token): SymbolInformation[] => {
     const query = params.query.toLowerCase();
     const result: SymbolInformation[] = [];
     for (const tree of allParsed()) {
+      if (requestCancelled(token)) return result;
       const document =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
       for (const node of tree.nodes) {
+        if (requestCancelled(token)) return result;
         const name =
           node.kind === "section"
             ? "[" + node.name + "]"
@@ -543,7 +548,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       ? []
       : documentLocations(target, allParsed(), documents, reference, context.tree);
   });
-  connection.onReferences((params): Location[] => {
+  connection.onReferences((params, token): Location[] => {
+    if (requestCancelled(token)) return [];
     const document = documents.get(params.textDocument.uri);
     const tree = document === undefined ? undefined : parsed(document);
     if (document === undefined || tree === undefined) return [];
@@ -557,9 +563,11 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
         : undefined;
     const result: Location[] = [];
     for (const tree of allParsed()) {
+      if (requestCancelled(token)) return result;
       const source =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
       for (const reference of extractReferences(tree)) {
+        if (requestCancelled(token)) return result;
         const exactIdentity =
           selectedReference?.kind === "unit" || selectedReference?.kind === "quadlet";
         const sameMkosiReference =
@@ -729,7 +737,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const reference = renameReferenceAt(context.tree, offset);
     return reference === undefined ? null : toRange(context.document, reference.span);
   });
-  connection.onRenameRequest((params): WorkspaceEdit => {
+  connection.onRenameRequest((params, token): WorkspaceEdit => {
     const document = documents.get(params.textDocument.uri);
     const tree = document === undefined ? undefined : parsed(document);
     const reference =
@@ -750,6 +758,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       ? mkosiReferenceKey(tree, reference)
       : undefined;
     for (const tree of allParsed()) {
+      if (requestCancelled(token)) return { changes };
       if (!workspaceOwns(tree.uri)) continue;
       const source =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
@@ -774,7 +783,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     detectDialectRequest,
     ({ uri, source }): DialectId | null => detectDialect(uri, source) ?? null,
   );
-  connection.onRequest(effectiveConfigurationRequest, ({ uri }): string => {
+  connection.onRequest(effectiveConfigurationRequest, ({ uri }, token): string => {
+    if (requestCancelled(token)) return "";
     const available = allParsed();
     const selected = available.find((document) => document.uri === uri);
     if (selected?.dialect === "mkosi") {
@@ -786,7 +796,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       ? "# Unit is masked by " + (resolution.baseUri ?? "an empty unit file") + "\n" + rendered
       : rendered;
   });
-  connection.onRequest(dependencyGraphRequest, ({ uri }) => {
+  connection.onRequest(dependencyGraphRequest, ({ uri }, token) => {
+    if (requestCancelled(token)) return { nodes: [], edges: [] };
     const available = allParsed();
     const selected =
       uri === undefined ? available : resolveConfigurationDocuments(uri, available).documents;
@@ -796,19 +807,22 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       edges: graph.edges.map(({ source, target, kind }) => ({ source, target, kind })),
     };
   });
-  connection.onRequest(workspaceSnapshotRequest, (): WorkspaceSnapshot => {
+  connection.onRequest(workspaceSnapshotRequest, (_, token): WorkspaceSnapshot => {
     const available = allParsed();
     const unitResolutions = new Map(
       resolveUnitConfigurations(available).map((resolution) => [resolution.identity, resolution]),
     );
-    const documents = available.map((tree) => ({
-      uri: tree.uri,
-      languageId: tree.dialect,
-      identity: configurationIdentity(tree.uri),
-      references: extractReferences(tree).map(({ target, kind }) => ({ target, kind })),
-    }));
+    const documents = available
+      .filter(() => !requestCancelled(token))
+      .map((tree) => ({
+        uri: tree.uri,
+        languageId: tree.dialect,
+        identity: configurationIdentity(tree.uri),
+        references: extractReferences(tree).map(({ target, kind }) => ({ target, kind })),
+      }));
     const groups = new Map<string, ParsedDocument[]>();
     for (const tree of available) {
+      if (requestCancelled(token)) break;
       const identity = configurationIdentity(tree.uri);
       if (tree.dialect === "systemd-unit" && !isUnitIdentity(identity)) continue;
       const key = tree.dialect + "\0" + identity;
@@ -816,6 +830,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     }
     const configurations: WorkspaceSnapshotConfiguration[] = [];
     for (const group of groups.values()) {
+      if (requestCancelled(token)) break;
       const first = group[0];
       if (first === undefined) continue;
       const identity = configurationIdentity(first.uri);
@@ -1535,7 +1550,9 @@ async function valueCompletions(
   assignment: AssignmentNode,
   documents: readonly ParsedDocument[],
   offset: number,
+  token: CancellationToken,
 ): Promise<CompletionItem[]> {
+  if (requestCancelled(token)) return [];
   const definition = assignment.definition;
   if (definition === undefined) return [];
   const valuePrefix = tree.source.slice(assignment.valueSpan.start, offset);
@@ -1553,7 +1570,8 @@ async function valueCompletions(
     }));
   }
   if (definition.valueKind === "path") {
-    const paths = await pathCompletions(connection, tree, valuePrefix);
+    const paths = await pathCompletions(connection, tree, valuePrefix, token);
+    if (requestCancelled(token)) return [];
     if (paths.length > 0) return paths;
   }
   const values =
@@ -1580,12 +1598,14 @@ async function pathCompletions(
   connection: Connection,
   tree: ParsedDocument,
   valuePrefix: string,
+  token: CancellationToken,
 ): Promise<CompletionItem[]> {
-  const token = pathToken(valuePrefix);
-  if (token === undefined || /[%$\0{}]/u.test(token)) return [];
-  const slash = token.lastIndexOf("/");
-  const directoryPart = slash < 0 ? "" : token.slice(0, slash + 1);
-  const namePrefix = slash < 0 ? token : token.slice(slash + 1);
+  if (requestCancelled(token)) return [];
+  const path = pathToken(valuePrefix);
+  if (path === undefined || /[%$\0{}]/u.test(path)) return [];
+  const slash = path.lastIndexOf("/");
+  const directoryPart = slash < 0 ? "" : path.slice(0, slash + 1);
+  const namePrefix = slash < 0 ? path : path.slice(slash + 1);
   const source = URI.parse(tree.uri);
   if (source.path === "" || !source.path.includes("/")) return [];
   const sourceDirectory = source.path.slice(0, source.path.lastIndexOf("/") + 1);
@@ -1593,9 +1613,14 @@ async function pathCompletions(
     directoryPart.startsWith("/") ? directoryPart : sourceDirectory + directoryPart,
   );
   try {
-    const entries = await connection.sendRequest(readDirectoryRequest, {
-      uri: source.with({ path: directoryPath, query: "", fragment: "" }).toString(),
-    });
+    const entries = await connection.sendRequest(
+      readDirectoryRequest,
+      {
+        uri: source.with({ path: directoryPath, query: "", fragment: "" }).toString(),
+      },
+      token,
+    );
+    if (requestCancelled(token)) return [];
     return entries
       .filter(({ name }) => name.startsWith(namePrefix))
       .sort((left, right) => {
@@ -1639,6 +1664,10 @@ function normalizeUriPath(path: string): string {
     else parts.push(part);
   }
   return (absolute ? "/" : "") + parts.join("/");
+}
+
+function requestCancelled(token: CancellationToken): boolean {
+  return token.isCancellationRequested;
 }
 
 function commonValueCompletions(valueKind: DirectiveDefinition["valueKind"]): readonly string[] {

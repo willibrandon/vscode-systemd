@@ -134,5 +134,8 @@ All notable changes to this project will be documented here. The format follows
 - mkosi v16–v23 default assignments using `@Setting=` now parse, highlight, and merge correctly;
   historical section permissiveness, current wrong-section warnings, removed settings, and the
   complete upstream boolean spelling set are version-aware.
+- LSP cancellation now propagates through nested workspace-filesystem completion requests, and
+  bounded cross-workspace symbol, reference, rename, graph, effective-configuration, and explorer
+  snapshot scans stop returning stale work after cancellation.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

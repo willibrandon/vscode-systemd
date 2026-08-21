@@ -45,4 +45,5 @@ about current runtime state.
 
 Workspace watchers refresh indexed results as recognized files change. Use **systemd: Refresh
 Configuration Index** after changing files outside Visual Studio Code or modifying an external
-configuration root.
+configuration root. Indexing and cross-workspace language-server scans are bounded and cancellable,
+including workspace filesystem requests made on behalf of path completion.
