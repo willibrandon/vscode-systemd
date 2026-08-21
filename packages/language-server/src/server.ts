@@ -1858,6 +1858,10 @@ function directiveMarkdown(definition: DirectiveDefinition): string {
     definition.since === null
       ? ""
       : "\n\nAvailable since " + ecosystem + " " + definition.since + ".";
+  const removal =
+    definition.until === undefined
+      ? ""
+      : "\n\nRemoved in " + ecosystem + " " + definition.until + ".";
   const choices =
     definition.choices.length === 0 ? "" : "\n\nValues: `" + definition.choices.join("`, `") + "`.";
   const deprecated = definition.deprecated ? "\n\n**Deprecated.**" : "";
@@ -1870,6 +1874,7 @@ function directiveMarkdown(definition: DirectiveDefinition): string {
     definition.summary +
     choices +
     availability +
+    removal +
     deprecated +
     "\n\n[Official documentation](" +
     definition.documentation +

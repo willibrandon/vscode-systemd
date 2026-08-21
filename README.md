@@ -137,7 +137,10 @@ configurations. This covers all author-configurable unit families, representativ
 every current Quadlet type, Quadlet continuation syntax, and mkosi's real multiline configurations.
 Representative systemd unit and networkd fuzz fixtures are also checked without diagnostics against
 their matching v250, v252, v254, v256, v258, v260, and v261 metadata targets; basic fixtures for
-every Quadlet type are checked across every non-prerelease Podman release from 4.4 onward.
+every Quadlet type are checked across every non-prerelease Podman release from 4.4 onward. The
+historical registry retains bounded mkosi settings removed from current releases, and CI checks 502
+maintained configurations across every mkosi major release from v16 through v26 against its matching
+target.
 
 ## Development
 

@@ -650,96 +650,96 @@
     "vmbus:"
   ],
   "quadletAppend": [
-    288,
-    291,
-    292,
-    298,
-    301,
-    302,
-    303,
-    304,
-    305,
-    306,
-    309,
-    310,
-    312,
-    313,
-    314,
-    315,
-    325,
-    326,
-    327,
-    328,
-    329,
-    334,
-    335,
-    336,
-    337,
-    338,
-    340,
-    341,
-    344,
-    345,
-    346,
-    348,
-    369,
+    358,
+    361,
+    362,
+    368,
     371,
+    372,
+    373,
     374,
     375,
     376,
-    381,
+    379,
+    380,
     382,
-    388,
-    389,
+    383,
+    384,
+    385,
+    395,
+    396,
+    397,
+    398,
+    399,
+    404,
+    405,
+    406,
+    407,
+    408,
     410,
-    412,
-    413,
+    411,
     414,
-    420,
-    426,
-    429,
-    433,
-    440,
+    415,
+    416,
+    418,
+    439,
     441,
-    442,
     444,
-    447,
-    448,
-    449,
-    450,
+    445,
+    446,
     451,
     452,
     458,
     459,
-    461,
-    463,
-    464,
-    468,
-    470,
-    473,
-    474,
-    476,
-    477,
-    478,
-    479,
     480,
-    481,
+    482,
     483,
     484,
-    485,
-    488,
-    489,
     490,
-    491,
-    493,
-    494,
-    495,
+    496,
+    499,
     503,
-    505,
-    507,
+    510,
+    511,
     512,
-    515,
-    517
+    514,
+    517,
+    518,
+    519,
+    520,
+    521,
+    522,
+    528,
+    529,
+    531,
+    533,
+    534,
+    538,
+    540,
+    543,
+    544,
+    546,
+    547,
+    548,
+    549,
+    550,
+    551,
+    553,
+    554,
+    555,
+    558,
+    559,
+    560,
+    561,
+    563,
+    564,
+    565,
+    573,
+    575,
+    577,
+    582,
+    585,
+    587
   ],
   "directives": [
     [
@@ -1764,6 +1764,55 @@
     [
       "mkosi",
       "Config",
+      "Images",
+      "list",
+      "19",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Specify which images to build.",
+      [],
+      {
+        "a": "append",
+        "u": "24"
+      }
+    ],
+    [
+      "mkosi",
+      "Config",
+      "Include",
+      "list",
+      "18",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Include configuration from the specified file or directory.",
+      [],
+      {
+        "a": "append-no-reset",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Config",
+      "InitrdInclude",
+      "list",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Include configuration from the specified file or directory when building the initrd.",
+      [],
+      {
+        "a": "append-no-reset",
+        "t": [
+          "Config",
+          "Include"
+        ],
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Config",
       "MinimumVersion",
       "string",
       "20",
@@ -1789,6 +1838,21 @@
       {
         "a": "append",
         "s": "main"
+      }
+    ],
+    [
+      "mkosi",
+      "Config",
+      "Presets",
+      "list",
+      "19",
+      1,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Compatibility alias for Images.",
+      [],
+      {
+        "a": "append",
+        "u": "24"
       }
     ],
     [
@@ -1943,6 +2007,35 @@
     [
       "mkosi",
       "Content",
+      "BuildSources",
+      "list",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Path for sources to build.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Content",
+      "BuildSourcesEphemeral",
+      "boolean",
+      "19",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Make build sources ephemeral when running scripts.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Content",
       "CleanPackageMetadata",
       "string",
       "16",
@@ -1977,6 +2070,36 @@
       [],
       {
         "a": "append"
+      }
+    ],
+    [
+      "mkosi",
+      "Content",
+      "Environment",
+      "string",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set an environment variable when running scripts.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Content",
+      "EnvironmentFiles",
+      "list",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Enviroment files to set when running scripts.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
       }
     ],
     [
@@ -2374,6 +2497,21 @@
     [
       "mkosi",
       "Content",
+      "PackageManagerTrees",
+      "list",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Use a package manager tree to configure the package manager.",
+      [],
+      {
+        "a": "append",
+        "u": "19"
+      }
+    ],
+    [
+      "mkosi",
+      "Content",
       "Packages",
       "list",
       "16",
@@ -2704,6 +2842,20 @@
     [
       "mkosi",
       "Content",
+      "WithNetwork",
+      "boolean",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Run build and postinst scripts with network access (instead of private network).",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Content",
       "WithRecommends",
       "boolean",
       "19",
@@ -2711,6 +2863,20 @@
       "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "Install recommended packages.",
       []
+    ],
+    [
+      "mkosi",
+      "Content",
+      "WithTests",
+      "boolean",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Do not run tests as part of build scripts, if supported.",
+      [],
+      {
+        "u": "25"
+      }
     ],
     [
       "mkosi",
@@ -2746,6 +2912,23 @@
       {
         "s": "universal",
         "x": true
+      }
+    ],
+    [
+      "mkosi",
+      "Distribution",
+      "CacheOnly",
+      "boolean",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Only use the package cache when installing packages.",
+      [
+        ""
+      ],
+      {
+        "x": true,
+        "u": "25"
       }
     ],
     [
@@ -2807,6 +2990,21 @@
       [],
       {
         "s": "universal"
+      }
+    ],
+    [
+      "mkosi",
+      "Distribution",
+      "PackageManagerTrees",
+      "list",
+      "19",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Use a package manager tree to configure the package manager.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
       }
     ],
     [
@@ -2878,6 +3076,645 @@
       [],
       {
         "s": "universal"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "Acl",
+      "boolean",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set ACLs on generated directories to permit the user running mkosi to remove them.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "Credentials",
+      "string",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Pass a systemd credential to systemd-nspawn or qemu.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "Ephemeral",
+      "boolean",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Ephemeral in [Host].",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ExtraSearchPaths",
+      "list",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "List of comma-separated paths to look for programs before looking in PATH.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ForwardJournal",
+      "path",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the path used to store forwarded machine journals.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "Incremental",
+      "boolean",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Make use of and generate intermediary cache images.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "KernelCommandLineExtra",
+      "list",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Append extra entries to the kernel command line when booting the image.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "Machine",
+      "string",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the machine name to use when booting the image.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "NSpawnSettings",
+      "path",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Add in .nspawn settings file.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "PathExists",
+      "list",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Remove existing image file before operation.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ProxyClientCertificate",
+      "path",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the proxy client certificate.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ProxyClientKey",
+      "path",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the proxy client key.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ProxyExclude",
+      "list",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Don't use the configured proxy for the specified host(s).",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ProxyPeerCertificate",
+      "path",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the proxy peer certificate.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ProxyUrl",
+      "string",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the proxy to use.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuCdrom",
+      "boolean",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Attach the image as a CD-ROM to the virtual machine.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuDrives",
+      "list",
+      "19",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Specify a qemu drive that mkosi should create and pass to qemu.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuFirmware",
+      "string",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set qemu firmware to use.",
+      [
+        ""
+      ],
+      {
+        "x": true,
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuFirmwareVariables",
+      "path",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the path to the qemu firmware variables file to use.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuGui",
+      "boolean",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Start QEMU in graphical mode.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuKernel",
+      "path",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Specify the kernel to use for qemu direct kernel boot.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuKvm",
+      "string",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Configure whether to use KVM or not.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuMem",
+      "size",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Configure guest's RAM size.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuSmp",
+      "string",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Configure guest's SMP settings.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuSwtpm",
+      "string",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Configure whether to use qemu with swtpm or not.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuVsock",
+      "string",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Configure whether to use qemu with a vsock or not.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "QemuVsockConnectionId",
+      "string",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Specify the VSock connection ID to use.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "RuntimeBuildSources",
+      "boolean",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Mount build sources and build directory in /work when booting the image.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "RuntimeNetwork",
+      "string",
+      "21",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set networking backend to use when booting the image.",
+      [
+        ""
+      ],
+      {
+        "x": true,
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "RuntimeScratch",
+      "string",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Mount extra scratch space to /var/tmp.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "RuntimeSize",
+      "size",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Grow disk images to the specified size before booting them.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "RuntimeTrees",
+      "list",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Additional mounts to add when booting the image.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "SshCertificate",
+      "path",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Certificate for use with mkosi ssh in X509 format.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "SshKey",
+      "path",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Private key for use with mkosi ssh in PEM format.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ToolsTree",
+      "path",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Look up programs to execute inside the given tree.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ToolsTreeCertificates",
+      "boolean",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Use certificates from the tools tree.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ToolsTreeDistribution",
+      "string",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the distribution to use for the default tools tree.",
+      [
+        ""
+      ],
+      {
+        "x": true,
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ToolsTreeMirror",
+      "string",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the mirror to use for the default tools tree.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ToolsTreePackageManagerTrees",
+      "list",
+      "21",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Package manager trees for the default tools tree.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ToolsTreePackages",
+      "list",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Add additional packages to the default tools tree.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ToolsTreeRelease",
+      "string",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the release to use for the default tools tree.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "ToolsTreeRepositories",
+      "list",
+      "21",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Repositories to use for the default tools tree.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "UnitProperties",
+      "list",
+      "23.1",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set properties on the scopes spawned by systemd-nspawn or systemd-run.",
+      [],
+      {
+        "a": "append",
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Host",
+      "VirtualMachineMonitor",
+      "string",
+      "23",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set the virtual machine monitor to use for mkosi qemu.",
+      [
+        ""
+      ],
+      {
+        "x": true,
+        "u": "25"
       }
     ],
     [
@@ -3267,6 +4104,34 @@
     [
       "mkosi",
       "Output",
+      "BuildDirectory",
+      "path",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Path to use as persistent build directory.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Output",
+      "CacheDirectory",
+      "path",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Incremental cache directory.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Output",
       "CleanScripts",
       "list",
       "23",
@@ -3520,6 +4385,20 @@
     [
       "mkosi",
       "Output",
+      "PackageCacheDirectory",
+      "path",
+      "21",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Package cache directory.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Output",
       "RepartDirectories",
       "list",
       "16",
@@ -3529,6 +4408,20 @@
       [],
       {
         "a": "append"
+      }
+    ],
+    [
+      "mkosi",
+      "Output",
+      "RepartOffline",
+      "boolean",
+      "20",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Build disk images without using loopback devices.",
+      [],
+      {
+        "u": "25"
       }
     ],
     [
@@ -3572,6 +4465,64 @@
     ],
     [
       "mkosi",
+      "Output",
+      "UseSubvolumes",
+      "string",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Use btrfs subvolumes for faster directory operations where possible.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Output",
+      "WorkspaceDirectory",
+      "path",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Workspace directory.",
+      [],
+      {
+        "u": "25"
+      }
+    ],
+    [
+      "mkosi",
+      "Preset",
+      "Dependencies",
+      "list",
+      "16",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Specify other presets that this preset depends on.",
+      [],
+      {
+        "a": "append",
+        "u": "19"
+      }
+    ],
+    [
+      "mkosi",
+      "Preset",
+      "Presets",
+      "list",
+      "17",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Specify which presets to build.",
+      [],
+      {
+        "a": "append",
+        "u": "19"
+      }
+    ],
+    [
+      "mkosi",
       "Runtime",
       "BindUser",
       "boolean",
@@ -3582,6 +4533,20 @@
       [],
       {
         "s": "main"
+      }
+    ],
+    [
+      "mkosi",
+      "Runtime",
+      "CDROM",
+      "boolean",
+      "25",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Attach the image as a CD-ROM to the virtual machine.",
+      [],
+      {
+        "u": "26"
       }
     ],
     [
@@ -3851,6 +4816,20 @@
     [
       "mkosi",
       "Runtime",
+      "QemuCdrom",
+      "boolean",
+      "25",
+      1,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Compatibility alias for CDROM.",
+      [],
+      {
+        "u": "26"
+      }
+    ],
+    [
+      "mkosi",
+      "Runtime",
       "QemuDrives",
       "list",
       "25",
@@ -4056,6 +5035,20 @@
     [
       "mkosi",
       "Runtime",
+      "RuntimeHome",
+      "boolean",
+      "25",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Mount current home directory to /root when booting the image.",
+      [],
+      {
+        "u": "26"
+      }
+    ],
+    [
+      "mkosi",
+      "Runtime",
       "RuntimeNetwork",
       "string",
       "25",
@@ -4071,6 +5064,20 @@
       {
         "s": "main",
         "x": true
+      }
+    ],
+    [
+      "mkosi",
+      "Runtime",
+      "RuntimeScratch",
+      "string",
+      "25",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Mount extra scratch space to /var/tmp.",
+      [],
+      {
+        "u": "26"
       }
     ],
     [
@@ -4156,6 +5163,22 @@
       [],
       {
         "s": "main"
+      }
+    ],
+    [
+      "mkosi",
+      "Runtime",
+      "UnitProperties",
+      "list",
+      "25",
+      0,
+      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+      "Set properties on the scopes spawned by systemd-nspawn or systemd-run.",
+      [],
+      {
+        "a": "append",
+        "s": "main",
+        "u": "preview"
       }
     ],
     [

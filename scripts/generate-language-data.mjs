@@ -10,7 +10,7 @@ const output = resolve(root, "packages/language-core/src/generated/registry.json
 const stableDeltaOutput = resolve(root, "packages/language-core/src/generated/stable-delta.json");
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
-const adapterVersion = 11;
+const adapterVersion = 12;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -417,6 +417,7 @@ function serializeDirective(directive, omitAssignmentMode = false) {
   }
   if (directive.resetGroup !== undefined) extras.r = directive.resetGroup;
   if (directive.exclusiveChoices !== undefined) extras.x = directive.exclusiveChoices;
+  if (directive.until !== undefined) extras.u = directive.until;
   return [
     directive.dialect,
     directive.section,
@@ -604,6 +605,7 @@ function add(candidate) {
     summary: candidate.summary ?? candidate.name + " in [" + section + "].",
     choices: candidate.choices ?? [],
   };
+  if (candidate.until !== undefined) value.until = candidate.until;
   if (candidate.documentKinds?.length > 0) {
     value.documentKinds = [...new Set(candidate.documentKinds)].sort();
   }
@@ -1234,25 +1236,62 @@ function quadletSettings(text) {
 async function extractMkosi(source) {
   const text = await readFile(resolve(source, "mkosi/config.py"), "utf8");
   const enumChoices = await extractPythonStringEnums(resolve(source, "mkosi"));
-  for (const setting of mkosiSettings(text, enumChoices)) {
-    add({
-      dialect: "mkosi",
-      section: setting.section,
-      name: setting.name,
-      since: availability.get(availabilityKey("mkosi", setting.section, setting.name)) ?? "preview",
-      valueKind: parserKind(setting.parser),
-      documentation: "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      deprecated: setting.deprecated,
-      summary:
-        setting.summary ??
-        (setting.help === undefined ? undefined : setting.help.replace(/\.$/u, "") + "."),
-      choices: setting.choices,
-      exclusiveChoices: setting.exclusiveChoices ?? setting.choices.length > 0,
-      assignmentMode: setting.assignmentMode,
-      mkosiScope: setting.mkosiScope,
-      mkosiTarget: setting.mkosiTarget,
-    });
+  const settings = mkosiSettings(text, enumChoices);
+  for (const setting of settings) {
+    addMkosiSetting(
+      setting,
+      availability.get(availabilityKey("mkosi", setting.section, setting.name)),
+    );
   }
+  const current = new Set(settings.map((setting) => setting.section + "\0" + setting.name));
+  for (const setting of historicalMkosiSettings(current)) {
+    addMkosiSetting(setting, setting.since, setting.until);
+  }
+}
+
+function addMkosiSetting(setting, since, until) {
+  add({
+    dialect: "mkosi",
+    section: setting.section,
+    name: setting.name,
+    since: since ?? "preview",
+    until,
+    valueKind: parserKind(setting.parser),
+    documentation: "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
+    deprecated: setting.deprecated,
+    summary:
+      setting.summary ??
+      (setting.help === undefined ? undefined : setting.help.replace(/\.$/u, "") + "."),
+    choices: setting.choices,
+    exclusiveChoices: setting.exclusiveChoices ?? setting.choices.length > 0,
+    assignmentMode: setting.assignmentMode,
+    mkosiScope: setting.mkosiScope,
+    mkosiTarget: setting.mkosiTarget,
+  });
+}
+
+function historicalMkosiSettings(current) {
+  const tags = releaseTags(sources.mkosi, /^v(?:1[6-9]|2\d)(?:\.\d+)*$/u);
+  const history = new Map();
+  for (const [index, tag] of tags.entries()) {
+    const text = sourceAt(sources.mkosi, tag, "mkosi/config.py");
+    if (text === undefined) continue;
+    for (const setting of mkosiSettings(text)) {
+      const key = setting.section + "\0" + setting.name;
+      const previous = history.get(key);
+      history.set(key, {
+        ...setting,
+        since: previous?.since ?? tag.slice(1),
+        lastIndex: index,
+      });
+    }
+  }
+  return [...history.entries()]
+    .filter(([key]) => !current.has(key))
+    .map(([, setting]) => ({
+      ...setting,
+      until: tags[setting.lastIndex + 1]?.slice(1) ?? "preview",
+    }));
 }
 
 function mkosiSettings(text, enumChoices = new Map()) {

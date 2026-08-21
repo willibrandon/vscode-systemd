@@ -34,7 +34,7 @@
         "end": "(?<![\\\\ \\t])[ \\t]*(?=\\n$)",
         "patterns": [
           { "include": "#templates" },
-          { "name": "constant.language.boolean.systemd", "match": "(?i)(?<![A-Za-z])(yes|no|true|false|on|off)(?![A-Za-z])" },
+          { "name": "constant.language.boolean.systemd", "match": "(?i)(?<![A-Za-z])(yes|no|true|false|on|off|y|n|t|f|always|never)(?![A-Za-z])" },
           { "name": "constant.numeric.systemd", "match": "(?<![A-Za-z0-9_])[+-]?[0-9]+(?:\\.[0-9]+)?(?:ns|us|µs|ms|s|min|h|d|w|month|y|K|M|G|T|%|B)?(?![A-Za-z0-9_])" },
           { "name": "variable.other.systemd.specifier", "match": "%(?:%|[A-Za-z])" },
           { "name": "variable.other.systemd.environment", "match": "\\$\\{?[A-Za-z_][A-Za-z0-9_]*\\}?" },

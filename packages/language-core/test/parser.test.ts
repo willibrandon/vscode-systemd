@@ -236,6 +236,23 @@ describe("lossless parsers", () => {
     ]);
   });
 
+  it("parses historical mkosi default assignments as canonical settings", () => {
+    const source = "[Output]\n@Format=directory\n";
+    const document = parse(source, "mkosi", "file:///workspace/mkosi.conf");
+
+    expect(document.diagnostics).toEqual([]);
+    expect(document.nodes[1]).toMatchObject({
+      kind: "assignment",
+      name: "Format",
+      defaultAssignment: true,
+      value: "directory",
+      nameSpan: {
+        start: source.indexOf("Format"),
+        end: source.indexOf("Format") + "Format".length,
+      },
+    });
+  });
+
   it("treats mkosi.version as a version record instead of an INI assignment", () => {
     const document = parse("26.1\n", "mkosi", "file:///workspace/mkosi.version");
     expect(document.kind).toBe("mkosi:version");

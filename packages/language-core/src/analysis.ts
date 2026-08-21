@@ -16,7 +16,22 @@ export interface AnalysisOptions {
   readonly maxProblems?: number;
 }
 
-const booleans = new Set(["1", "0", "yes", "no", "true", "false", "on", "off", "y", "n", "t", "f"]);
+const booleans = new Set([
+  "1",
+  "0",
+  "yes",
+  "no",
+  "true",
+  "false",
+  "on",
+  "off",
+  "y",
+  "n",
+  "t",
+  "f",
+  "always",
+  "never",
+]);
 const durationUnits = [
   "month",
   "year",
@@ -142,6 +157,23 @@ function analyzeIni(
     }
     if (definition === undefined) continue;
     const targetVersion = targetVersionFor(definition, options);
+    if (
+      definition.dialect === "mkosi" &&
+      definition.section !== "*" &&
+      definition.section !== node.section &&
+      (targetVersion === "latest" ||
+        targetVersion === "auto" ||
+        compareVersions(targetVersion, "17") >= 0)
+    ) {
+      diagnostics.push({
+        code: "setting-in-wrong-section",
+        message:
+          node.name + "= belongs in [" + definition.section + "], not [" + node.section + "].",
+        severity: "warning",
+        span: node.nameSpan,
+        documentation: definition.documentation,
+      });
+    }
     if (definition.deprecated) {
       diagnostics.push({
         code: "deprecated-setting",
@@ -152,15 +184,26 @@ function analyzeIni(
       });
     }
     if (!isDefinitionAvailable(definition, targetVersion)) {
+      const removed =
+        definition.until !== undefined &&
+        (targetVersion === "latest" ||
+          targetVersion === "auto" ||
+          compareVersions(definition.until, targetVersion) <= 0);
       diagnostics.push({
         code: "setting-unavailable",
-        message:
-          node.name +
-          "= requires version " +
-          String(definition.since) +
-          " but the target is " +
-          targetVersion +
-          ".",
+        message: removed
+          ? node.name +
+            "= was removed in version " +
+            definition.until +
+            " but the target is " +
+            targetVersion +
+            "."
+          : node.name +
+            "= requires version " +
+            String(definition.since) +
+            " but the target is " +
+            targetVersion +
+            ".",
         severity: "warning",
         span: node.nameSpan,
         documentation: definition.documentation,
@@ -1437,12 +1480,17 @@ export function isDefinitionAvailable(
   definition: DirectiveDefinition,
   targetVersion: string,
 ): boolean {
-  return (
+  const introduced =
     definition.since === null ||
     targetVersion === "latest" ||
     targetVersion === "auto" ||
-    compareVersions(definition.since, targetVersion) <= 0
-  );
+    compareVersions(definition.since, targetVersion) <= 0;
+  const notRemoved =
+    definition.until === undefined ||
+    (targetVersion !== "latest" &&
+      targetVersion !== "auto" &&
+      compareVersions(targetVersion, definition.until) < 0);
+  return introduced && notRemoved;
 }
 
 function versionParts(value: string): readonly number[] {

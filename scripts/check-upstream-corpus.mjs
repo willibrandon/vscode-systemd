@@ -133,6 +133,7 @@ for (const fixture of corpus) {
 let quadletReleases = 0;
 let quadletReleaseFixtures = 0;
 let systemdReleaseFixtures = 0;
+let mkosiReleaseFixtures = 0;
 const systemdReleases = ["v250", "v252", "v254", "v256", "v258", "v260", "v261"];
 for (const tag of systemdReleases) {
   const paths = gitPaths(sources.systemd, tag, "test/fuzz");
@@ -178,6 +179,45 @@ for (const tag of systemdReleases) {
           tag +
           "/" +
           fixture.path +
+          ":" +
+          lineAt(document.lineStarts, diagnostic.span.start) +
+          ": " +
+          diagnostic.code +
+          ": " +
+          diagnostic.message,
+      );
+    }
+  }
+}
+
+const mkosiReleases = Array.from({ length: 11 }, (_, index) => "v" + (index + 16));
+for (const tag of mkosiReleases) {
+  const fixtures = gitPaths(sources.mkosi, tag, ".").filter(
+    (path) =>
+      !path.includes("/tmpfiles.d/") &&
+      (/(?:^|\/)mkosi\.conf$/u.test(path) || /(?:^|\/)mkosi\.conf\.d\/.*\.conf$/u.test(path)),
+  );
+  if (fixtures.length === 0) {
+    failures.push("mkosi/" + tag + ": no maintained mkosi configuration found");
+  }
+  for (const path of fixtures) {
+    const source = gitText(sources.mkosi, tag, path);
+    const document = parse(
+      source,
+      "mkosi",
+      "upstream://mkosi/" + tag + "/" + path.slice(path.lastIndexOf("/") + 1),
+    );
+    assignments += document.nodes.filter((node) => node.kind === "assignment").length;
+    mkosiReleaseFixtures += 1;
+    for (const diagnostic of analyze(document, {
+      maxProblems: 10_000,
+      targetVersions: { mkosi: tag.slice(1) },
+    })) {
+      failures.push(
+        "mkosi/" +
+          tag +
+          "/" +
+          path +
           ":" +
           lineAt(document.lineStarts, diagnostic.span.start) +
           ": " +
@@ -256,7 +296,9 @@ console.log(
     systemdReleaseFixtures +
     " tagged systemd fuzz fixtures across " +
     systemdReleases.length +
-    " representative releases, without diagnostics.",
+    " representative releases, and " +
+    mkosiReleaseFixtures +
+    " maintained mkosi configurations across releases v16 through v26, without diagnostics.",
 );
 
 function gitPaths(source, tag, path) {

@@ -72,6 +72,19 @@ describe("systemd TextMate grammar regressions", () => {
   });
 });
 
+describe("mkosi TextMate grammar regressions", () => {
+  it("scopes historical default assignments and their values", async () => {
+    const grammar = await loadGrammar("source.mkosi");
+    const source = "@WithNetwork=never";
+
+    expect(tokenAt(grammar, source, 0, 0).scopes).toContain("storage.modifier.default.mkosi");
+    expect(tokenAt(grammar, source, 0, 1).scopes).toContain("support.type.property-name.systemd");
+    expect(tokenAt(grammar, source, 0, source.indexOf("never")).scopes).toContain(
+      "constant.language.boolean.systemd",
+    );
+  });
+});
+
 describe("hwdb TextMate grammar regressions", () => {
   it("scopes compiler matches, properties, values, and trailing comments exactly", async () => {
     const grammar = await loadGrammar("source.systemd.hwdb");

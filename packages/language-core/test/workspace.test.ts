@@ -202,6 +202,24 @@ describe("systemd unit configuration resolution", () => {
   });
 });
 
+describe("configuration merging", () => {
+  it("lets explicit mkosi assignments override historical defaults in either order", () => {
+    for (const source of [
+      "[Output]\n@Format=directory\nFormat=disk\n",
+      "[Output]\nFormat=disk\n@Format=directory\n",
+    ]) {
+      expect(
+        mergeConfigurations([parse(source, "mkosi", "file:///workspace/mkosi.conf")]).entries,
+      ).toMatchObject([{ section: "Output", name: "Format", value: "disk" }]);
+    }
+    expect(
+      mergeConfigurations([
+        parse("[Output]\n@Format=directory\n", "mkosi", "file:///workspace/mkosi.conf"),
+      ]).entries,
+    ).toMatchObject([{ section: "Output", name: "Format", value: "directory" }]);
+  });
+});
+
 describe("systemd ordering dependency graph", () => {
   it("finds multi-unit and self cycles with source provenance", () => {
     const first = unit(

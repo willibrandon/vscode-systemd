@@ -39,6 +39,11 @@ Basic generator fixtures for every Quadlet type are checked across every non-pre
 release from 4.4 onward, alongside current templates, resource references, service-name overrides,
 and merged configurations.
 
+mkosi metadata retains the release in which a setting appeared and, when applicable, the release in
+which it was removed. Historical `@Setting=` defaults remain parseable and highlight like their
+canonical settings. CI analyzes every maintained mkosi configuration found across v16 through v26
+against its own release target, including the older section and boolean grammar.
+
 The generated registry is stored as a deterministic tuple schema and hydrated into typed definitions
 at startup. This avoids duplicating descriptive field names into every desktop and browser bundle
 while preserving identical stable and preview behavior.

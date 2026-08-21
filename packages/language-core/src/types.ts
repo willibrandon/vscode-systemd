@@ -143,6 +143,7 @@ export interface DirectiveDefinition {
   };
   readonly resetGroup?: string;
   readonly since: string | null;
+  readonly until?: string;
   readonly deprecated: boolean;
   readonly documentation: string;
   readonly summary: string;
@@ -187,6 +188,7 @@ export interface AssignmentNode extends BaseNode {
   readonly kind: "assignment";
   readonly section: string | null;
   readonly name: string;
+  readonly defaultAssignment?: boolean;
   readonly nameSpan: TextSpan;
   readonly value: string;
   readonly valueSpan: TextSpan;

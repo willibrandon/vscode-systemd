@@ -234,6 +234,10 @@ describe("registry queries", () => {
     expect(definitionFor("mkosi", "Match", "Distribution")).toMatchObject({
       assignmentMode: "append-no-reset",
     });
+    const historicalCache = definitionFor("mkosi", "Output", "CacheDirectory");
+    expect(historicalCache?.since).toBe("16");
+    expect(typeof historicalCache?.until).toBe("string");
+    expect(definitionFor("mkosi", "Output", "KernelCommandLine")?.section).toBe("Content");
   });
 
   it("derives Quadlet types, choices, defaults, and repeat behavior from Podman", () => {

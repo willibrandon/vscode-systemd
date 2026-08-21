@@ -26,6 +26,7 @@ interface RawDirectiveExtras {
   readonly t?: readonly [section: string, name: string];
   readonly r?: string;
   readonly x?: boolean;
+  readonly u?: string;
 }
 
 type RawDirective = readonly [
@@ -203,6 +204,13 @@ export function definitionFor(
   const direct =
     exact.get(key(registryId, selectedSection, name)) ?? exact.get(key(registryId, "*", name));
   if (direct !== undefined && definitionAllowedInDocument(direct, documentKind)) return direct;
+  if (registryId === "mkosi") {
+    const sectionAgnostic = (byDialect.get("mkosi") ?? []).find(
+      (definition) =>
+        definition.name === name && definitionAllowedInDocument(definition, documentKind),
+    );
+    if (sectionAgnostic !== undefined) return sectionAgnostic;
+  }
   const inherited = inheritedSystemdDefinition(registryId, selectedSection, name, documentKind);
   return inherited !== undefined && definitionAllowedInDocument(inherited, documentKind)
     ? inherited
@@ -315,6 +323,7 @@ function hydrateDirective(raw: RawDirective, quadletAppend = false): DirectiveDe
       : { mkosiTarget: { section: extras.t[0], name: extras.t[1] } }),
     ...(extras?.r === undefined ? {} : { resetGroup: extras.r }),
     ...(extras?.x === undefined ? {} : { exclusiveChoices: extras.x }),
+    ...(extras?.u === undefined ? {} : { until: extras.u }),
   };
 }
 

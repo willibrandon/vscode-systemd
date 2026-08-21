@@ -90,8 +90,8 @@ for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
 if (registry.schemaVersion !== 2) {
   failures.push("generated registry must use schema version 2");
 }
-if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 11) {
-  failures.push("upstream lock must use schema version 1 and adapter version 11");
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 12) {
+  failures.push("upstream lock must use schema version 1 and adapter version 12");
 }
 if ((registry.hwdbProperties?.length ?? 0) < 80) {
   failures.push("generated hwdb property coverage is incomplete");

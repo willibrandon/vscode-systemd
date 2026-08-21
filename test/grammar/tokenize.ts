@@ -13,6 +13,7 @@ export async function loadGrammar(scopeName: string): Promise<IGrammar> {
   const paths: Readonly<Record<string, string>> = {
     "source.systemd": "syntaxes/systemd.tmLanguage.json",
     "source.systemd.hwdb": "syntaxes/hwdb.tmLanguage.json",
+    "source.mkosi": "syntaxes/mkosi.tmLanguage.json",
   };
   const registry = new Registry({
     onigLib: Promise.resolve({ createOnigScanner, createOnigString }),

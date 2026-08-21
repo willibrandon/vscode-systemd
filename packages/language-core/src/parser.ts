@@ -215,7 +215,9 @@ function parseIni(
       continue;
     }
     const nameText = text.slice(0, equals);
-    const name = nameText.trim();
+    const rawName = nameText.trim();
+    const defaultAssignment = dialect === "mkosi" && rawName.startsWith("@");
+    const name = defaultAssignment ? rawName.slice(1) : rawName;
     if (!/^[A-Za-z][A-Za-z0-9_:@{}.-]*$/u.test(name)) {
       invalid(nodes, diagnostics, first, span, raw, "Invalid setting name.");
       continue;
@@ -237,6 +239,7 @@ function parseIni(
       raw,
       section,
       name,
+      ...(defaultAssignment ? { defaultAssignment: true } : {}),
       nameSpan: {
         start: first.start + Math.max(0, nameOffset),
         end: first.start + Math.max(0, nameOffset) + name.length,

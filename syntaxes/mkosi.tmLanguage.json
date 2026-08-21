@@ -2,5 +2,49 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "mkosi",
   "scopeName": "source.mkosi",
-  "patterns": [{ "include": "source.systemd" }]
+  "patterns": [
+    { "include": "#default-assignments" },
+    { "include": "source.systemd" }
+  ],
+  "repository": {
+    "default-assignments": {
+      "patterns": [
+        {
+          "name": "meta.assignment.default.mkosi",
+          "begin": "^\\s*(@)([A-Za-z][A-Za-z0-9_:@{}.-]*)(\\s*=)",
+          "beginCaptures": {
+            "1": { "name": "storage.modifier.default.mkosi" },
+            "2": { "name": "support.type.property-name.systemd" },
+            "3": { "name": "keyword.operator.assignment.systemd" }
+          },
+          "end": "(?<![\\\\ \\t])[ \\t]*(?=\\n$)",
+          "patterns": [
+            { "include": "source.systemd#templates" },
+            {
+              "name": "constant.language.boolean.systemd",
+              "match": "(?i)(?<![A-Za-z])(yes|no|true|false|on|off|y|n|t|f|always|never)(?![A-Za-z])"
+            },
+            {
+              "name": "constant.numeric.systemd",
+              "match": "(?<![A-Za-z0-9_])[+-]?[0-9]+(?:\\.[0-9]+)?(?:ns|us|µs|ms|s|min|h|d|w|month|y|K|M|G|T|%|B)?(?![A-Za-z0-9_])"
+            },
+            { "name": "variable.other.systemd.specifier", "match": "%(?:%|[A-Za-z])" },
+            {
+              "name": "variable.other.systemd.environment",
+              "match": "\\$\\{?[A-Za-z_][A-Za-z0-9_]*\\}?"
+            },
+            {
+              "name": "string.quoted.double.systemd",
+              "begin": "\"",
+              "end": "\"",
+              "patterns": [
+                { "name": "constant.character.escape.systemd", "match": "\\\\." }
+              ]
+            },
+            { "name": "string.quoted.single.systemd", "begin": "'", "end": "'" }
+          ]
+        }
+      ]
+    }
+  }
 }

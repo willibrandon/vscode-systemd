@@ -86,6 +86,36 @@ describe("INI semantic analysis", () => {
     ).not.toContain("setting-unavailable");
   });
 
+  it("models historical mkosi removals, section rules, and boolean literals", () => {
+    const removed = parse(
+      "[Output]\nCacheDirectory=mkosi.cache\n",
+      "mkosi",
+      "file:///workspace/mkosi.conf",
+    );
+    expect(
+      analyze(removed, { targetVersions: { mkosi: "24" } }).map(({ code }) => code),
+    ).not.toContain("setting-unavailable");
+    expect(analyze(removed, { targetVersions: { mkosi: "26" } }).map(({ code }) => code)).toContain(
+      "setting-unavailable",
+    );
+
+    const historicalSection = parse(
+      "[Output]\nKernelCommandLine=console=ttyS0\n",
+      "mkosi",
+      "file:///workspace/mkosi.conf",
+    );
+    expect(
+      analyze(historicalSection, { targetVersions: { mkosi: "16" } }).map(({ code }) => code),
+    ).not.toContain("setting-in-wrong-section");
+    expect(
+      analyze(historicalSection, { targetVersions: { mkosi: "17" } }).map(({ code }) => code),
+    ).toContain("setting-in-wrong-section");
+
+    expect(codes("[Build]\nWithNetwork=never\nWithTests=always\n", "mkosi")).not.toContain(
+      "invalid-value",
+    );
+  });
+
   it("validates explicit systemd enum values extracted from upstream manuals", () => {
     expect(
       codes(

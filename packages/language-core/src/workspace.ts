@@ -593,7 +593,9 @@ function mergeConfigurationEvents(
     const { document, node } = event;
     if (node.section === null) continue;
     const key = node.section + "\0" + node.name;
-    const assignmentMode = node.definition?.assignmentMode ?? "replace";
+    const assignmentMode = node.defaultAssignment
+      ? "first"
+      : (node.definition?.assignmentMode ?? "replace");
     const resetGroup = node.definition?.resetGroup;
     if (resetGroup !== undefined) resetGroups.set(key, resetGroup);
     const entry: EffectiveEntry = {

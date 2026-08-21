@@ -34,6 +34,8 @@ All notable changes to this project will be documented here. The format follows
   and mkosi themselves.
 - Release-differential conformance for representative unit and networkd fixtures across systemd v250
   through v261, analyzed against each fixture's matching target release.
+- Historical mkosi metadata with introduction and removal bounds, plus differential conformance
+  against every maintained mkosi configuration found across releases v16 through v26.
 - Byte-reproducible VSIX, checksum, and CycloneDX SBOM release artifacts with canonical ZIP
   metadata.
 - Bundled JSON schemas and source-aligned semantic diagnostics for PCR measurement components and
@@ -129,5 +131,8 @@ All notable changes to this project will be documented here. The format follows
   metadata or weakening the 5 MiB package ceiling.
 - Documentation image popups now fit every included screenshot within compact laptop and
   split-screen viewports without internal or background-page scrolling.
+- mkosi v16–v23 default assignments using `@Setting=` now parse, highlight, and merge correctly;
+  historical section permissiveness, current wrong-section warnings, removed settings, and the
+  complete upstream boolean spelling set are version-aware.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main
