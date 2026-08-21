@@ -498,6 +498,7 @@ describe("language server JSON-RPC contract", () => {
     expect(allGraph.nodes).toContain("other.service");
     expect(allGraph.edges.some((edge) => edge.target.includes("example.test"))).toBe(false);
 
+    const indexedDiagnostics = nextDiagnostics(client);
     await client.sendNotification("systemd/index/documents", {
       replace: false,
       documents: [
@@ -514,6 +515,7 @@ describe("language server JSON-RPC contract", () => {
         await request<SymbolInformation[]>(client, "workspace/symbol", { query: "description" })
       ).some(({ location }) => location.uri === "file:///workspace/third.service"),
     ).toBe(true);
+    expect((await indexedDiagnostics).map(({ code }) => code)).toContain("unknown-setting");
 
     const clearedPromise = nextDiagnostics(client);
     await client.sendNotification("workspace/didChangeConfiguration", {
