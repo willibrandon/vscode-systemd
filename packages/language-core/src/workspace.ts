@@ -1884,15 +1884,15 @@ interface CsvField {
 function parseCsvFields(value: string): readonly CsvField[] | undefined {
   const result: CsvField[] = [];
   let index = 0;
-  while (index <= value.length) {
-    if (value[index] === '"') {
+  while (index < value.length) {
+    if (value.charAt(index) === '"') {
       index += 1;
       let decoded = "";
       const boundaries = [index];
       let closed = false;
       while (index < value.length) {
-        if (value[index] === '"') {
-          if (value[index + 1] === '"') {
+        if (value.charAt(index) === '"') {
+          if (value.charAt(index + 1) === '"') {
             decoded += '"';
             index += 2;
             boundaries.push(index);
@@ -1902,16 +1902,16 @@ function parseCsvFields(value: string): readonly CsvField[] | undefined {
           closed = true;
           break;
         }
-        decoded += value[index] ?? "";
+        decoded += value.charAt(index);
         index += 1;
         boundaries.push(index);
       }
-      if (!closed || (index < value.length && value[index] !== ",")) return undefined;
+      if (!closed || (index < value.length && value.charAt(index) !== ",")) return undefined;
       result.push({ value: decoded, boundaries });
     } else {
       const start = index;
-      while (index < value.length && value[index] !== ",") {
-        if (value[index] === '"') return undefined;
+      while (index < value.length && value.charAt(index) !== ",") {
+        if (value.charAt(index) === '"') return undefined;
         index += 1;
       }
       result.push({
@@ -1921,6 +1921,9 @@ function parseCsvFields(value: string): readonly CsvField[] | undefined {
     }
     if (index >= value.length) break;
     index += 1;
+  }
+  if (value === "" || value.endsWith(",")) {
+    result.push({ value: "", boundaries: [value.length] });
   }
   return result;
 }

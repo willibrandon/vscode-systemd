@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -11,12 +11,12 @@ const entries = [
 
 for (const [relativePath, budget] of entries) {
   const path = resolve(root, relativePath);
-  const file = await stat(path);
-  if (file.size > budget) {
-    throw new Error(`${relativePath} is ${file.size} bytes; the budget is ${budget}.`);
+  const contents = await readFile(path);
+  if (contents.byteLength > budget) {
+    throw new Error(`${relativePath} is ${contents.byteLength} bytes; the budget is ${budget}.`);
   }
 
-  const source = await readFile(path, "utf8");
+  const source = contents.toString("utf8");
   const unresolvedRelativeRequire = /require\s*\(\s*["']\.{1,2}\//u.exec(source);
   if (unresolvedRelativeRequire !== null) {
     throw new Error(

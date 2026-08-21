@@ -316,6 +316,7 @@ describe("typed semantic and reference models", () => {
       'Mount="type=image","source=archive,base.image",target=/opt/archive',
       "Mount=type=tmpfs,source=ignored.image,target=/run/cache",
       "Mount=type=image,source=first.image,src=last.image,target=/opt/last",
+      "Mount=type=image,source=trailing.image,",
       "ImageVolume=bind",
       "",
     ].join("\n");
@@ -331,6 +332,7 @@ describe("typed semantic and reference models", () => {
       { target: "base.image", kind: "quadlet" },
       { target: "archive,base.image", kind: "quadlet" },
       { target: "last.image", kind: "quadlet" },
+      { target: "trailing.image", kind: "quadlet" },
     ]);
     for (const reference of references) {
       expect(source.slice(reference.span.start, reference.span.end)).toBe(reference.target);

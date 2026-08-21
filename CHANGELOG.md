@@ -141,5 +141,7 @@ All notable changes to this project will be documented here. The format follows
   snapshot scans stop returning stale work after cancellation.
 - Documentation code blocks are build-gated to the exact TextMate grammars contributed by the
   packaged extension.
+- Bundle inspection now checks size and content from one immutable read, and Quadlet CSV parsing no
+  longer probes one character beyond the input boundary while preserving trailing empty fields.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main
