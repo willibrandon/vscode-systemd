@@ -151,4 +151,79 @@ describe("formatting and workspace semantics", () => {
     expect(rendered).toContain("override.conf");
     expect(rendered).toContain("override.conf:3");
   });
+
+  it("merges repeated assignments with systemd parser semantics", () => {
+    const base = parse(
+      [
+        "[Unit]",
+        "Description=Base description",
+        "After=network.target",
+        "ConditionPathExists=/run/base",
+        "ConditionArchitecture=x86-64",
+        "[Service]",
+        "Environment=BASE=1",
+        "ExecStart=/usr/bin/base",
+        "[Timer]",
+        "OnBootSec=1min",
+        "OnCalendar=daily",
+        "Unit=first.service",
+        "",
+      ].join("\n"),
+      "systemd-unit",
+      "file:///workspace/example.service",
+    );
+    const dropIn = parse(
+      [
+        "[Unit]",
+        "Description=Override description",
+        "After=",
+        "ConditionPathExists=",
+        "[Service]",
+        "Environment=DROP_IN=1",
+        "ExecStart=",
+        "ExecStart=/usr/bin/replacement",
+        "[Timer]",
+        "OnCalendar=",
+        "OnCalendar=weekly",
+        "Unit=ignored.service",
+        "",
+      ].join("\n"),
+      "systemd-unit",
+      "file:///workspace/example.service.d/override.conf",
+    );
+
+    const rendered = renderEffectiveConfiguration(mergeConfigurations([base, dropIn]));
+
+    expect(rendered).not.toContain("Description=Base description");
+    expect(rendered).toContain("Description=Override description");
+    expect(rendered).toContain("After=network.target");
+    expect(rendered).toContain("Environment=BASE=1");
+    expect(rendered).toContain("Environment=DROP_IN=1");
+    expect(rendered).not.toContain("ExecStart=/usr/bin/base");
+    expect(rendered).toContain("ExecStart=/usr/bin/replacement");
+    expect(rendered).not.toContain("ConditionPathExists=/run/base");
+    expect(rendered).not.toContain("ConditionArchitecture=x86-64");
+    expect(rendered).not.toContain("OnBootSec=1min");
+    expect(rendered).not.toContain("OnCalendar=daily");
+    expect(rendered).toContain("OnCalendar=weekly");
+    expect(rendered).toContain("Unit=first.service");
+    expect(rendered).not.toContain("Unit=ignored.service");
+  });
+
+  it("retains an empty scalar assignment that clears a previous value", () => {
+    const base = parse(
+      "[Unit]\nDescription=Base\n",
+      "systemd-unit",
+      "file:///workspace/empty.service",
+    );
+    const dropIn = parse(
+      "[Unit]\nDescription=\n",
+      "systemd-unit",
+      "file:///workspace/empty.service.d/override.conf",
+    );
+
+    expect(mergeConfigurations([base, dropIn]).entries).toEqual([
+      expect.objectContaining({ name: "Description", value: "", sourceLine: 2 }),
+    ]);
+  });
 });

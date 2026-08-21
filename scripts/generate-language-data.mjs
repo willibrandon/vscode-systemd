@@ -15,6 +15,70 @@ const sources = {
   mkosi: resolve(root, process.env.MKOSI_SOURCE ?? "../mkosi"),
 };
 
+const appendParsers = new Set([
+  "config_parse_address_families",
+  "config_parse_bind_paths",
+  "config_parse_bpf_foreign_program",
+  "config_parse_capability_set",
+  "config_parse_cgroup_nft_set",
+  "config_parse_cgroup_socket_bind",
+  "config_parse_colon_separated_paths",
+  "config_parse_device_allow",
+  "config_parse_delegate",
+  "config_parse_disable_controllers",
+  "config_parse_documentation",
+  "config_parse_environ",
+  "config_parse_exec",
+  "config_parse_exec_coredump_filter",
+  "config_parse_exec_directories",
+  "config_parse_extension_images",
+  "config_parse_import_credential",
+  "config_parse_in_addr_prefixes",
+  "config_parse_io_device_latency",
+  "config_parse_io_device_weight",
+  "config_parse_io_limit",
+  "config_parse_ip_filter_bpf_progs",
+  "config_parse_load_credential",
+  "config_parse_log_extra_fields",
+  "config_parse_log_filter_patterns",
+  "config_parse_luo_sessions",
+  "config_parse_managed_oom_rules",
+  "config_parse_mount_images",
+  "config_parse_namespace_flags",
+  "config_parse_namespace_path_strv",
+  "config_parse_open_file",
+  "config_parse_pass_environ",
+  "config_parse_path_spec",
+  "config_parse_restrict_filesystems",
+  "config_parse_restrict_network_interfaces",
+  "config_parse_service_refresh_on_reload",
+  "config_parse_set_credential",
+  "config_parse_set_status",
+  "config_parse_socket_listen",
+  "config_parse_strv",
+  "config_parse_syscall_archs",
+  "config_parse_syscall_filter",
+  "config_parse_syscall_log",
+  "config_parse_temporary_filesystems",
+  "config_parse_timer",
+  "config_parse_unit_condition_path",
+  "config_parse_unit_condition_string",
+  "config_parse_unit_cpu_set",
+  "config_parse_unit_env_file",
+  "config_parse_unit_path_strv_printf",
+  "config_parse_unit_strv_printf",
+  "config_parse_unset_environ",
+  "config_parse_user_group_strv_compat",
+  "config_parse_xattr",
+]);
+
+const appendWithoutResetParsers = new Set([
+  "config_parse_obsolete_unit_deps",
+  "config_parse_unit_deps",
+  "config_parse_unit_mounts_for",
+  "config_parse_service_sockets",
+]);
+
 const unavailable = [];
 for (const [name, source] of Object.entries(sources)) {
   try {
@@ -205,11 +269,16 @@ function add(candidate) {
     summary: candidate.summary ?? candidate.name + " in [" + section + "].",
     choices: candidate.choices ?? [],
   };
+  if (candidate.assignmentMode !== undefined && candidate.assignmentMode !== "replace") {
+    value.assignmentMode = candidate.assignmentMode;
+  }
+  if (candidate.resetGroup !== undefined) value.resetGroup = candidate.resetGroup;
   const existing = records.get(key);
   if (existing === undefined || existing.valueKind === "string") records.set(key, value);
 }
 
 async function extractSystemd(source) {
+  const semantics = new Map();
   for (const file of (await walk(resolve(source, "src"))).filter((name) =>
     /gperf(?:\.in)?$/u.test(name),
   )) {
@@ -225,11 +294,16 @@ async function extractSystemd(source) {
           line,
         );
       if (match === null) continue;
+      const assignmentMode = parserAssignmentMode(match[3] ?? "");
+      const resetGroup = parserResetGroup(match[3] ?? "", match[2] ?? "");
+      rememberSemantics(semantics, dialect, match[2] ?? "", assignmentMode, resetGroup);
       add({
         dialect,
         section: match[1]?.includes("{{") === true ? "*" : match[1],
         name: match[2],
         valueKind: parserKind(match[3] ?? ""),
+        assignmentMode,
+        resetGroup,
         documentation:
           "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#" +
           encodeURIComponent(match[2] ?? "") +
@@ -259,10 +333,13 @@ async function extractSystemd(source) {
         section = match[1];
       } else if (match[2] !== undefined) {
         const tail = text.slice(match.index, match.index + 1400);
+        const inherited = inheritedSemantics(semantics, dialect, match[2]);
         add({
           dialect,
           section,
           name: match[2],
+          assignmentMode: inherited?.assignmentMode,
+          resetGroup: inherited?.resetGroup,
           since: /xpointer="v(\d+)"/u.exec(tail)?.[1] ?? null,
           documentation:
             "https://www.freedesktop.org/software/systemd/man/latest/" +
@@ -274,6 +351,25 @@ async function extractSystemd(source) {
       }
     }
   }
+}
+
+function rememberSemantics(semantics, dialect, name, assignmentMode, resetGroup) {
+  const key = dialect + "\0" + name;
+  const current = semantics.get(key) ?? { assignmentModes: new Set(), resetGroups: new Set() };
+  current.assignmentModes.add(assignmentMode);
+  if (resetGroup !== undefined) current.resetGroups.add(resetGroup);
+  semantics.set(key, current);
+}
+
+function inheritedSemantics(semantics, dialect, name) {
+  const value = semantics.get(dialect + "\0" + name);
+  if (value === undefined || value.assignmentModes.size !== 1 || value.resetGroups.size > 1) {
+    return undefined;
+  }
+  return {
+    assignmentMode: [...value.assignmentModes][0],
+    resetGroup: [...value.resetGroups][0],
+  };
 }
 
 async function extractQuadlet(source) {
@@ -455,6 +551,26 @@ function parserKind(parser) {
   if (/(?:^|_)(?:strv|list|set|words)(?:_|$)/u.test(normalized)) return "list";
   if (/(?:^|_)(?:exec|command|argv)(?:_|$)/u.test(normalized)) return "command";
   return "string";
+}
+
+function parserAssignmentMode(parser) {
+  if (appendParsers.has(parser)) return "append";
+  if (appendWithoutResetParsers.has(parser)) return "append-no-reset";
+  if (parser === "config_parse_trigger_unit") return "first";
+  return "replace";
+}
+
+function parserResetGroup(parser, name) {
+  if (parser === "config_parse_timer") return "timer-values";
+  if (parser === "config_parse_socket_listen") return "socket-listeners";
+  if (parser === "config_parse_path_spec") return "path-specs";
+  if (
+    parser === "config_parse_unit_condition_path" ||
+    parser === "config_parse_unit_condition_string"
+  ) {
+    return name.startsWith("Assert") ? "unit-asserts" : "unit-conditions";
+  }
+  return undefined;
 }
 
 function quadletKind(name) {

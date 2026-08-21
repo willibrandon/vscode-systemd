@@ -33,6 +33,9 @@ All notable changes to this project will be documented here. The format follows
 
 - Effective-configuration provenance now reports one-based source line numbers instead of byte
   offsets.
+- Effective unit configurations now follow each systemd parser's repeated-assignment behavior:
+  scalar values replace, lists and commands append and reset, dependency lists ignore empty
+  assignments, and shared condition, timer, socket, and path lists reset as a group.
 - Installed-validator diagnostics are cleared immediately when the document or validator settings
   change.
 

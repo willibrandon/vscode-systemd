@@ -255,12 +255,24 @@ export function mergeConfigurations(
   documentsInPrecedenceOrder: readonly ParsedDocument[],
 ): EffectiveConfiguration {
   const selected = new Map<string, EffectiveEntry[]>();
+  const resetGroups = new Map<string, string>();
   for (const document of documentsInPrecedenceOrder) {
     for (const node of document.nodes) {
       if (node.kind !== "assignment" || node.section === null) continue;
       const key = node.section + "\0" + node.name;
-      if (node.value === "") {
-        selected.set(key, []);
+      const assignmentMode = node.definition?.assignmentMode ?? "replace";
+      const resetGroup = node.definition?.resetGroup;
+      if (resetGroup !== undefined) resetGroups.set(key, resetGroup);
+      if (node.value === "" && assignmentMode === "append-no-reset") continue;
+      if (node.value === "" && assignmentMode === "first") continue;
+      if (node.value === "" && assignmentMode === "append") {
+        if (resetGroup === undefined) {
+          selected.set(key, []);
+        } else {
+          for (const [selectedKey, selectedGroup] of resetGroups) {
+            if (selectedGroup === resetGroup) selected.set(selectedKey, []);
+          }
+        }
         continue;
       }
       const entry: EffectiveEntry = {
@@ -271,6 +283,11 @@ export function mergeConfigurations(
         sourceLine: node.line + 1,
         span: node.span,
       };
+      if (assignmentMode === "replace") {
+        selected.set(key, [entry]);
+        continue;
+      }
+      if (assignmentMode === "first" && selected.has(key)) continue;
       const existing = selected.get(key) ?? [];
       selected.set(key, [...existing, entry]);
     }

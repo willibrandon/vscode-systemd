@@ -20,7 +20,10 @@ the extension does not alter files under `/etc`, `/run`, `/usr`, or `/lib`.
 
 Run **systemd: Show Effective Configuration** from a unit, its CodeLens, or the Systemd Explorer.
 The read-only virtual document resolves unit templates and drop-ins using systemd precedence and
-lexical ordering. Source annotations retain the file that contributed each entry.
+lexical ordering. Repeated assignments follow the corresponding systemd parser: scalar directives
+use the last value, cumulative directives retain their entries, and empty assignments apply the
+correct reset or no-op behavior, including resets shared by condition, timer, socket, and path
+lists. Source annotations retain the file and line that contributed each effective entry.
 
 ![An effective unit configuration with line-level source provenance and the Systemd Explorer](../../assets/effective-configuration.png)
 

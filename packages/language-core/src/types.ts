@@ -24,6 +24,8 @@ export type RegistryDialect =
 export type ValueKind =
   "string" | "boolean" | "number" | "duration" | "size" | "path" | "address" | "list" | "command";
 
+export type AssignmentMode = "replace" | "append" | "append-no-reset" | "first";
+
 export interface TextSpan {
   readonly start: number;
   readonly end: number;
@@ -34,6 +36,8 @@ export interface DirectiveDefinition {
   readonly section: string;
   readonly name: string;
   readonly valueKind: ValueKind;
+  readonly assignmentMode?: AssignmentMode;
+  readonly resetGroup?: string;
   readonly since: string | null;
   readonly deprecated: boolean;
   readonly documentation: string;

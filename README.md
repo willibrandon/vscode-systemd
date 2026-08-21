@@ -24,8 +24,9 @@ into the desktop and browser extension.
   references.
 - Workspace indexing, a static Systemd Explorer, read-only effective-configuration documents, and
   dependency graphs.
-- Exact unit/template/drop-in precedence, ordering-cycle diagnostics with related locations,
-  specifier inlay hints, and CodeLens entry points.
+- Exact unit/template/drop-in precedence and systemd-aware scalar, list, command, and reset merging,
+  plus ordering-cycle diagnostics with related locations, specifier inlay hints, and CodeLens entry
+  points.
 - Unit drop-in creation.
 - Identical language analysis on desktop, Remote Development hosts, virtual workspaces, and
   vscode.dev-compatible browser hosts.

@@ -28,6 +28,7 @@ export type {
 } from "./workspace.js";
 export type {
   AssignmentNode,
+  AssignmentMode,
   CoreDiagnostic,
   DiagnosticSeverity,
   DialectId,

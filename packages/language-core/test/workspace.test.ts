@@ -182,7 +182,7 @@ describe("systemd ordering dependency graph", () => {
     expect(first.source.slice(firstEdge?.span.start, firstEdge?.span.end)).toBe("second.service");
   });
 
-  it("uses effective reset semantics and ignores requirement-only loops", () => {
+  it("keeps dependencies after an empty no-op assignment", () => {
     const first = unit(
       "file:///workspace/reset-a.service",
       "[Unit]\nAfter=reset-b.service\nRequires=reset-b.service\n",
@@ -193,6 +193,10 @@ describe("systemd ordering dependency graph", () => {
       "[Unit]\nAfter=reset-a.service\nRequires=reset-a.service\n",
     );
 
-    expect(findOrderingDependencyCycles([first, reset, second])).toEqual([]);
+    const cycles = findOrderingDependencyCycles([first, reset, second]);
+
+    expect(cycles).toHaveLength(1);
+    expect(cycles[0]?.nodes).toEqual(["reset-a.service", "reset-b.service"]);
+    expect(cycles[0]?.edges.map(({ directive }) => directive)).toEqual(["After", "After"]);
   });
 });

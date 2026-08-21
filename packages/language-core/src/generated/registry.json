@@ -7107,7 +7107,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.html#Environment=",
       "summary": "Environment in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-config",
@@ -8460,7 +8461,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/logind.conf.html#KillExcludeUsers=",
       "summary": "KillExcludeUsers in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-config",
@@ -8471,7 +8473,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/logind.conf.html#KillOnlyUsers=",
       "summary": "KillOnlyUsers in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-config",
@@ -14785,7 +14788,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#Environment=",
       "summary": "Environment in [Exec].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-config",
@@ -15060,7 +15064,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#Parameters=",
       "summary": "Parameters in [Exec].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-config",
@@ -15159,7 +15164,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.nspawn.html#SystemCallFilter=",
       "summary": "SystemCallFilter in [Exec].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-config",
@@ -16259,7 +16265,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#KillExcludeUsers=",
       "summary": "KillExcludeUsers in [Login].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-config",
@@ -16270,7 +16277,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#KillOnlyUsers=",
       "summary": "KillOnlyUsers in [Login].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-config",
@@ -20835,7 +20843,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#AllowList=",
       "summary": "AllowList in [DHCPv4].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -20857,7 +20866,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#BlackList=",
       "summary": "BlackList in [DHCPv4].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -20901,7 +20911,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#DenyList=",
       "summary": "DenyList in [DHCPv4].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -22969,7 +22980,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#BlackList=",
       "summary": "BlackList in [IPv6AcceptRA].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -22980,7 +22992,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#DenyList=",
       "summary": "DenyList in [IPv6AcceptRA].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -23046,7 +23059,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#PrefixAllowList=",
       "summary": "PrefixAllowList in [IPv6AcceptRA].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -23057,7 +23071,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#PrefixDenyList=",
       "summary": "PrefixDenyList in [IPv6AcceptRA].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -23079,7 +23094,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#RouteAllowList=",
       "summary": "RouteAllowList in [IPv6AcceptRA].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -23090,7 +23106,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#RouteDenyList=",
       "summary": "RouteDenyList in [IPv6AcceptRA].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -23112,7 +23129,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#RouterAllowList=",
       "summary": "RouterAllowList in [IPv6AcceptRA].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -23123,7 +23141,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#RouterDenyList=",
       "summary": "RouterDenyList in [IPv6AcceptRA].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -24157,7 +24176,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#BindCarrier=",
       "summary": "BindCarrier in [Link].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -26060,7 +26080,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#BindCarrier=",
       "summary": "BindCarrier in [Network].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-network",
@@ -29591,7 +29612,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#After=",
       "summary": "After in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -29613,7 +29635,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AllowedCPUs=",
       "summary": "AllowedCPUs in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -29624,7 +29647,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AllowedMemoryNodes=",
       "summary": "AllowedMemoryNodes in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -29635,7 +29659,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AmbientCapabilities=",
       "summary": "AmbientCapabilities in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -29668,7 +29693,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Before=",
       "summary": "Before in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -29712,7 +29738,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#BindPaths=",
       "summary": "BindPaths in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -29723,7 +29750,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#BindReadOnlyPaths=",
       "summary": "BindReadOnlyPaths in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -29734,7 +29762,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#BindsTo=",
       "summary": "BindsTo in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -29855,7 +29884,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#BPFProgram=",
       "summary": "BPFProgram in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -29888,7 +29918,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#CacheDirectory=",
       "summary": "CacheDirectory in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -29943,7 +29974,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#CapabilityBoundingSet=",
       "summary": "CapabilityBoundingSet in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -29987,7 +30019,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#ConditionArchitecture=",
       "summary": "ConditionArchitecture in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -29998,7 +30032,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConfigurationDirectory=",
       "summary": "ConfigurationDirectory in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30020,7 +30055,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#Conflicts=",
       "summary": "Conflicts in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -30031,7 +30067,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#CoredumpFilter=",
       "summary": "CoredumpFilter in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30515,7 +30552,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#Delegate=",
       "summary": "Delegate in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30526,7 +30564,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#DelegateNamespaces=",
       "summary": "DelegateNamespaces in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30559,7 +30598,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#DeviceAllow=",
       "summary": "DeviceAllow in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30592,7 +30632,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html#DirectoryNotEmpty=",
       "summary": "DirectoryNotEmpty in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -30603,7 +30645,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#DisableControllers=",
       "summary": "DisableControllers in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30614,7 +30657,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.target.html#Documentation=",
       "summary": "Documentation in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30691,7 +30735,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#Environment=",
       "summary": "Environment in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30702,7 +30747,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#EnvironmentFile=",
       "summary": "EnvironmentFile in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30713,7 +30759,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#ExecCondition=",
       "summary": "ExecCondition in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30724,7 +30771,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecPaths=",
       "summary": "ExecPaths in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30735,7 +30783,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#ExecReload=",
       "summary": "ExecReload in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30746,7 +30795,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#ExecReloadPost=",
       "summary": "ExecReloadPost in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30757,7 +30807,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#ExecSearchPath=",
       "summary": "ExecSearchPath in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30768,7 +30819,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#ExecStart=",
       "summary": "ExecStart in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30779,7 +30831,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ExecStartPost=",
       "summary": "ExecStartPost in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30790,7 +30843,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ExecStartPre=",
       "summary": "ExecStartPre in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30801,7 +30855,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#ExecStop=",
       "summary": "ExecStop in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30812,7 +30867,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ExecStopPost=",
       "summary": "ExecStopPost in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30823,7 +30879,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ExecStopPre=",
       "summary": "ExecStopPre in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30845,7 +30902,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExtensionDirectories=",
       "summary": "ExtensionDirectories in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -30878,7 +30936,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#ExtensionImages=",
       "summary": "ExtensionImages in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31043,7 +31102,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#ImportCredential=",
       "summary": "ImportCredential in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31054,7 +31114,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#InaccessibleDirectories=",
       "summary": "InaccessibleDirectories in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31065,7 +31126,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#InaccessiblePaths=",
       "summary": "InaccessiblePaths in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31087,7 +31149,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#IODeviceLatencyTargetSec=",
       "summary": "IODeviceLatencyTargetSec in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31098,7 +31161,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#IODeviceWeight=",
       "summary": "IODeviceWeight in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31131,7 +31195,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#IOReadBandwidthMax=",
       "summary": "IOReadBandwidthMax in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31142,7 +31207,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#IOReadIOPSMax=",
       "summary": "IOReadIOPSMax in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31186,7 +31252,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#IOWriteBandwidthMax=",
       "summary": "IOWriteBandwidthMax in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31197,7 +31264,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#IOWriteIOPSMax=",
       "summary": "IOWriteIOPSMax in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31219,7 +31287,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#IPAddressAllow=",
       "summary": "IPAddressAllow in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31230,7 +31299,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#IPAddressDeny=",
       "summary": "IPAddressDeny in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31252,7 +31322,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#IPEgressFilterPath=",
       "summary": "IPEgressFilterPath in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31263,7 +31334,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#IPIngressFilterPath=",
       "summary": "IPIngressFilterPath in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31296,7 +31368,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#JoinsNamespaceOf=",
       "summary": "JoinsNamespaceOf in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -31571,7 +31644,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ListenDatagram=",
       "summary": "ListenDatagram in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -31582,7 +31657,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ListenFIFO=",
       "summary": "ListenFIFO in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -31593,7 +31670,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ListenMessageQueue=",
       "summary": "ListenMessageQueue in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -31604,7 +31683,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ListenNetlink=",
       "summary": "ListenNetlink in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -31615,7 +31696,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ListenSequentialPacket=",
       "summary": "ListenSequentialPacket in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -31626,7 +31709,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ListenSpecial=",
       "summary": "ListenSpecial in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -31637,7 +31722,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ListenStream=",
       "summary": "ListenStream in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -31648,7 +31735,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#ListenUSBFunction=",
       "summary": "ListenUSBFunction in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -31670,7 +31759,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#LoadCredential=",
       "summary": "LoadCredential in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31681,7 +31771,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#LoadCredentialEncrypted=",
       "summary": "LoadCredentialEncrypted in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31703,7 +31794,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#LogExtraFields=",
       "summary": "LogExtraFields in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31714,7 +31806,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#LogFilterPatterns=",
       "summary": "LogFilterPatterns in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31769,7 +31862,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#LogsDirectory=",
       "summary": "LogsDirectory in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -31813,7 +31907,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#LUOSession=",
       "summary": "LUOSession in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32176,7 +32271,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#MountImages=",
       "summary": "MountImages in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32209,7 +32305,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#NFTSet=",
       "summary": "NFTSet in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32242,7 +32339,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#NoExecPaths=",
       "summary": "NoExecPaths in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32308,7 +32406,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#OnActiveSec=",
       "summary": "OnActiveSec in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -32319,7 +32419,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#OnBootSec=",
       "summary": "OnBootSec in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -32330,7 +32432,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#OnCalendar=",
       "summary": "OnCalendar in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -32352,7 +32456,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#OnFailure=",
       "summary": "OnFailure in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -32363,7 +32468,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#OnStartupSec=",
       "summary": "OnStartupSec in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -32374,7 +32481,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#OnSuccess=",
       "summary": "OnSuccess in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -32396,7 +32504,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#OnUnitActiveSec=",
       "summary": "OnUnitActiveSec in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -32407,7 +32517,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#OnUnitInactiveSec=",
       "summary": "OnUnitInactiveSec in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -32429,7 +32541,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#OOMRules=",
       "summary": "OOMRules in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32451,7 +32564,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#OpenFile=",
       "summary": "OpenFile in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32495,7 +32609,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#PassEnvironment=",
       "summary": "PassEnvironment in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32550,7 +32665,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html#PathChanged=",
       "summary": "PathChanged in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -32561,7 +32678,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html#PathExists=",
       "summary": "PathExists in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -32572,7 +32691,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html#PathExistsGlob=",
       "summary": "PathExistsGlob in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -32583,7 +32704,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html#PathModified=",
       "summary": "PathModified in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -32913,7 +33036,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ReadOnlyDirectories=",
       "summary": "ReadOnlyDirectories in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32924,7 +33048,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ReadOnlyPaths=",
       "summary": "ReadOnlyPaths in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32935,7 +33060,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ReadWriteDirectories=",
       "summary": "ReadWriteDirectories in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32957,7 +33083,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ReadWritePaths=",
       "summary": "ReadWritePaths in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32979,7 +33106,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#RefreshOnReload=",
       "summary": "RefreshOnReload in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -32990,7 +33118,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.device.html#ReloadPropagatedFrom=",
       "summary": "ReloadPropagatedFrom in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -33067,7 +33196,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Requires=",
       "summary": "Requires in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -33078,7 +33208,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.mount.html#RequiresMountsFor=",
       "summary": "RequiresMountsFor in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -33100,7 +33231,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#RestartForceExitStatus=",
       "summary": "RestartForceExitStatus in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33144,7 +33276,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#RestartPreventExitStatus=",
       "summary": "RestartPreventExitStatus in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33188,7 +33321,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#RestrictAddressFamilies=",
       "summary": "RestrictAddressFamilies in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33199,7 +33333,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#RestrictFileSystems=",
       "summary": "RestrictFileSystems in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33221,7 +33356,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#RestrictNetworkInterfaces=",
       "summary": "RestrictNetworkInterfaces in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33375,7 +33511,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#RuntimeDirectory=",
       "summary": "RuntimeDirectory in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33507,7 +33644,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#SetCredential=",
       "summary": "SetCredential in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33518,7 +33656,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#SetCredentialEncrypted=",
       "summary": "SetCredentialEncrypted in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33606,7 +33745,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#SocketBindAllow=",
       "summary": "SocketBindAllow in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33617,7 +33757,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#SocketBindDeny=",
       "summary": "SocketBindDeny in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33661,7 +33802,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#Sockets=",
       "summary": "Sockets in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -33760,7 +33902,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#StartupAllowedCPUs=",
       "summary": "StartupAllowedCPUs in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33771,7 +33914,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#StartupAllowedMemoryNodes=",
       "summary": "StartupAllowedMemoryNodes in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33881,7 +34025,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#StateDirectory=",
       "summary": "StateDirectory in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33925,7 +34070,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.mount.html#StopPropagatedFrom=",
       "summary": "StopPropagatedFrom in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -33947,7 +34093,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#SuccessExitStatus=",
       "summary": "SuccessExitStatus in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33958,7 +34105,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#SupplementaryGroups=",
       "summary": "SupplementaryGroups in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -33969,7 +34117,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#Symlinks=",
       "summary": "Symlinks in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -34178,7 +34327,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#TemporaryFileSystem=",
       "summary": "TemporaryFileSystem in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -34420,7 +34570,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#Unit=",
       "summary": "Unit in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "first"
     },
     {
       "dialect": "systemd-unit",
@@ -34431,7 +34582,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#UnsetEnvironment=",
       "summary": "UnsetEnvironment in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -34530,7 +34682,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Wants=",
       "summary": "Wants in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -34541,7 +34694,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.mount.html#WantsMountsFor=",
       "summary": "WantsMountsFor in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -34651,7 +34805,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#XAttrAccept=",
       "summary": "XAttrAccept in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -34662,7 +34817,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#XAttrEntryPoint=",
       "summary": "XAttrEntryPoint in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -34673,7 +34829,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#XAttrListen=",
       "summary": "XAttrListen in [*].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -34728,7 +34885,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#After=",
       "summary": "After in [Install].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -34761,7 +34919,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertPathExists=",
       "summary": "AssertPathExists in [Install].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -34772,7 +34932,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionArchitecture=",
       "summary": "ConditionArchitecture in [Install].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -34794,7 +34956,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ExecStart=",
       "summary": "ExecStart in [Install].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -34805,7 +34968,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#OnFailure=",
       "summary": "OnFailure in [Install].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -34849,7 +35013,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Requires=",
       "summary": "Requires in [Install].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -34871,7 +35036,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Upholds=",
       "summary": "Upholds in [Install].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -34904,7 +35070,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Wants=",
       "summary": "Wants in [Install].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -35036,7 +35203,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#DirectoryNotEmpty=",
       "summary": "DirectoryNotEmpty in [Path].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -35058,7 +35227,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#PathChanged=",
       "summary": "PathChanged in [Path].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -35069,7 +35240,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#PathExists=",
       "summary": "PathExists in [Path].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -35080,7 +35253,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#PathExistsGlob=",
       "summary": "PathExistsGlob in [Path].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -35091,7 +35266,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#PathModified=",
       "summary": "PathModified in [Path].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "path-specs"
     },
     {
       "dialect": "systemd-unit",
@@ -35124,7 +35301,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#Unit=",
       "summary": "Unit in [Path].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "first"
     },
     {
       "dialect": "systemd-unit",
@@ -35201,7 +35379,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecCondition=",
       "summary": "ExecCondition in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35212,7 +35391,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecReload=",
       "summary": "ExecReload in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35223,7 +35403,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecReloadPost=",
       "summary": "ExecReloadPost in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35234,7 +35415,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStart=",
       "summary": "ExecStart in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35245,7 +35427,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStartPost=",
       "summary": "ExecStartPost in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35256,7 +35439,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStartPre=",
       "summary": "ExecStartPre in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35267,7 +35451,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStop=",
       "summary": "ExecStop in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35278,7 +35463,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStopPost=",
       "summary": "ExecStopPost in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35344,7 +35530,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#LUOSession=",
       "summary": "LUOSession in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35388,7 +35575,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#OpenFile=",
       "summary": "OpenFile in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35432,7 +35620,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#RefreshOnReload=",
       "summary": "RefreshOnReload in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35476,7 +35665,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#RestartForceExitStatus=",
       "summary": "RestartForceExitStatus in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35509,7 +35699,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#RestartPreventExitStatus=",
       "summary": "RestartPreventExitStatus in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35586,7 +35777,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#Sockets=",
       "summary": "Sockets in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -35630,7 +35822,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#SuccessExitStatus=",
       "summary": "SuccessExitStatus in [Service].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35905,7 +36098,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStartPost=",
       "summary": "ExecStartPost in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35916,7 +36110,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStartPre=",
       "summary": "ExecStartPre in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35927,7 +36122,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStopPost=",
       "summary": "ExecStopPost in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -35938,7 +36134,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ExecStopPre=",
       "summary": "ExecStopPre in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -36048,7 +36245,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ListenDatagram=",
       "summary": "ListenDatagram in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -36059,7 +36258,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ListenFIFO=",
       "summary": "ListenFIFO in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -36070,7 +36271,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ListenMessageQueue=",
       "summary": "ListenMessageQueue in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -36081,7 +36284,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ListenNetlink=",
       "summary": "ListenNetlink in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -36092,7 +36297,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ListenSequentialPacket=",
       "summary": "ListenSequentialPacket in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -36103,7 +36310,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ListenSpecial=",
       "summary": "ListenSpecial in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -36114,7 +36323,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ListenStream=",
       "summary": "ListenStream in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -36125,7 +36336,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ListenUSBFunction=",
       "summary": "ListenUSBFunction in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "socket-listeners"
     },
     {
       "dialect": "systemd-unit",
@@ -36444,7 +36657,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#Symlinks=",
       "summary": "Symlinks in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -36532,7 +36746,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#XAttrAccept=",
       "summary": "XAttrAccept in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -36543,7 +36758,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#XAttrEntryPoint=",
       "summary": "XAttrEntryPoint in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -36554,7 +36770,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#XAttrListen=",
       "summary": "XAttrListen in [Socket].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -36642,7 +36859,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#OnActiveSec=",
       "summary": "OnActiveSec in [Timer].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -36653,7 +36872,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#OnBootSec=",
       "summary": "OnBootSec in [Timer].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -36664,7 +36885,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#OnCalendar=",
       "summary": "OnCalendar in [Timer].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -36686,7 +36909,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#OnStartupSec=",
       "summary": "OnStartupSec in [Timer].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -36708,7 +36933,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#OnUnitActiveSec=",
       "summary": "OnUnitActiveSec in [Timer].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -36719,7 +36946,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#OnUnitInactiveSec=",
       "summary": "OnUnitInactiveSec in [Timer].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "timer-values"
     },
     {
       "dialect": "systemd-unit",
@@ -36774,7 +37003,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#Unit=",
       "summary": "Unit in [Timer].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "first"
     },
     {
       "dialect": "systemd-unit",
@@ -36796,7 +37026,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#After=",
       "summary": "After in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -36818,7 +37049,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertACPower=",
       "summary": "AssertACPower in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36829,7 +37062,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertArchitecture=",
       "summary": "AssertArchitecture in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36840,7 +37075,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertCapability=",
       "summary": "AssertCapability in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36851,7 +37088,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertControlGroupController=",
       "summary": "AssertControlGroupController in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36862,7 +37101,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertCPUFeature=",
       "summary": "AssertCPUFeature in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36873,7 +37114,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertCPUPressure=",
       "summary": "AssertCPUPressure in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36884,7 +37127,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertCPUs=",
       "summary": "AssertCPUs in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36895,7 +37140,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertCredential=",
       "summary": "AssertCredential in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36906,7 +37153,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertDirectoryNotEmpty=",
       "summary": "AssertDirectoryNotEmpty in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36917,7 +37166,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertEnvironment=",
       "summary": "AssertEnvironment in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36928,7 +37179,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertFileIsExecutable=",
       "summary": "AssertFileIsExecutable in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36939,7 +37192,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertFileNotEmpty=",
       "summary": "AssertFileNotEmpty in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36950,7 +37205,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertFirstBoot=",
       "summary": "AssertFirstBoot in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36961,7 +37218,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertFraction=",
       "summary": "AssertFraction in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36972,7 +37231,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertGroup=",
       "summary": "AssertGroup in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36983,7 +37244,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertHost=",
       "summary": "AssertHost in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -36994,7 +37257,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertIOPressure=",
       "summary": "AssertIOPressure in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37005,7 +37270,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertKernelCommandLine=",
       "summary": "AssertKernelCommandLine in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37016,7 +37283,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertKernelModuleLoaded=",
       "summary": "AssertKernelModuleLoaded in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37027,7 +37296,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertKernelVersion=",
       "summary": "AssertKernelVersion in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37038,7 +37309,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertMachineTag=",
       "summary": "AssertMachineTag in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37049,7 +37322,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertMemory=",
       "summary": "AssertMemory in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37060,7 +37335,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertMemoryPressure=",
       "summary": "AssertMemoryPressure in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37071,7 +37348,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertNeedsUpdate=",
       "summary": "AssertNeedsUpdate in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37082,7 +37361,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertOSRelease=",
       "summary": "AssertOSRelease in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37093,7 +37374,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertPathExists=",
       "summary": "AssertPathExists in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37104,7 +37387,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertPathExistsGlob=",
       "summary": "AssertPathExistsGlob in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37115,7 +37400,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertPathIsDirectory=",
       "summary": "AssertPathIsDirectory in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37126,7 +37413,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertPathIsEncrypted=",
       "summary": "AssertPathIsEncrypted in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37137,7 +37426,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertPathIsMountPoint=",
       "summary": "AssertPathIsMountPoint in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37148,7 +37439,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertPathIsReadWrite=",
       "summary": "AssertPathIsReadWrite in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37159,7 +37452,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertPathIsSocket=",
       "summary": "AssertPathIsSocket in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37170,7 +37465,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#AssertPathIsSymbolicLink=",
       "summary": "AssertPathIsSymbolicLink in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37181,7 +37478,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertSecurity=",
       "summary": "AssertSecurity in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37192,7 +37491,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertUser=",
       "summary": "AssertUser in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37203,7 +37504,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertVersion=",
       "summary": "AssertVersion in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37214,7 +37517,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#AssertVirtualization=",
       "summary": "AssertVirtualization in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-asserts"
     },
     {
       "dialect": "systemd-unit",
@@ -37225,7 +37530,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Before=",
       "summary": "Before in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -37236,7 +37542,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#BindsTo=",
       "summary": "BindsTo in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -37247,7 +37554,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#BindTo=",
       "summary": "BindTo in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -37280,7 +37588,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionACPower=",
       "summary": "ConditionACPower in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37291,7 +37601,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionArchitecture=",
       "summary": "ConditionArchitecture in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37302,7 +37614,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionCapability=",
       "summary": "ConditionCapability in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37313,7 +37627,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionControlGroupController=",
       "summary": "ConditionControlGroupController in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37324,7 +37640,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionCPUFeature=",
       "summary": "ConditionCPUFeature in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37335,7 +37653,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionCPUPressure=",
       "summary": "ConditionCPUPressure in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37346,7 +37666,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionCPUs=",
       "summary": "ConditionCPUs in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37357,7 +37679,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionCredential=",
       "summary": "ConditionCredential in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37368,7 +37692,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionDirectoryNotEmpty=",
       "summary": "ConditionDirectoryNotEmpty in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37379,7 +37705,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionEnvironment=",
       "summary": "ConditionEnvironment in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37390,7 +37718,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionFileIsExecutable=",
       "summary": "ConditionFileIsExecutable in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37401,7 +37731,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionFileNotEmpty=",
       "summary": "ConditionFileNotEmpty in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37412,7 +37744,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionFirmware=",
       "summary": "ConditionFirmware in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37423,7 +37757,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionFirstBoot=",
       "summary": "ConditionFirstBoot in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37434,7 +37770,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionFraction=",
       "summary": "ConditionFraction in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37445,7 +37783,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionGroup=",
       "summary": "ConditionGroup in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37456,7 +37796,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionHost=",
       "summary": "ConditionHost in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37467,7 +37809,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionIOPressure=",
       "summary": "ConditionIOPressure in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37478,7 +37822,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionKernelCommandLine=",
       "summary": "ConditionKernelCommandLine in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37489,7 +37835,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionKernelModuleLoaded=",
       "summary": "ConditionKernelModuleLoaded in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37500,7 +37848,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionKernelVersion=",
       "summary": "ConditionKernelVersion in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37511,7 +37861,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionMachineTag=",
       "summary": "ConditionMachineTag in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37522,7 +37874,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionMemory=",
       "summary": "ConditionMemory in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37533,7 +37887,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionMemoryPressure=",
       "summary": "ConditionMemoryPressure in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37544,7 +37900,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionNeedsUpdate=",
       "summary": "ConditionNeedsUpdate in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37555,7 +37913,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionOSRelease=",
       "summary": "ConditionOSRelease in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37566,7 +37926,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionPathExists=",
       "summary": "ConditionPathExists in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37577,7 +37939,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionPathExistsGlob=",
       "summary": "ConditionPathExistsGlob in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37588,7 +37952,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionPathIsDirectory=",
       "summary": "ConditionPathIsDirectory in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37599,7 +37965,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionPathIsEncrypted=",
       "summary": "ConditionPathIsEncrypted in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37610,7 +37978,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionPathIsMountPoint=",
       "summary": "ConditionPathIsMountPoint in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37621,7 +37991,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionPathIsReadWrite=",
       "summary": "ConditionPathIsReadWrite in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37632,7 +38004,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionPathIsSocket=",
       "summary": "ConditionPathIsSocket in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37643,7 +38017,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ConditionPathIsSymbolicLink=",
       "summary": "ConditionPathIsSymbolicLink in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37654,7 +38030,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionSecurity=",
       "summary": "ConditionSecurity in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37665,7 +38043,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionUser=",
       "summary": "ConditionUser in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37676,7 +38056,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionVersion=",
       "summary": "ConditionVersion in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37687,7 +38069,9 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionVirtualization=",
       "summary": "ConditionVirtualization in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append",
+      "resetGroup": "unit-conditions"
     },
     {
       "dialect": "systemd-unit",
@@ -37709,7 +38093,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Conflicts=",
       "summary": "Conflicts in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -37786,7 +38171,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Documentation=",
       "summary": "Documentation in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -37797,7 +38183,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Environment=",
       "summary": "Environment in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -37808,7 +38195,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#EnvironmentFile=",
       "summary": "EnvironmentFile in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -37819,7 +38207,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ExecCondition=",
       "summary": "ExecCondition in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -37830,7 +38219,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ExecStartPost=",
       "summary": "ExecStartPost in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -37841,7 +38231,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ExecStopPost=",
       "summary": "ExecStopPost in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append"
     },
     {
       "dialect": "systemd-unit",
@@ -37973,7 +38364,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#JoinsNamespaceOf=",
       "summary": "JoinsNamespaceOf in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -37995,7 +38387,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#OnFailure=",
       "summary": "OnFailure in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38028,7 +38421,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#OnSuccess=",
       "summary": "OnSuccess in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38050,7 +38444,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#PartOf=",
       "summary": "PartOf in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38105,7 +38500,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#PropagateReloadFrom=",
       "summary": "PropagateReloadFrom in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38116,7 +38512,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#PropagateReloadTo=",
       "summary": "PropagateReloadTo in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38127,7 +38524,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#PropagatesReloadTo=",
       "summary": "PropagatesReloadTo in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38138,7 +38536,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#PropagatesStopTo=",
       "summary": "PropagatesStopTo in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38182,7 +38581,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ReloadPropagatedFrom=",
       "summary": "ReloadPropagatedFrom in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38204,7 +38604,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Requires=",
       "summary": "Requires in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38215,7 +38616,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#RequiresMountsFor=",
       "summary": "RequiresMountsFor in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38226,7 +38628,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#RequiresOverridable=",
       "summary": "RequiresOverridable in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38237,7 +38640,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Requisite=",
       "summary": "Requisite in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38259,7 +38663,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#RequisiteOverridable=",
       "summary": "RequisiteOverridable in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38292,7 +38697,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Sockets=",
       "summary": "Sockets in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38358,7 +38764,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#StopPropagatedFrom=",
       "summary": "StopPropagatedFrom in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38490,7 +38897,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Unit=",
       "summary": "Unit in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "first"
     },
     {
       "dialect": "systemd-unit",
@@ -38512,7 +38920,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Upholds=",
       "summary": "Upholds in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38534,7 +38943,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Wants=",
       "summary": "Wants in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     },
     {
       "dialect": "systemd-unit",
@@ -38545,7 +38955,8 @@
       "deprecated": false,
       "documentation": "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#WantsMountsFor=",
       "summary": "WantsMountsFor in [Unit].",
-      "choices": []
+      "choices": [],
+      "assignmentMode": "append-no-reset"
     }
   ]
 }
