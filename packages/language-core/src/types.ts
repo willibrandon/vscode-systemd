@@ -110,7 +110,7 @@ export interface TargetVersions {
 export type ValueKind =
   "string" | "boolean" | "number" | "duration" | "size" | "path" | "address" | "list" | "command";
 
-export type AssignmentMode = "replace" | "append" | "append-no-reset" | "first";
+export type AssignmentMode = "replace" | "append" | "append-no-reset" | "first" | "maximum";
 
 export type MkosiSettingScope =
   | "local"
@@ -322,6 +322,7 @@ export interface EffectiveEntry {
   readonly sourceUri: string;
   readonly sourceLine: number;
   readonly span: TextSpan;
+  readonly conditional?: boolean;
 }
 
 export interface EffectiveConfiguration {

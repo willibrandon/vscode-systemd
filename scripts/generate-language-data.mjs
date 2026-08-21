@@ -849,6 +849,7 @@ function addMkosiMatchSettings(result, sections, setting) {
 }
 
 function mkosiAssignmentMode(parser, block) {
+  if (parser === "config_parse_minimum_version") return "maximum";
   if (
     [
       "config_make_credential_parser",

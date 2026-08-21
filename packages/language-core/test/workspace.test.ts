@@ -653,6 +653,83 @@ describe("mkosi configuration references", () => {
     ]);
   });
 
+  it("keeps the greatest numeric MinimumVersion across the graph", () => {
+    const main = mkosi(
+      "file:///workspace/mkosi.conf",
+      "[Config]\nMinimumVersion=24.1\n[Include]\nInclude=older.conf\n",
+    );
+    const older = mkosi(
+      "file:///workspace/older.conf",
+      "[Config]\nMinimumVersion=23\nMinimumVersion=25\nMinimumVersion=24.9\n",
+    );
+    expect(
+      resolveMkosiConfiguration(main.uri, [main, older])
+        .configuration.entries.filter(({ name }) => name === "MinimumVersion")
+        .map(({ value }) => value),
+    ).toEqual(["25"]);
+  });
+
+  it("evaluates settled mkosi match logic and labels host-dependent branches", () => {
+    const main = mkosi(
+      "file:///workspace/mkosi.conf",
+      "[Distribution]\nDistribution=fedora\nRelease=stable\n[Include]\nInclude=config/conditional\n",
+    );
+    const skipped = mkosi(
+      "file:///workspace/mkosi.conf.d/10-skipped.conf",
+      "[Match]\nDistribution=ubuntu\n[Content]\nPackages=skipped\n",
+    );
+    const selected = mkosi(
+      "file:///workspace/mkosi.conf.d/20-selected.conf",
+      "[Match]\nDistribution=|debian\nDistribution=|fedora\n[Content]\nPackages=selected\n",
+    );
+    const triggered = mkosi(
+      "file:///workspace/mkosi.conf.d/30-triggered.conf",
+      "[TriggerMatch]\nDistribution=ubuntu\n[TriggerMatch]\nDistribution=fedora\n[Content]\nPackages=triggered\n",
+    );
+    const conditional = mkosi(
+      "file:///workspace/mkosi.conf.d/40-conditional.conf",
+      "[Match]\nPathExists=/host-dependent\n[Distribution]\nRelease=conditional\n",
+    );
+    const skippedDirectory = mkosi(
+      "file:///workspace/config/conditional/mkosi.conf",
+      "[Match]\nDistribution=ubuntu\n[Content]\nPackages=directory-main\n",
+    );
+    const skippedDirectoryDropIn = mkosi(
+      "file:///workspace/config/conditional/mkosi.conf.d/10-extra.conf",
+      "[Content]\nPackages=directory-drop-in\n",
+    );
+
+    const resolution = resolveMkosiConfiguration(main.uri, [
+      main,
+      skipped,
+      selected,
+      triggered,
+      conditional,
+      skippedDirectory,
+      skippedDirectoryDropIn,
+    ]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name }) => name === "Packages")
+        .map(({ value }) => value),
+    ).toEqual(["selected", "triggered"]);
+    expect(
+      resolution.configuration.entries
+        .filter(({ name, conditional: uncertain }) => name === "Release" && uncertain !== true)
+        .map(({ value }) => value),
+    ).toEqual(["stable"]);
+    expect(
+      resolution.configuration.entries.find(
+        ({ name, conditional: uncertain }) => name === "Release" && uncertain === true,
+      ),
+    ).toMatchObject({ value: "conditional", sourceUri: conditional.uri });
+    expect(resolution.configuration.sources).not.toContain(skipped.uri);
+    expect(resolution.configuration.sources).not.toContain(skippedDirectory.uri);
+    expect(renderEffectiveConfiguration(resolution.configuration)).toContain(
+      "# Conditional: host-dependent or not-yet-resolved mkosi match",
+    );
+  });
+
   it("applies inherited settings below a subimage and universal settings above it", () => {
     const main = mkosi(
       "file:///workspace/mkosi.conf",

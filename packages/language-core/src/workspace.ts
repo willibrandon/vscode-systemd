@@ -579,6 +579,7 @@ export function mergeConfigurations(
 interface ConfigurationEvent {
   readonly document: ParsedDocument;
   readonly node: AssignmentNode;
+  readonly conditional?: boolean;
 }
 
 function mergeConfigurationEvents(
@@ -586,13 +587,28 @@ function mergeConfigurationEvents(
   sources: readonly string[],
 ): EffectiveConfiguration {
   const selected = new Map<string, EffectiveEntry[]>();
+  const conditional: EffectiveEntry[] = [];
   const resetGroups = new Map<string, string>();
-  for (const { document, node } of events) {
+  for (const event of events) {
+    const { document, node } = event;
     if (node.section === null) continue;
     const key = node.section + "\0" + node.name;
     const assignmentMode = node.definition?.assignmentMode ?? "replace";
     const resetGroup = node.definition?.resetGroup;
     if (resetGroup !== undefined) resetGroups.set(key, resetGroup);
+    const entry: EffectiveEntry = {
+      section: node.section,
+      name: node.name,
+      value: node.value,
+      sourceUri: document.uri,
+      sourceLine: node.line + 1,
+      span: node.span,
+      ...(event.conditional === true ? { conditional: true } : {}),
+    };
+    if (event.conditional === true) {
+      conditional.push(entry);
+      continue;
+    }
     if (node.value === "" && assignmentMode === "append-no-reset") continue;
     if (node.value === "" && assignmentMode === "first") continue;
     if (node.value === "" && assignmentMode === "append") {
@@ -605,16 +621,19 @@ function mergeConfigurationEvents(
       }
       continue;
     }
-    const entry: EffectiveEntry = {
-      section: node.section,
-      name: node.name,
-      value: node.value,
-      sourceUri: document.uri,
-      sourceLine: node.line + 1,
-      span: node.span,
-    };
     if (assignmentMode === "replace") {
       selected.set(key, [entry]);
+      continue;
+    }
+    if (assignmentMode === "maximum") {
+      const existing = selected.get(key)?.[0];
+      if (
+        existing === undefined ||
+        node.value.startsWith("commit:") ||
+        compareVersionValues(node.value, existing.value) > 0
+      ) {
+        selected.set(key, [entry]);
+      }
       continue;
     }
     if (assignmentMode === "first" && selected.has(key)) continue;
@@ -622,9 +641,28 @@ function mergeConfigurationEvents(
     selected.set(key, [...existing, entry]);
   }
   return {
-    entries: [...selected.values()].flat(),
+    entries: [...selected.values()].flat().concat(conditional),
     sources,
   };
+}
+
+function compareVersionValues(left: string, right: string): number {
+  const tokenize = (value: string): readonly (number | string)[] =>
+    [...value.matchAll(/\d+|[^\d]+/gu)].map(([part]) =>
+      /^\d+$/u.test(part) ? Number.parseInt(part, 10) : part,
+    );
+  const leftParts = tokenize(left);
+  const rightParts = tokenize(right);
+  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
+    const leftPart = leftParts[index];
+    const rightPart = rightParts[index];
+    if (leftPart === rightPart) continue;
+    if (leftPart === undefined) return -1;
+    if (rightPart === undefined) return 1;
+    if (typeof leftPart === "number" && typeof rightPart === "number") return leftPart - rightPart;
+    return String(leftPart).localeCompare(String(rightPart));
+  }
+  return 0;
 }
 
 export function resolveMkosiConfiguration(
@@ -639,7 +677,7 @@ export function resolveMkosiConfiguration(
   );
   const requested = uriLocation(uri);
   const rootPath = mkosiProjectRoot(requested.path);
-  const mainTraversal = createMkosiTraversal(available, requested.origin);
+  const mainTraversal = createMkosiTraversal(available, requested.origin, "main");
   const mainEvents = mainTraversal.directory(rootPath, true, true);
   const mainBase = mainTraversal.document(rootPath + "/mkosi.conf");
   const image = mkosiImageName(uri);
@@ -652,13 +690,13 @@ export function resolveMkosiConfiguration(
     identity = special === "tools" ? "tools" : "default-initrd";
     const marker = special === "tools" ? "mkosi.tools.conf" : "mkosi.initrd.conf";
     const specialPath = rootPath + "/" + marker;
-    const traversal = createMkosiTraversal(available, requested.origin);
+    const traversal = createMkosiTraversal(available, requested.origin, identity);
     const direct = traversal.document(specialPath);
     const inherited = mkosiSpecialInheritedEvents(mainEvents, special);
     const specialEvents =
       direct === undefined
         ? traversal.directory(specialPath, true, true, inherited.base)
-        : traversal.file(direct, rootPath);
+        : traversal.file(direct, rootPath, inherited.base);
     baseUri = direct?.uri ?? traversal.document(specialPath + "/mkosi.conf")?.uri;
     events = [...inherited.base, ...specialEvents, ...inherited.override];
   }
@@ -669,7 +707,7 @@ export function resolveMkosiConfiguration(
     const universal = mainEvents.filter(({ node }) =>
       ["universal", "multiversal"].includes(node.definition?.mkosiScope ?? ""),
     );
-    const imageTraversal = createMkosiTraversal(available, requested.origin);
+    const imageTraversal = createMkosiTraversal(available, requested.origin, image);
     const imageDirectory = rootPath + "/mkosi.images/" + image;
     const direct = imageTraversal.document(imageDirectory + ".conf");
     let imageEvents: readonly ConfigurationEvent[];
@@ -677,7 +715,7 @@ export function resolveMkosiConfiguration(
       requested.path === normalizeAbsolutePath(imageDirectory + ".conf") &&
       direct !== undefined
     ) {
-      imageEvents = imageTraversal.file(direct, rootPath);
+      imageEvents = imageTraversal.file(direct, rootPath, inherited);
       baseUri = direct.uri;
     } else {
       imageEvents = imageTraversal.directory(imageDirectory, true, true, inherited);
@@ -744,7 +782,7 @@ function retargetMkosiEvents(events: readonly ConfigurationEvent[]): readonly Co
     const definition = definitionFor("mkosi", target.section, target.name);
     return [
       {
-        document: event.document,
+        ...event,
         node: {
           ...event.node,
           section: target.section,
@@ -763,13 +801,19 @@ interface MkosiTraversal {
     parseProfiles: boolean,
     parseLocal: boolean,
     seed?: readonly ConfigurationEvent[],
+    inheritedConditional?: boolean,
   ): readonly ConfigurationEvent[];
-  file(document: ParsedDocument, workingDirectory: string): readonly ConfigurationEvent[];
+  file(
+    document: ParsedDocument,
+    workingDirectory: string,
+    seed?: readonly ConfigurationEvent[],
+  ): readonly ConfigurationEvent[];
 }
 
 function createMkosiTraversal(
   documents: readonly ParsedDocument[],
   origin: string,
+  image: string,
 ): MkosiTraversal {
   const byPath = new Map(
     documents.flatMap((document) => {
@@ -790,9 +834,10 @@ function createMkosiTraversal(
   const file = (
     selected: ParsedDocument,
     workingDirectory: string,
+    seed: readonly ConfigurationEvent[] = [],
   ): readonly ConfigurationEvent[] => {
     const result: ConfigurationEvent[] = [];
-    appendFile(selected, normalizeAbsolutePath(workingDirectory), result, []);
+    appendFile(selected, normalizeAbsolutePath(workingDirectory), result, seed);
     return result;
   };
 
@@ -801,7 +846,12 @@ function createMkosiTraversal(
     workingDirectory: string,
     result: ConfigurationEvent[],
     ambient: readonly ConfigurationEvent[],
+    inheritedConditional = false,
+    evaluatedCondition?: MkosiConditionResult,
   ): void => {
+    const condition = evaluatedCondition ?? evaluateMkosiConditions(selected, ambient, image);
+    if (condition === false) return;
+    const eventConditional = inheritedConditional || condition === "unknown";
     for (const node of selected.nodes) {
       if (
         node.kind !== "assignment" ||
@@ -810,10 +860,10 @@ function createMkosiTraversal(
       ) {
         continue;
       }
-      result.push({ document: selected, node });
+      result.push({ document: selected, node, ...(eventConditional ? { conditional: true } : {}) });
       if (node.section !== "Include" || node.name !== "Include") continue;
       for (const { target } of splitMkosiValues(node.value, node.valueSpan.start)) {
-        appendInclude(target, workingDirectory, result, ambient);
+        appendInclude(target, workingDirectory, result, ambient, eventConditional);
       }
     }
   };
@@ -823,6 +873,7 @@ function createMkosiTraversal(
     workingDirectory: string,
     result: ConfigurationEvent[],
     ambient: readonly ConfigurationEvent[],
+    inheritedConditional: boolean,
   ): void => {
     if (mkosiBuiltInIncludes.has(target) || target.includes("%")) return;
     const path = resolvePathFromDirectory(workingDirectory, target);
@@ -830,9 +881,9 @@ function createMkosiTraversal(
     includeSeen.add(path);
     const included = document(path);
     if (included !== undefined) {
-      appendFile(included, workingDirectory, result, ambient);
+      appendFile(included, workingDirectory, result, [...ambient, ...result], inheritedConditional);
     } else if (hasDirectory(path)) {
-      result.push(...directory(path, true, false, [...ambient, ...result]));
+      result.push(...directory(path, true, false, [...ambient, ...result], inheritedConditional));
     }
   };
 
@@ -841,31 +892,56 @@ function createMkosiTraversal(
     parseProfiles: boolean,
     parseLocal: boolean,
     seed: readonly ConfigurationEvent[] = [],
+    inheritedConditional = false,
   ): readonly ConfigurationEvent[] => {
     const path = normalizeAbsolutePath(rawPath);
+    const main = document(path + "/mkosi.conf");
+    const directoryCondition =
+      main === undefined ? true : evaluateMkosiConditions(main, seed, image);
+    if (directoryCondition === false) return [];
+    const directoryConditional = inheritedConditional || directoryCondition === "unknown";
     const regular: ConfigurationEvent[] = [];
     const localDirectory: ConfigurationEvent[] = [];
     const localFile: ConfigurationEvent[] = [];
 
     if (parseLocal && hasDirectory(path + "/mkosi.local")) {
-      localDirectory.push(...directory(path + "/mkosi.local", false, false, seed));
+      localDirectory.push(
+        ...directory(path + "/mkosi.local", false, false, seed, directoryConditional),
+      );
     }
     const local = parseLocal ? document(path + "/mkosi.local.conf") : undefined;
-    if (local !== undefined) appendFile(local, path, localFile, [...seed, ...localDirectory]);
+    if (local !== undefined) {
+      appendFile(local, path, localFile, [...seed, ...localDirectory], directoryConditional);
+    }
 
     const localPriority = [...localFile, ...localDirectory];
 
-    const main = document(path + "/mkosi.conf");
-    if (main !== undefined) appendFile(main, path, regular, [...seed, ...localPriority]);
+    if (main !== undefined) {
+      appendFile(main, path, regular, [...seed, ...localPriority], directoryConditional, true);
+    }
 
     const confd = path + "/mkosi.conf.d";
     for (const entry of immediateChildren(confd, byPath.keys())) {
       const child = confd + "/" + entry;
       const dropIn = document(child);
       if (dropIn !== undefined && entry.endsWith(".conf")) {
-        appendFile(dropIn, path, regular, [...seed, ...localPriority]);
+        appendFile(
+          dropIn,
+          path,
+          regular,
+          [...seed, ...regular, ...localPriority],
+          directoryConditional,
+        );
       } else if (hasDirectory(child)) {
-        regular.push(...directory(child, false, false, [...seed, ...regular]));
+        regular.push(
+          ...directory(
+            child,
+            false,
+            false,
+            [...seed, ...regular, ...localPriority],
+            directoryConditional,
+          ),
+        );
       }
     }
 
@@ -875,13 +951,33 @@ function createMkosiTraversal(
         const profilePath = path + "/mkosi.profiles/" + profile;
         const directProfile = document(profilePath);
         if (directProfile !== undefined) {
-          appendFile(directProfile, path, regular, [...seed, ...localPriority]);
+          appendFile(
+            directProfile,
+            path,
+            regular,
+            [...seed, ...regular, ...localPriority],
+            directoryConditional,
+          );
         } else if (hasDirectory(profilePath)) {
-          regular.push(...directory(profilePath, false, false, [...seed, ...regular]));
+          regular.push(
+            ...directory(
+              profilePath,
+              false,
+              false,
+              [...seed, ...regular, ...localPriority],
+              directoryConditional,
+            ),
+          );
         }
         const profileFile = document(profilePath + ".conf");
         if (profileFile !== undefined) {
-          appendFile(profileFile, path, regular, [...seed, ...localPriority]);
+          appendFile(
+            profileFile,
+            path,
+            regular,
+            [...seed, ...regular, ...localPriority],
+            directoryConditional,
+          );
         }
       }
     }
@@ -906,13 +1002,165 @@ function effectiveMkosiList(
   events: readonly ConfigurationEvent[],
   name: string,
 ): readonly string[] {
-  let result: string[] = [];
-  for (const { node } of events) {
-    if (node.section !== "Config" || node.name !== name) continue;
-    const values = splitMkosiValues(node.value, node.valueSpan.start).map(({ target }) => target);
-    result = node.value === "" ? [] : [...result, ...values];
+  return mergeConfigurationEvents(events, [])
+    .entries.filter(
+      (entry) => entry.conditional !== true && entry.section === "Config" && entry.name === name,
+    )
+    .flatMap(({ value }) => splitMkosiValues(value, 0).map(({ target }) => target));
+}
+
+type MkosiConditionResult = boolean | "unknown";
+
+interface MkosiConditionGroup {
+  readonly section: "Match" | "TriggerMatch" | "Assert" | "TriggerAssert";
+  readonly assignments: readonly AssignmentNode[];
+}
+
+const mkosiListMatchers = new Set(["BuildSources", "Profile", "Profiles", "Repositories"]);
+
+function evaluateMkosiConditions(
+  document: ParsedDocument,
+  ambient: readonly ConfigurationEvent[],
+  image: string,
+): MkosiConditionResult {
+  const groups: { section: MkosiConditionGroup["section"]; assignments: AssignmentNode[] }[] = [];
+  let current: (typeof groups)[number] | undefined;
+  for (const node of document.nodes) {
+    if (
+      node.kind === "section" &&
+      ["Match", "TriggerMatch", "Assert", "TriggerAssert"].includes(node.name)
+    ) {
+      current = {
+        section: node.name as MkosiConditionGroup["section"],
+        assignments: [],
+      };
+      groups.push(current);
+    } else if (node.kind === "section") {
+      current = undefined;
+    } else if (node.kind === "assignment" && current !== undefined) {
+      current.assignments.push(node);
+    }
   }
-  return result;
+  const matches = evaluateMkosiConditionFamily(groups, "Match", "TriggerMatch", ambient, image);
+  const asserts = evaluateMkosiConditionFamily(groups, "Assert", "TriggerAssert", ambient, image);
+  return conditionAnd([matches, asserts]);
+}
+
+function evaluateMkosiConditionFamily(
+  groups: readonly MkosiConditionGroup[],
+  regular: MkosiConditionGroup["section"],
+  triggering: MkosiConditionGroup["section"],
+  ambient: readonly ConfigurationEvent[],
+  image: string,
+): MkosiConditionResult {
+  const required = groups
+    .filter(({ section }) => section === regular)
+    .map((group) => evaluateMkosiConditionGroup(group, ambient, image));
+  const alternatives = groups
+    .filter(({ section }) => section === triggering)
+    .map((group) => evaluateMkosiConditionGroup(group, ambient, image));
+  return conditionAnd([
+    ...required,
+    ...(alternatives.length === 0 ? [] : [conditionOr(alternatives)]),
+  ]);
+}
+
+function evaluateMkosiConditionGroup(
+  group: MkosiConditionGroup,
+  ambient: readonly ConfigurationEvent[],
+  image: string,
+): MkosiConditionResult {
+  const required: MkosiConditionResult[] = [];
+  const alternatives: MkosiConditionResult[] = [];
+  for (const assignment of group.assignments) {
+    let expected = assignment.value;
+    const triggering = expected.startsWith("|");
+    if (triggering) expected = expected.slice(1);
+    const negated = expected.startsWith("!");
+    if (negated) expected = expected.slice(1);
+    let result = evaluateMkosiCondition(assignment.name, expected, ambient, image);
+    if (negated) result = conditionNot(result);
+    (triggering ? alternatives : required).push(result);
+  }
+  return conditionAnd([
+    ...required,
+    ...(alternatives.length === 0 ? [] : [conditionOr(alternatives)]),
+  ]);
+}
+
+function evaluateMkosiCondition(
+  name: string,
+  expected: string,
+  ambient: readonly ConfigurationEvent[],
+  image: string,
+): MkosiConditionResult {
+  if (expected.includes("%")) return "unknown";
+  if (name === "Image") return globMatches(image, expected);
+  if (["HostArchitecture", "PathExists", "SystemdVersion"].includes(name)) return "unknown";
+  const effective = mergeConfigurationEvents(ambient, []).entries.filter(
+    (entry) => entry.name === name,
+  );
+  if (effective.some(({ conditional }) => conditional === true)) return "unknown";
+  const certain = effective.filter(({ conditional }) => conditional !== true);
+  if (certain.length === 0) return "unknown";
+  if (name === "ImageVersion" && /^(?:[!<=>]=?|==)/u.test(expected)) {
+    return matchVersionExpression(certain.at(-1)?.value ?? "", expected);
+  }
+  const actual = mkosiListMatchers.has(name)
+    ? certain.flatMap(({ value }) => splitMkosiValues(value, 0).map(({ target }) => target))
+    : [certain.at(-1)?.value ?? ""];
+  if (expected === "") return actual.length === 0;
+  return actual.some((value) => globMatches(normalizeBoolean(value), normalizeBoolean(expected)));
+}
+
+function normalizeBoolean(value: string): string {
+  const normalized = value.toLowerCase();
+  if (["1", "on", "true", "yes"].includes(normalized)) return "yes";
+  if (["0", "off", "false", "no"].includes(normalized)) return "no";
+  return value;
+}
+
+function matchVersionExpression(actual: string, expression: string): boolean {
+  const match = /^(==|!=|>=|<=|>|<)?(.*)$/u.exec(expression);
+  const operator = match?.[1] ?? "==";
+  const expected = match?.[2] ?? expression;
+  const comparison = compareVersionValues(actual, expected);
+  switch (operator) {
+    case "!=":
+      return comparison !== 0;
+    case ">=":
+      return comparison >= 0;
+    case "<=":
+      return comparison <= 0;
+    case ">":
+      return comparison > 0;
+    case "<":
+      return comparison < 0;
+    default:
+      return comparison === 0;
+  }
+}
+
+function globMatches(actual: string, pattern: string): boolean {
+  const expression = pattern
+    .replace(/[.+^${}()|[\]\\]/gu, "\\$&")
+    .replaceAll("*", ".*")
+    .replaceAll("?", ".");
+  return new RegExp("^" + expression + "$", "u").test(actual);
+}
+
+function conditionNot(value: MkosiConditionResult): MkosiConditionResult {
+  return value === "unknown" ? value : !value;
+}
+
+function conditionAnd(values: readonly MkosiConditionResult[]): MkosiConditionResult {
+  if (values.includes(false)) return false;
+  return values.includes("unknown") ? "unknown" : true;
+}
+
+function conditionOr(values: readonly MkosiConditionResult[]): MkosiConditionResult {
+  if (values.includes(true)) return true;
+  return values.includes("unknown") ? "unknown" : false;
 }
 
 function resolvePathFromDirectory(directory: string, target: string): string | undefined {
@@ -948,6 +1196,9 @@ export function renderEffectiveConfiguration(configuration: EffectiveConfigurati
     for (const entry of entries) {
       lines.push(
         "# " + entry.sourceUri + ":" + String(entry.sourceLine),
+        ...(entry.conditional === true
+          ? ["# Conditional: host-dependent or not-yet-resolved mkosi match"]
+          : []),
         entry.name + "=" + entry.value,
       );
     }

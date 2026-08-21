@@ -934,6 +934,7 @@
       "documentation": "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "summary": "Specify the minimum required mkosi version.",
       "choices": [],
+      "assignmentMode": "maximum",
       "mkosiScope": "main"
     },
     {

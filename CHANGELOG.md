@@ -61,6 +61,9 @@ All notable changes to this project will be documented here. The format follows
 - Generated mkosi metadata now preserves collection reset behavior and main, inherited, universal,
   tools-tree, and initrd setting scopes from pinned `ConfigSetting` declarations, and links hover
   documentation to mkosi's official manual.
+- mkosi effective configurations now evaluate settled Match/TriggerMatch and Assert/TriggerAssert
+  branches, label host-dependent contributions instead of letting them override certain values, and
+  keep the greatest `MinimumVersion=` exactly as mkosi does.
 - The stable and preview data channels now select distinct, pinned upstream registries through a
   compact generated delta and reparse open and indexed files immediately when switched.
 - Indexed unit symlinks now retain their canonical targets so aliases use the canonical fragment,
