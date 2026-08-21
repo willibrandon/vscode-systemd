@@ -4,15 +4,23 @@ import { resolve } from "node:path";
 import { createIsolatedVSCodeEnvironment } from "./vscode-test-environment.mjs";
 
 export async function runInstalledDesktopSmoke(options) {
-  const { expectedIdentity, extensionsDirectory, installTarget, root, userDataDirectory, version } =
-    options;
+  const {
+    expectedIdentity,
+    extensionsDirectory,
+    installTarget,
+    preRelease = false,
+    root,
+    userDataDirectory,
+    version,
+  } = options;
   const commandEnvironment = createIsolatedVSCodeEnvironment();
   const profileArguments = [
     `--extensions-dir=${extensionsDirectory}`,
     `--user-data-dir=${userDataDirectory}`,
   ];
+  const preReleaseArguments = preRelease ? ["--pre-release"] : [];
   const installation = await runVSCodeCommand(
-    ["--install-extension", installTarget, "--force", ...profileArguments],
+    ["--install-extension", installTarget, "--force", ...preReleaseArguments, ...profileArguments],
     { spawn: { env: commandEnvironment }, version },
   );
   process.stdout.write(installation.stdout);

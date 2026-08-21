@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   compare:
@@ -50,8 +51,81 @@ jobs:
           SYSTEMD_SOURCE: ${{ github.workspace }}/.systemd-upstream
           PODMAN_SOURCE: ${{ github.workspace }}/.podman-upstream
           MKOSI_SOURCE: ${{ github.workspace }}/.mkosi-upstream
-      - name: Report whether review is required
-        run: >-
-          git diff --exit-code -- data/upstream.lock.json
-          packages/language-core/src/generated/registry.json
-          packages/language-core/src/generated/stable-delta.json
+      - name: Detect and record reviewable drift
+        id: drift
+        shell: bash
+        run: |
+          paths=(
+            data/upstream.lock.json
+            packages/language-core/src/generated/registry.json
+            packages/language-core/src/generated/stable-delta.json
+          )
+          if git diff --quiet -- "${paths[@]}"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git diff -- "${paths[@]}" > upstream-drift.patch
+          {
+            echo "# Upstream language-data drift"
+            echo
+            echo "Generated data changed against current systemd, Podman, or mkosi heads."
+            echo
+            echo '```text'
+            git diff --stat -- "${paths[@]}"
+            echo '```'
+          } > upstream-drift-report.md
+      - name: Upload complete review diff
+        if: steps.drift.outputs.changed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: upstream-drift-${{ github.run_id }}
+          path: |
+            upstream-drift.patch
+            upstream-drift-report.md
+          if-no-files-found: error
+          retention-days: 30
+      - name: Create or update the actionable drift issue
+        if: steps.drift.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="[automated] Upstream language data drift"
+          issue=$(gh issue list --state open --limit 100 --json number,title \
+            --jq '[.[] | select(.title == "[automated] Upstream language data drift")][0].number // empty')
+          report=$(mktemp)
+          {
+            cat upstream-drift-report.md
+            echo
+            echo "Workflow run: $RUN_URL"
+            echo
+            echo "Download the attached workflow artifact, review the complete patch, run the pinned"
+            echo "corpus and package gates, then commit the regenerated lock and registries."
+          } > "$report"
+          if [[ -n "$issue" ]]; then
+            gh issue edit "$issue" --body-file "$report"
+            gh issue comment "$issue" --body "Drift was reconfirmed by $RUN_URL."
+          else
+            gh issue create --title "$title" --body-file "$report"
+          fi
+      - name: Close a resolved drift issue
+        if: steps.drift.outputs.changed == 'false'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          issue=$(gh issue list --state open --limit 100 --json number,title \
+            --jq '[.[] | select(.title == "[automated] Upstream language data drift")][0].number // empty')
+          if [[ -n "$issue" ]]; then
+            gh issue close "$issue" --comment "No generated drift remains as of $RUN_URL."
+          fi
+      - name: Fail after publishing the drift report
+        if: steps.drift.outputs.changed == 'true'
+        run: exit 1

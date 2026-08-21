@@ -376,6 +376,28 @@ describe("language server JSON-RPC contract", () => {
       quickFixes.some(({ title, kind }) => title === "Change to Restart=" && kind === "quickfix"),
     ).toBe(true);
 
+    const virtualUri = "systemd-effective://workspace/demo/demo.service";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: virtualUri,
+        languageId: "systemd-unit",
+        version: 1,
+        text: "[Unit]\nDescription=Stale virtual output\n",
+      },
+    });
+    const effectiveSource = await request<string>(client, "systemd/effectiveConfiguration", {
+      uri,
+    });
+    expect(effectiveSource).toContain("Description=Demo");
+    expect(effectiveSource).not.toContain("Stale virtual output");
+    expect(
+      await request(client, "textDocument/completion", {
+        textDocument: { uri: virtualUri },
+        position: { line: 1, character: 0 },
+      }),
+    ).toEqual([]);
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: virtualUri } });
+
     const missing = { textDocument: { uri: "file:///workspace/missing.service" } };
     expect(
       await request(client, "textDocument/completion", {

@@ -748,6 +748,8 @@
     "package": "npm run build && npm run check:bundles && npm run check:licenses && npm run check:package && npm run package:artifacts",
     "package:artifacts": "node ./scripts/build-release-artifacts.mjs",
     "package:list": "vsce ls --no-dependencies",
+    "verify:marketplace": "node ./scripts/verify-marketplace-release.mjs",
+    "verify:open-vsx": "node ./scripts/verify-open-vsx-release.mjs",
     "verify": "npm run check:generated && npm run check:coverage && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:performance && npm run check:bundles && npm run check:licenses && npm run check:package && npm run test:package && npm run audit && npm run audit:signatures"
   },
   "devDependencies": {

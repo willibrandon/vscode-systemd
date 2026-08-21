@@ -151,5 +151,14 @@ All notable changes to this project will be documented here. The format follows
 - Workspace indexing now refreshes through VS Code create, save, rename, and delete events as well
   as filesystem watchers, and generated Quadlet `.network` skeletons remain unambiguously Quadlet
   after close and re-indexing.
+- Scheduled upstream drift checks now preserve a complete review artifact and create, update, or
+  close one actionable GitHub issue instead of failing without a durable report.
+- Releases now remain draft until Marketplace checksum, clean installation and activation, and Open
+  VSX channel and checksum parity are verified; provenance and SBOM attestation bundles are attached
+  beside the deterministic VSIX, checksum, and CycloneDX SBOM.
+- Effective-configuration documents no longer feed their rendered output back into unit resolution,
+  and open views now refresh after source edits and saves without retaining stale diagnostics.
+- Release retries safely reuse only an existing draft for the same tag, replace its evidence assets,
+  and refuse to overwrite an already-published GitHub release.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

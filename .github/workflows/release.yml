@@ -14,7 +14,7 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       attestations: write
       contents: write
@@ -48,33 +48,88 @@ jobs:
         run: npm run package
       - name: Reproduce release artifacts byte-for-byte
         run: npm run check:release-reproducibility
+      - name: Install and activate the exact VSIX in clean desktop and browser hosts
+        run: npm run test:vsix:prepared
+      - name: Install and activate the exact VSIX on a Remote SSH extension host
+        run: npm run test:remote:prepared
       - name: Record immutable artifact paths
+        shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "VSIX_PATH=dist/systemd-$VERSION.vsix" >> "$GITHUB_ENV"
-          echo "CHECKSUM_PATH=dist/systemd-$VERSION.sha256" >> "$GITHUB_ENV"
-          echo "SBOM_PATH=dist/systemd-$VERSION.cdx.json" >> "$GITHUB_ENV"
+          MINOR=$(node -p "Number(require('./package.json').version.split('.')[1])")
+          {
+            echo "VERSION=$VERSION"
+            echo "VSIX_PATH=dist/systemd-$VERSION.vsix"
+            echo "CHECKSUM_PATH=dist/systemd-$VERSION.sha256"
+            echo "SBOM_PATH=dist/systemd-$VERSION.cdx.json"
+          } >> "$GITHUB_ENV"
+          if (( MINOR % 2 == 1 )); then
+            echo "PRERELEASE=true" >> "$GITHUB_ENV"
+          else
+            echo "PRERELEASE=false" >> "$GITHUB_ENV"
+          fi
       - name: Attest build provenance
+        id: provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ env.VSIX_PATH }}
       - name: Attest CycloneDX SBOM
+        id: sbom-attestation
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ env.VSIX_PATH }}
           sbom-path: ${{ env.SBOM_PATH }}
+      - name: Create a draft GitHub release with complete evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom-attestation.outputs.bundle-path }}
+        run: |
+          prerelease_flag=()
+          if [[ "$PRERELEASE" == "true" ]]; then prerelease_flag+=(--prerelease); fi
+          provenance_asset="dist/systemd-$VERSION.provenance.json"
+          sbom_attestation_asset="dist/systemd-$VERSION.sbom-attestation.json"
+          cp -- "$PROVENANCE_BUNDLE" "$provenance_asset"
+          cp -- "$SBOM_BUNDLE" "$sbom_attestation_asset"
+          assets=(
+            "$VSIX_PATH"
+            "$CHECKSUM_PATH"
+            "$SBOM_PATH"
+            "$provenance_asset"
+            "$sbom_attestation_asset"
+          )
+          if release_state=$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [[ "$release_state" != "true" ]]; then
+              echo "Refusing to replace an already-published release for $GITHUB_REF_NAME." >&2
+              exit 1
+            fi
+            gh release edit "$GITHUB_REF_NAME" --draft \
+              --prerelease="$PRERELEASE" --title "systemd Unit Files $VERSION" --verify-tag
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+              --draft --verify-tag --title "systemd Unit Files $VERSION" \
+              --notes-from-tag "${prerelease_flag[@]}"
+          fi
       - name: Publish exact VSIX to Visual Studio Marketplace
+        shell: bash
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx vsce publish --packagePath "$VSIX_PATH" --no-dependencies --skip-duplicate
+        run: |
+          prerelease_flag=()
+          if [[ "$PRERELEASE" == "true" ]]; then prerelease_flag+=(--pre-release); fi
+          npx vsce publish --packagePath "$VSIX_PATH" --no-dependencies --skip-duplicate \
+            "${prerelease_flag[@]}"
       - name: Publish exact VSIX to Open VSX
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: npx ovsx publish "$VSIX_PATH" --pat "$OVSX_PAT" --skip-duplicate
-      - name: Create GitHub release
+      - name: Verify Marketplace checksum, installation, and activation
+        run: npm run verify:marketplace
+      - name: Verify Open VSX version, channel, and checksum
+        run: npm run verify:open-vsx
+      - name: Publish the GitHub release after both registries pass
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "$GITHUB_REF_NAME" "$VSIX_PATH" "$CHECKSUM_PATH" "$SBOM_PATH"
-          --verify-tag --title "systemd Unit Files $VERSION" --notes-from-tag
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false

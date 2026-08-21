@@ -128,6 +128,7 @@ const languageIds = new Set<DialectId>([
 ]);
 const tokenTypes = ["keyword", "string", "number", "comment", "parameter"] as const;
 const tokenModifiers = ["deprecated"] as const;
+const virtualDocumentSchemes = new Set(["systemd-effective", "systemd-dependency-graph"]);
 
 export interface TimerHost {
   setTimeout(callback: () => void, milliseconds: number): unknown;
@@ -938,6 +939,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
 }
 
 function dialectFor(document: TextDocument): DialectId | undefined {
+  if (virtualDocumentSchemes.has(URI.parse(document.uri).scheme)) return undefined;
   return languageIds.has(document.languageId as DialectId)
     ? (document.languageId as DialectId)
     : detectDialect(document.uri, document.getText());

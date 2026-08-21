@@ -209,6 +209,7 @@ export function registerCommonFeatures(
       if (files.some((uri) => indexer.isCandidate(uri))) scheduleRefresh();
     }),
     vscode.workspace.onDidChangeTextDocument(scheduleVirtualRefresh),
+    vscode.workspace.onDidSaveTextDocument(scheduleVirtualRefresh),
     vscode.workspace.onDidChangeConfiguration((event): void => {
       if (event.affectsConfiguration("systemd.dataChannel")) {
         const channel = vscode.workspace

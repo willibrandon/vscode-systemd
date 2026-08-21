@@ -313,6 +313,16 @@ exports.run = async function run() {
     uri,
   );
   assert.ok(savedSymbols.some((symbol) => symbol.name === "[Install]"));
+  await waitFor(
+    () => effective.getText(),
+    (text) => text.includes("Restart=yes") && !text.includes("Restar=yes"),
+    "the open effective configuration to refresh after source save",
+  );
+  await waitFor(
+    () => vscode.languages.getDiagnostics(effective.uri),
+    (items) => items.every((item) => diagnosticCode(item) !== "unknown-setting"),
+    "stale effective-configuration diagnostics to clear",
+  );
 
   const invalidUri = vscode.Uri.joinPath(root, "configuration.service");
   await vscode.workspace.fs.writeFile(
