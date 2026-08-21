@@ -322,6 +322,7 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
         languageId,
         source,
         mtime: stat.mtime,
+        workspaceOwned: vscode.workspace.getWorkspaceFolder(uri) !== undefined,
       };
     } catch (error) {
       this.output.debug("Unable to index " + uri.toString() + ": " + safeMessage(error));

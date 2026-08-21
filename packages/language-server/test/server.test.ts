@@ -92,6 +92,7 @@ describe("language server JSON-RPC contract", () => {
           languageId: "systemd-unit",
           source: "[Unit]\nDescription=Other\n[Service]\nExecStart=/bin/true\n",
           mtime: 1,
+          workspaceOwned: true,
         },
       ],
     });
@@ -574,12 +575,43 @@ describe("language server JSON-RPC contract", () => {
     });
     expect(prepare).not.toBeNull();
 
+    const hostUri = "file:///etc/systemd/system/host.service";
+    await client.sendNotification("systemd/index/documents", {
+      replace: false,
+      documents: [
+        {
+          uri: hostUri,
+          languageId: "systemd-unit",
+          source: "[Unit]\nWants=other.service\n",
+          mtime: 1,
+          workspaceOwned: false,
+        },
+      ],
+    });
+
     const rename = await request<WorkspaceEdit>(client, "textDocument/rename", {
       textDocument: { uri },
       position: { line: 2, character: 10 },
       newName: "replacement.service",
     });
     expect(rename.changes?.[uri]?.[0]?.newText).toBe("replacement.service");
+    expect(rename.changes?.[hostUri]).toBeUndefined();
+
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: hostUri,
+        languageId: "systemd-unit",
+        version: 1,
+        text: "[Unit]\nWants=other.service\n",
+      },
+    });
+    expect(
+      await request(client, "textDocument/prepareRename", {
+        textDocument: { uri: hostUri },
+        position: { line: 1, character: 9 },
+      }),
+    ).toBeNull();
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: hostUri } });
 
     const invalidRename = await request<WorkspaceEdit>(client, "textDocument/rename", {
       textDocument: { uri },
@@ -598,6 +630,12 @@ describe("language server JSON-RPC contract", () => {
       await request(client, "textDocument/prepareRename", {
         textDocument: { uri },
         position: { line: 2, character: 2 },
+      }),
+    ).toBeNull();
+    expect(
+      await request(client, "textDocument/prepareRename", {
+        textDocument: { uri },
+        position: { line: 3, character: 21 },
       }),
     ).toBeNull();
 

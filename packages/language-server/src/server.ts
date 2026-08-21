@@ -23,6 +23,7 @@ import type {
   DirectiveDefinition,
   OrderingDependencyCycle,
   ParsedDocument,
+  Reference,
   SyntaxNode,
   TextSpan,
 } from "@systemd/language-core";
@@ -40,6 +41,7 @@ import {
   TextDocumentSyncKind,
   TextDocuments,
 } from "vscode-languageserver";
+import { URI } from "vscode-uri";
 import type {
   CodeAction,
   CodeLens,
@@ -128,6 +130,7 @@ const defaultSettings: ServerSettings = {
 export function startLanguageServer(connection: Connection, timers: TimerHost): void {
   const documents = new TextDocuments(TextDocument);
   const indexed = new Map<string, ParsedDocument>();
+  const indexedWorkspaceOwned = new Set<string>();
   const pending = new Map<string, unknown>();
   const settingsCache = new Map<string, Promise<ServerSettings>>();
   let fallbackSettings = defaultSettings;
@@ -136,6 +139,10 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   let graphRevision = 0;
   let cycleCacheRevision = -1;
   let cycleCache: readonly OrderingDependencyCycle[] = [];
+  let workspaceRoots: readonly string[] = [];
+
+  const workspaceOwns = (uri: string): boolean =>
+    indexedWorkspaceOwned.has(uri) || workspaceRoots.some((root) => uriIsWithin(uri, root));
 
   const parsed = (document: TextDocument): ParsedDocument | undefined => {
     const dialect = dialectFor(document);
@@ -232,6 +239,11 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
 
   connection.onInitialize((params: InitializeParams): InitializeResult => {
     supportsConfiguration = params.capabilities.workspace?.configuration === true;
+    const legacyRootUri = object(params)?.["rootUri"];
+    workspaceRoots = [
+      ...(params.workspaceFolders?.map(({ uri }) => uri) ?? []),
+      ...(typeof legacyRootUri === "string" ? [legacyRootUri] : []),
+    ].filter((root, index, roots) => roots.indexOf(root) === index);
     detectedVersions = normalizeDetectedVersions(
       object(object(params.initializationOptions)?.["detectedVersions"]),
     );
@@ -608,26 +620,38 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   });
   connection.onPrepareRename((params): Range | null => {
     const context = contextAt(documents, params.textDocument.uri, params.position, parsed);
-    if (context?.node.kind !== "assignment") return null;
-    return context.document.offsetAt(params.position) >= context.node.valueSpan.start
-      ? wordRangeAt(context.document, params.position)
-      : null;
+    if (context === undefined || !workspaceOwns(context.document.uri)) return null;
+    const offset = context.document.offsetAt(params.position);
+    return renameReferenceAt(context.tree, offset) === undefined
+      ? null
+      : wordRangeAt(context.document, params.position);
   });
   connection.onRenameRequest((params): WorkspaceEdit => {
     const document = documents.get(params.textDocument.uri);
-    if (document === undefined) return { changes: {} };
-    const oldName = wordAt(document, params.position);
+    const tree = document === undefined ? undefined : parsed(document);
+    const reference =
+      document === undefined || tree === undefined
+        ? undefined
+        : renameReferenceAt(tree, document.offsetAt(params.position));
     const changes: Record<string, TextEdit[]> = {};
-    if (oldName === "" || !/^[A-Za-z0-9_.@:-]{1,255}$/u.test(params.newName)) {
+    if (
+      document === undefined ||
+      reference === undefined ||
+      !workspaceOwns(document.uri) ||
+      !validReferenceRename(reference, params.newName)
+    ) {
       return { changes };
     }
     for (const tree of allParsed()) {
+      if (!workspaceOwns(tree.uri)) continue;
       const source =
         documents.get(tree.uri) ?? TextDocument.create(tree.uri, tree.dialect, 0, tree.source);
       const edits = extractReferences(tree)
-        .filter((reference) => reference.target === oldName)
-        .map((reference): TextEdit => ({
-          range: toRange(source, reference.span),
+        .filter(
+          (candidate) => candidate.kind === reference.kind && candidate.target === reference.target,
+        )
+        .map((candidate): TextEdit => ({
+          range: toRange(source, candidate.span),
           newText: params.newName,
         }));
       if (edits.length > 0) changes[tree.uri] = edits;
@@ -707,7 +731,10 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
   connection.onNotification(
     indexedDocumentsNotification,
     ({ documents: candidates, replace }): void => {
-      if (replace) indexed.clear();
+      if (replace) {
+        indexed.clear();
+        indexedWorkspaceOwned.clear();
+      }
       for (const candidate of candidates) {
         const document = parse(candidate.source, candidate.languageId, candidate.uri);
         indexed.set(
@@ -716,6 +743,8 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
             ? document
             : { ...document, canonicalUri: candidate.canonicalUri },
         );
+        if (candidate.workspaceOwned) indexedWorkspaceOwned.add(candidate.uri);
+        else indexedWorkspaceOwned.delete(candidate.uri);
       }
       invalidateGraph();
       for (const document of documents.all()) schedule(document, 0);
@@ -1222,6 +1251,73 @@ function wordRangeAt(document: TextDocument, position: Position): Range | null {
 function wordAt(document: TextDocument, position: Position): string {
   const range = wordRangeAt(document, position);
   return range === null ? "" : document.getText(range);
+}
+
+function renameReferenceAt(tree: ParsedDocument, offset: number): Reference | undefined {
+  return extractReferences(tree).find(
+    (reference) =>
+      reference.span.start <= offset &&
+      offset <= reference.span.end &&
+      renameableReference(reference),
+  );
+}
+
+function renameableReference(reference: Reference): boolean {
+  switch (reference.kind) {
+    case "unit":
+      return isUnitIdentity(reference.target);
+    case "quadlet":
+      return isQuadletIdentity(reference.target);
+    case "mkosi":
+      return isSafeMkosiIdentity(reference.target);
+    case "documentation":
+    case "path":
+      return false;
+  }
+}
+
+function validReferenceRename(reference: Reference, candidate: string): boolean {
+  switch (reference.kind) {
+    case "unit":
+      return isUnitIdentity(candidate);
+    case "quadlet":
+      return isQuadletIdentity(candidate);
+    case "mkosi":
+      return isSafeMkosiIdentity(candidate);
+    case "documentation":
+    case "path":
+      return false;
+  }
+}
+
+function isQuadletIdentity(identity: string): boolean {
+  return /\.(?:artifact|build|container|image|kube|network|pod|volume)$/u.test(identity);
+}
+
+function isSafeMkosiIdentity(identity: string): boolean {
+  return (
+    identity.length > 0 &&
+    identity.length <= 255 &&
+    !identity.startsWith("/") &&
+    !identity.includes("\\") &&
+    !identity.split("/").includes("..") &&
+    /^[A-Za-z0-9_@+.,:/=-]+$/u.test(identity)
+  );
+}
+
+function uriIsWithin(candidate: string, root: string): boolean {
+  try {
+    const candidateUri = URI.parse(candidate);
+    const rootUri = URI.parse(root);
+    if (candidateUri.scheme !== rootUri.scheme || candidateUri.authority !== rootUri.authority) {
+      return false;
+    }
+    const candidatePath = candidateUri.path.replace(/\/+$/u, "");
+    const rootPath = rootUri.path.replace(/\/+$/u, "");
+    return candidatePath === rootPath || candidatePath.startsWith(rootPath + "/");
+  } catch {
+    return false;
+  }
 }
 
 function basename(uri: string): string {

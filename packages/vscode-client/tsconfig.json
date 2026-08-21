@@ -9,6 +9,7 @@
   },
   "include": [
     "src/common.ts",
+    "src/dialect-associations.ts",
     "src/explorer-model.ts",
     "src/explorer.ts",
     "src/indexer.ts",

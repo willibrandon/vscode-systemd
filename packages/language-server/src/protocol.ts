@@ -43,6 +43,7 @@ export interface IndexedDocument {
   readonly languageId: DialectId;
   readonly source: string;
   readonly mtime: number;
+  readonly workspaceOwned: boolean;
 }
 
 export interface IndexedDocumentsParams {

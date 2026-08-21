@@ -7,6 +7,7 @@ import {
 } from "@systemd/language-server/protocol";
 import { registerSystemdExplorer } from "./explorer.js";
 import type { DropInTarget } from "./explorer.js";
+import { exactDialectAssociationPattern, withDialectAssociation } from "./dialect-associations.js";
 import { createWorkspaceIndexer, registerLanguageDetection } from "./indexer.js";
 import type { HostIndexingOptions } from "./indexer.js";
 import { registerVirtualDocuments } from "./virtual-documents.js";
@@ -131,6 +132,7 @@ export function registerCommonFeatures(
         { title: "Select the configuration dialect" },
       );
       if (selection === undefined) return;
+      await persistDialectAssociation(document, selection.id);
       const updated = await vscode.languages.setTextDocumentLanguage(document, selection.id);
       await runtime.client.sendNotification(refreshDiagnosticsNotification, {
         uri: updated.uri.toString(),
@@ -202,6 +204,34 @@ export function registerCommonFeatures(
     }),
   );
   return { refreshIndex };
+}
+
+async function persistDialectAssociation(
+  document: vscode.TextDocument,
+  dialect: DialectId,
+): Promise<void> {
+  if (document.isUntitled) return;
+  const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+  const configuration = vscode.workspace.getConfiguration("systemd", document.uri);
+  const target =
+    folder !== undefined
+      ? vscode.ConfigurationTarget.WorkspaceFolder
+      : vscode.workspace.workspaceFile !== undefined
+        ? vscode.ConfigurationTarget.Workspace
+        : vscode.ConfigurationTarget.Global;
+  const inspection = configuration.inspect<Readonly<Record<string, string>>>("dialectAssociations");
+  const current =
+    target === vscode.ConfigurationTarget.WorkspaceFolder
+      ? inspection?.workspaceFolderValue
+      : target === vscode.ConfigurationTarget.Workspace
+        ? inspection?.workspaceValue
+        : inspection?.globalValue;
+  const pattern = exactDialectAssociationPattern(document.uri.path, folder?.uri.path);
+  await configuration.update(
+    "dialectAssociations",
+    withDialectAssociation(current, pattern, dialect),
+    target,
+  );
 }
 
 function activeSystemdDocument(showMessage = true): vscode.TextDocument | undefined {

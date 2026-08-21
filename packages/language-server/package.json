@@ -8,6 +8,7 @@
     "./protocol": "./src/protocol.ts"
   },
   "dependencies": {
-    "@systemd/language-core": "0.1.0"
+    "@systemd/language-core": "0.1.0",
+    "vscode-uri": "^3.1.0"
   }
 }
