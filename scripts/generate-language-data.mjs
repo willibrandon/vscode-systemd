@@ -1262,14 +1262,15 @@ function systemdDocumentationText(markup) {
     .replace(/<emphasis(?:\s[^>]*)?>([\s\S]*?)<\/emphasis>/gu, "*$1*")
     .replace(/<quote(?:\s[^>]*)?>([\s\S]*?)<\/quote>/gu, '"$1"')
     .replace(/<[^>]+>/gu, " ")
-    .replace(/&#(\d+);/gu, (_, value) => String.fromCodePoint(Number.parseInt(value, 10)))
-    .replace(/&#x([0-9a-f]+);/giu, (_, value) => String.fromCodePoint(Number.parseInt(value, 16)))
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&amp;", "&")
-    .replaceAll("&quot;", '"')
-    .replaceAll("&apos;", "'")
-    .replace(/&([A-Za-z0-9_.%-]+);/gu, "$1")
+    .replace(
+      /&(?:#(\d+)|#x([0-9a-f]+)|([A-Za-z0-9_.%-]+));/giu,
+      (_, decimal, hexadecimal, name) => {
+        if (decimal !== undefined) return String.fromCodePoint(Number.parseInt(decimal, 10));
+        if (hexadecimal !== undefined)
+          return String.fromCodePoint(Number.parseInt(hexadecimal, 16));
+        return { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" }[name.toLowerCase()] ?? name;
+      },
+    )
     .replace(/\s+/gu, " ")
     .trim();
 }
