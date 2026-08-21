@@ -20,107 +20,134 @@ if (address === null || typeof address === "string") throw new Error("Docs serve
 
 const browser = await chromium.launch({ headless: true });
 try {
-  for (const viewport of [
-    { width: 1512, height: 780, label: "14-inch MacBook Pro browser window" },
-    { width: 1280, height: 720, label: "compact laptop" },
-    { width: 1024, height: 640, label: "small laptop window" },
-  ]) {
-    const page = await browser.newPage({
-      viewport: { width: viewport.width, height: viewport.height },
-    });
-    await page.goto(`http://127.0.0.1:${address.port}${base}/editing/`);
-    const source = page.locator(".sl-markdown-content img[data-image-zoom]").first();
-    await source.click();
+  const viewports = [
+    { width: 1512, height: 720, label: "14-inch MacBook Pro browser window" },
+    { width: 1280, height: 650, label: "compact laptop" },
+    { width: 1024, height: 600, label: "small laptop window" },
+    { width: 900, height: 520, label: "short split-screen window" },
+  ];
+  const routes = ["/", "/editing/", "/effective-configuration/"];
 
-    const dialog = page.locator("docs-image-zoom dialog[open]");
-    await dialog.waitFor({ state: "visible" });
-    await dialog.locator("img").evaluate(async (image) => {
-      if (image.complete && image.naturalWidth > 0) return;
-      await new Promise((resolvePromise, rejectPromise) => {
-        image.addEventListener("load", resolvePromise, { once: true });
-        image.addEventListener("error", rejectPromise, { once: true });
+  for (const viewport of viewports) {
+    for (const route of routes) {
+      const page = await browser.newPage({
+        viewport: { width: viewport.width, height: viewport.height },
       });
-    });
+      await page.goto(`http://127.0.0.1:${address.port}${base}${route}`);
+      const sources = page.locator(".sl-markdown-content img[data-image-zoom]");
+      const imageCount = await sources.count();
+      assert(imageCount > 0, route + " has no popup image to verify");
 
-    const measurements = await dialog.evaluate((element) => {
-      const frame = element.querySelector(".image-frame");
-      const image = element.querySelector("img");
-      const caption = element.querySelector("[data-caption]");
-      if (frame === null || image === null) {
-        throw new Error("Expanded-image frame is incomplete.");
+      for (let imageIndex = 0; imageIndex < imageCount; imageIndex += 1) {
+        await sources.nth(imageIndex).click();
+
+        const dialog = page.locator("docs-image-zoom dialog[open]");
+        await dialog.waitFor({ state: "visible" });
+        await dialog.locator("img").evaluate(async (image) => {
+          if (image.complete && image.naturalWidth > 0) return;
+          await new Promise((resolvePromise, rejectPromise) => {
+            image.addEventListener("load", resolvePromise, { once: true });
+            image.addEventListener("error", rejectPromise, { once: true });
+          });
+        });
+
+        const measurements = await dialog.evaluate((element) => {
+          const frame = element.querySelector(".image-frame");
+          const image = element.querySelector("img");
+          const caption = element.querySelector("[data-caption]");
+          if (frame === null || image === null) {
+            throw new Error("Expanded-image frame is incomplete.");
+          }
+          const dialogBounds = element.getBoundingClientRect();
+          const imageBounds = image.getBoundingClientRect();
+          const captionBounds = caption?.getBoundingClientRect();
+          return {
+            documentOverflow: getComputedStyle(document.documentElement).overflow,
+            zoomScrollLock: document.documentElement.hasAttribute("data-image-zoom-open"),
+            dialog: {
+              top: dialogBounds.top,
+              right: dialogBounds.right,
+              bottom: dialogBounds.bottom,
+              left: dialogBounds.left,
+              clientHeight: element.clientHeight,
+              scrollHeight: element.scrollHeight,
+            },
+            frame: { clientHeight: frame.clientHeight, scrollHeight: frame.scrollHeight },
+            image: {
+              top: imageBounds.top,
+              right: imageBounds.right,
+              bottom: imageBounds.bottom,
+              left: imageBounds.left,
+            },
+            captionBottom: captionBounds?.bottom ?? 0,
+          };
+        });
+
+        const context = `${viewport.label} ${route} image ${imageIndex + 1}`;
+        assert(measurements.dialog.top >= 0, context + " dialog starts above the viewport");
+        assert(
+          measurements.dialog.left >= 16 && measurements.dialog.top >= 16,
+          context + " dialog lacks comfortable viewport margins",
+        );
+        assert(
+          measurements.dialog.right <= viewport.width + 1,
+          context + " dialog exceeds the viewport width",
+        );
+        assert(
+          measurements.dialog.bottom <= viewport.height + 1,
+          context + " dialog exceeds the viewport height",
+        );
+        assert(
+          measurements.dialog.right <= viewport.width - 16 &&
+            measurements.dialog.bottom <= viewport.height - 16,
+          context + " dialog lacks comfortable viewport margins",
+        );
+        assert(
+          measurements.dialog.right - measurements.dialog.left <= 640 + 1,
+          context + " dialog is wider than the documented maximum",
+        );
+        assert(
+          measurements.dialog.bottom - measurements.dialog.top <=
+            Math.min(viewport.height * 0.6, 480) + 1,
+          context + " dialog is taller than the documented maximum",
+        );
+        assert(
+          measurements.dialog.scrollHeight <= measurements.dialog.clientHeight + 1,
+          context + " dialog requires scrolling: " + JSON.stringify(measurements),
+        );
+        assert(
+          measurements.frame.scrollHeight <= measurements.frame.clientHeight + 1,
+          context + " image frame requires scrolling",
+        );
+        assert(
+          measurements.image.left >= measurements.dialog.left &&
+            measurements.image.right <= measurements.dialog.right + 1 &&
+            measurements.image.top >= measurements.dialog.top &&
+            measurements.image.bottom <= measurements.dialog.bottom + 1,
+          context + " expanded image is clipped",
+        );
+        assert(
+          measurements.captionBottom <= measurements.dialog.bottom + 1,
+          context + " caption is clipped",
+        );
+        assert(
+          measurements.documentOverflow === "hidden",
+          context + " leaves the documentation page scrollable behind the popup",
+        );
+        assert(measurements.zoomScrollLock, context + " did not activate its page scroll lock");
+        await dialog.locator("[data-close]").click();
+        await dialog.waitFor({ state: "hidden" });
+        assert(
+          !(await page
+            .locator("html")
+            .evaluate((element) => element.hasAttribute("data-image-zoom-open"))),
+          context + " did not release its page scroll lock after close",
+        );
       }
-      const dialogBounds = element.getBoundingClientRect();
-      const imageBounds = image.getBoundingClientRect();
-      const captionBounds = caption?.getBoundingClientRect();
-      return {
-        dialog: {
-          top: dialogBounds.top,
-          right: dialogBounds.right,
-          bottom: dialogBounds.bottom,
-          left: dialogBounds.left,
-          clientHeight: element.clientHeight,
-          scrollHeight: element.scrollHeight,
-        },
-        frame: { clientHeight: frame.clientHeight, scrollHeight: frame.scrollHeight },
-        image: {
-          top: imageBounds.top,
-          right: imageBounds.right,
-          bottom: imageBounds.bottom,
-          left: imageBounds.left,
-        },
-        captionBottom: captionBounds?.bottom ?? 0,
-      };
-    });
-
-    assert(measurements.dialog.top >= 0, viewport.label + " dialog starts above the viewport");
-    assert(
-      measurements.dialog.left >= 16 && measurements.dialog.top >= 16,
-      viewport.label + " dialog lacks comfortable viewport margins",
-    );
-    assert(
-      measurements.dialog.right <= viewport.width + 1,
-      viewport.label + " dialog exceeds the viewport width",
-    );
-    assert(
-      measurements.dialog.bottom <= viewport.height + 1,
-      viewport.label + " dialog exceeds the viewport height",
-    );
-    assert(
-      measurements.dialog.right <= viewport.width - 16 &&
-        measurements.dialog.bottom <= viewport.height - 16,
-      viewport.label + " dialog lacks comfortable viewport margins",
-    );
-    assert(
-      measurements.dialog.right - measurements.dialog.left <= 736 + 1,
-      viewport.label + " dialog is wider than the documented maximum",
-    );
-    assert(
-      measurements.dialog.bottom - measurements.dialog.top <=
-        Math.min(viewport.height * 0.68, 576) + 1,
-      viewport.label + " dialog is taller than the documented maximum",
-    );
-    assert(
-      measurements.dialog.scrollHeight <= measurements.dialog.clientHeight + 1,
-      viewport.label + " dialog requires scrolling: " + JSON.stringify(measurements),
-    );
-    assert(
-      measurements.frame.scrollHeight <= measurements.frame.clientHeight + 1,
-      viewport.label + " image frame requires scrolling",
-    );
-    assert(
-      measurements.image.left >= measurements.dialog.left &&
-        measurements.image.right <= measurements.dialog.right + 1 &&
-        measurements.image.top >= measurements.dialog.top &&
-        measurements.image.bottom <= measurements.dialog.bottom + 1,
-      viewport.label + " expanded image is clipped",
-    );
-    assert(
-      measurements.captionBottom <= measurements.dialog.bottom + 1,
-      viewport.label + " caption is clipped",
-    );
-    await page.close();
+      await page.close();
+    }
   }
-  console.log("Documentation image popup fits laptop viewports without scrolling.");
+  console.log("Every documentation image popup fits laptop viewports without scrolling.");
 } finally {
   await browser.close();
   await new Promise((resolvePromise, rejectPromise) => {

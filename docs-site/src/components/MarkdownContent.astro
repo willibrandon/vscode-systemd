@@ -28,10 +28,16 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
       const open = (image: HTMLImageElement) => {
         expandedImage.src = image.src;
         expandedImage.srcset = image.srcset;
-        expandedImage.sizes = "(max-width: 50rem) calc(100vw - 4rem), 46rem";
+        expandedImage.sizes = "(max-width: 44rem) calc(100vw - 3rem), 40rem";
         expandedImage.alt = image.alt;
         caption.textContent = image.alt;
         dialog.showModal();
+        document.documentElement.setAttribute("data-image-zoom-open", "");
+      };
+
+      const close = () => {
+        dialog.close();
+        document.documentElement.removeAttribute("data-image-zoom-open");
       };
 
       for (const image of this.querySelectorAll<HTMLImageElement>(".sl-markdown-content img")) {
@@ -49,9 +55,12 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
         });
       }
 
-      closeButton.addEventListener("click", () => dialog.close());
+      closeButton.addEventListener("click", close);
+      dialog.addEventListener("close", () => {
+        document.documentElement.removeAttribute("data-image-zoom-open");
+      });
       dialog.addEventListener("click", (event) => {
-        if (event.target === dialog) dialog.close();
+        if (event.target === dialog) close();
       });
     }
   }
@@ -70,11 +79,15 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
     cursor: zoom-in;
   }
 
+  :global(html[data-image-zoom-open]) {
+    overflow: hidden;
+  }
+
   dialog {
     box-sizing: border-box;
-    width: min(calc(100vw - 4rem), 46rem);
-    max-height: 68vh;
-    max-height: min(68dvh, 36rem);
+    width: min(calc(100vw - 3rem), 40rem);
+    max-height: 60vh;
+    max-height: min(60dvh, 30rem);
     margin: auto;
     border: 1px solid var(--sl-color-gray-5);
     border-radius: 0.5rem;
@@ -93,8 +106,8 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 0.75rem;
-    max-height: calc(68vh - 2px);
-    max-height: calc(min(68dvh, 36rem) - 2px);
+    max-height: calc(60vh - 2px);
+    max-height: calc(min(60dvh, 30rem) - 2px);
     padding: 0.75rem;
   }
 
@@ -113,8 +126,8 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: calc(68vh - 7rem);
-    max-height: min(calc(68dvh - 7rem), 29rem);
+    max-height: calc(60vh - 7rem);
+    max-height: min(calc(60dvh - 7rem), 23rem);
     margin: auto;
     object-fit: contain;
   }
@@ -122,23 +135,5 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
   p {
     margin: 0;
     font-size: var(--sl-text-sm);
-  }
-
-  @media (max-width: 40rem), (max-height: 36rem) {
-    dialog {
-      width: calc(100vw - 2rem);
-      max-height: calc(100vh - 2rem);
-      max-height: calc(100dvh - 2rem);
-    }
-
-    .image-frame {
-      max-height: calc(100vh - 2rem - 2px);
-      max-height: calc(100dvh - 2rem - 2px);
-    }
-
-    img {
-      max-height: calc(100vh - 9rem);
-      max-height: calc(100dvh - 9rem);
-    }
   }
 </style>

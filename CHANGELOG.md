@@ -112,5 +112,7 @@ All notable changes to this project will be documented here. The format follows
   case-prefix model, understand lossless continued rules and forward labels, and offer contextual
   key/operator/value completion. Table intelligence now completes documented mount, crypttab,
   veritytab, integritytab, and clonetab options and validates systemd-specific fstab fields.
+- Documentation image popups now fit every included screenshot within compact laptop and
+  split-screen viewports without internal or background-page scrolling.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main
