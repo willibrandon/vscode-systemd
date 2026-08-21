@@ -50,7 +50,11 @@ exports.run = async function run() {
     new vscode.Position(1, 4),
   );
   assert.ok(hovers.length > 0);
-  assert.match(JSON.stringify(hovers), /brief, meaningful, human-readable text/u);
+  const hoverText = hovers
+    .flatMap(({ contents }) => contents)
+    .map((content) => (typeof content === "string" ? content : content.value))
+    .join("\n");
+  assert.match(hoverText, /brief, meaningful, human-readable text/u);
 
   const symbols = await vscode.commands.executeCommand("vscode.executeDocumentSymbolProvider", uri);
   assert.deepEqual(
