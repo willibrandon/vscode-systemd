@@ -126,6 +126,25 @@ describe("language server JSON-RPC contract", () => {
     });
     expect(valueCompletion.map(({ label }) => label)).toEqual(["yes", "no"]);
 
+    const mkosiUri = "file:///workspace/mkosi.conf";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: mkosiUri,
+        languageId: "mkosi",
+        version: 1,
+        text: "[Distribution]\nDistribution=\n",
+      },
+    });
+    const mkosiValues = await request<CompletionItem[]>(client, "textDocument/completion", {
+      textDocument: { uri: mkosiUri },
+      position: { line: 1, character: 13 },
+    });
+    expect(mkosiValues.map(({ label }) => label)).toEqual(
+      expect.arrayContaining(["fedora", "debian", "arch", "rhel-ubi"]),
+    );
+    expect(mkosiValues.some(({ label }) => label === "")).toBe(false);
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: mkosiUri } });
+
     const hover = await request<Hover | null>(client, "textDocument/hover", {
       textDocument: { uri },
       position: { line: 1, character: 3 },

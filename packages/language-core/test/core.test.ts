@@ -22,6 +22,12 @@ describe("generated registry", () => {
     expect(registryMetadata.quadletExtensions).toContain(".artifact");
     expect(registryMetadata.upstream.systemd).toMatch(/^[0-9a-f]{40}$/u);
     expect(definitionFor("systemd-unit", "Unit", "Description")?.valueKind).toBe("string");
+    expect(definitionFor("mkosi", "Distribution", "Distribution")?.choices).toEqual(
+      expect.arrayContaining(["fedora", "debian", "arch", "rhel-ubi"]),
+    );
+    expect(definitionFor("mkosi", "Output", "Format")?.choices).toEqual(
+      expect.arrayContaining(["disk", "directory", "uki", "oci"]),
+    );
   });
 });
 

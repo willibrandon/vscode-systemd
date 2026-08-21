@@ -65,7 +65,11 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Make build sources ephemeral when running scripts.",
-      "choices": []
+      "choices": [
+        "yes",
+        "no",
+        "buildcache"
+      ]
     },
     {
       "dialect": "mkosi",
@@ -98,7 +102,13 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Only use the package cache when installing packages.",
-      "choices": []
+      "choices": [
+        "always",
+        "auto",
+        "metadata",
+        "never",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -164,7 +174,11 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Make use of and generate intermediary cache images.",
-      "choices": []
+      "choices": [
+        "yes",
+        "no",
+        "strict"
+      ]
     },
     {
       "dialect": "mkosi",
@@ -307,7 +321,25 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Set the distribution to use for the default tools tree.",
-      "choices": []
+      "choices": [
+        "fedora",
+        "debian",
+        "kali",
+        "ubuntu",
+        "postmarketos",
+        "arch",
+        "opensuse",
+        "mageia",
+        "centos",
+        "rhel",
+        "rhel-ubi",
+        "openmandriva",
+        "rocky",
+        "alma",
+        "azure",
+        "custom",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -362,7 +394,12 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Which profiles to enable for the default tools tree.",
-      "choices": []
+      "choices": [
+        "devel",
+        "misc",
+        "package-manager",
+        "runtime"
+      ]
     },
     {
       "dialect": "mkosi",
@@ -538,7 +575,11 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Specify which BIOS bootloader to use.",
-      "choices": []
+      "choices": [
+        "none",
+        "grub",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -560,7 +601,16 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Specify which UEFI bootloader to use.",
-      "choices": []
+      "choices": [
+        "none",
+        "uki",
+        "systemd-boot",
+        "grub",
+        "uki-signed",
+        "systemd-boot-signed",
+        "grub-signed",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -725,7 +775,14 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Which profiles to enable for the default initrd.",
-      "choices": []
+      "choices": [
+        "lvm",
+        "network",
+        "nfs",
+        "pkcs11",
+        "plymouth",
+        "raid"
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1066,7 +1123,12 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Specify whether to use shim.",
-      "choices": []
+      "choices": [
+        "none",
+        "signed",
+        "unsigned",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1110,7 +1172,13 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Set up SSH access from the host to the final image via 'mkosi ssh'.",
-      "choices": []
+      "choices": [
+        "always",
+        "auto",
+        "runtime",
+        "never",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1220,7 +1288,28 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Override the architecture of installation.",
-      "choices": []
+      "choices": [
+        "alpha",
+        "arc",
+        "arm",
+        "arm64",
+        "ia64",
+        "loongarch64",
+        "mips-le",
+        "mips64-le",
+        "parisc",
+        "ppc",
+        "ppc64",
+        "ppc64-le",
+        "riscv32",
+        "riscv64",
+        "s390",
+        "s390x",
+        "tilegx",
+        "x86",
+        "x86-64",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1231,7 +1320,25 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Distribution to install.",
-      "choices": []
+      "choices": [
+        "fedora",
+        "debian",
+        "kali",
+        "ubuntu",
+        "postmarketos",
+        "arch",
+        "opensuse",
+        "mageia",
+        "centos",
+        "rhel",
+        "rhel-ubi",
+        "openmandriva",
+        "rocky",
+        "alma",
+        "azure",
+        "custom",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1407,7 +1514,21 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Output Format.",
-      "choices": []
+      "choices": [
+        "confext",
+        "cpio",
+        "directory",
+        "disk",
+        "esp",
+        "none",
+        "portable",
+        "sysext",
+        "tar",
+        "uki",
+        "oci",
+        "addon",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1638,7 +1759,13 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Set the disk type for the root disk in the virtual machine.",
-      "choices": []
+      "choices": [
+        "virtio-blk",
+        "virtio-scsi",
+        "nvme",
+        "scsi-cd",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1671,7 +1798,14 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Select the virtual machine firmware to use.",
-      "choices": []
+      "choices": [
+        "auto",
+        "linux",
+        "linux-noinitrd",
+        "uefi",
+        "uefi-secure-boot",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1770,7 +1904,13 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Register booted vm/container with systemd-machined.",
-      "choices": []
+      "choices": [
+        "auto",
+        "markdown",
+        "man",
+        "pandoc",
+        "system"
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1792,7 +1932,14 @@
       "deprecated": true,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Compatibility alias for Firmware.",
-      "choices": []
+      "choices": [
+        "auto",
+        "linux",
+        "linux-noinitrd",
+        "uefi",
+        "uefi-secure-boot",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -1935,7 +2082,12 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Set networking backend to use when booting the image.",
-      "choices": []
+      "choices": [
+        "interface",
+        "user",
+        "none",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -2012,7 +2164,11 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Set the virtual machine monitor to use for mkosi vm.",
-      "choices": []
+      "choices": [
+        "qemu",
+        "vmspawn",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -2188,7 +2344,12 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Tool to use for signing PE binaries for secure boot.",
-      "choices": []
+      "choices": [
+        "auto",
+        "sbsign",
+        "systemd-sbsign",
+        ""
+      ]
     },
     {
       "dialect": "mkosi",
@@ -2276,7 +2437,13 @@
       "deprecated": false,
       "documentation": "https://man.archlinux.org/man/mkosi.1.en",
       "summary": "Configure whether to enforce or disable verity partitions for disk images.",
-      "choices": []
+      "choices": [
+        "disabled",
+        "hash",
+        "signed",
+        "defer",
+        "auto"
+      ]
     },
     {
       "dialect": "mkosi",

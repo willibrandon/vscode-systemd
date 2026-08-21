@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "adapterVersion": 2,
+  "sources": {
+    "systemd": {
+      "repository": "https://github.com/systemd/systemd.git",
+      "tag": "v261",
+      "revision": "58b0764a206fc6cc67aa1a1c60f9f766a366edf8",
+      "tree": "eb723b9b28a61f565c7724079aab025c1436b029",
+      "license": "LGPL-2.1-or-later"
+    },
+    "podman": {
+      "repository": "https://github.com/podman-container-tools/podman.git",
+      "tag": "v5.4.0-rc1",
+      "revision": "f19c577355dd5fab3411aee8d12b47da61f2237b",
+      "tree": "1cc956cd75bb438ebafba9fa09bbd2c1fc05b71d",
+      "license": "Apache-2.0"
+    },
+    "mkosi": {
+      "repository": "https://github.com/systemd/mkosi.git",
+      "tag": "v26",
+      "revision": "9b7d87a1707e39a42cfb54dce5cf745ef7b99a7e",
+      "tree": "a628566c29837027914af7774bad44a58b6c1357",
+      "license": "LGPL-2.1-or-later"
+    }
+  }
+}

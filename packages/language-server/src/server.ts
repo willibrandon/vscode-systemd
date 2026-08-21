@@ -645,10 +645,12 @@ function valueCompletions(definition: DirectiveDefinition | undefined): Completi
       : definition.valueKind === "boolean"
         ? ["yes", "no"]
         : [];
-  return values.map((value): CompletionItem => ({
-    label: value,
-    kind: CompletionItemKind.Value,
-  }));
+  return values
+    .filter((value) => value !== "")
+    .map((value): CompletionItem => ({
+      label: value,
+      kind: CompletionItemKind.Value,
+    }));
 }
 
 function directiveMarkdown(definition: DirectiveDefinition): string {

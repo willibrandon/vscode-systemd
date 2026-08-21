@@ -5,6 +5,7 @@ const root = resolve(import.meta.dirname, "..");
 const registry = JSON.parse(
   await readFile(resolve(root, "packages/language-core/src/generated/registry.json"), "utf8"),
 );
+const upstreamLock = JSON.parse(await readFile(resolve(root, "data/upstream.lock.json"), "utf8"));
 const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
 const failures = [];
 const minimums = {
@@ -71,6 +72,39 @@ for (const snippet of manifest.contributes.snippets) {
 for (const [name, revision] of Object.entries(registry.upstream ?? {})) {
   if (!/^[0-9a-f]{40}$/u.test(revision)) {
     failures.push(name + " does not have a pinned 40-character Git revision");
+  }
+}
+if (upstreamLock.schemaVersion !== 1 || upstreamLock.adapterVersion !== 2) {
+  failures.push("upstream lock must use schema version 1 and adapter version 2");
+}
+for (const name of ["systemd", "podman", "mkosi"]) {
+  const source = upstreamLock.sources?.[name];
+  if (
+    typeof source !== "object" ||
+    source === null ||
+    !/^https:\/\/github\.com\/.+\.git$/u.test(source.repository) ||
+    typeof source.tag !== "string" ||
+    source.tag.length === 0 ||
+    !/^[0-9a-f]{40}$/u.test(source.revision) ||
+    !/^[0-9a-f]{40}$/u.test(source.tree) ||
+    typeof source.license !== "string" ||
+    source.license.length === 0
+  ) {
+    failures.push("upstream lock entry is incomplete: " + name);
+  } else if (source.revision !== registry.upstream?.[name]) {
+    failures.push("upstream lock revision differs from the generated registry: " + name);
+  }
+}
+for (const [section, name, expected] of [
+  ["Distribution", "Distribution", "fedora"],
+  ["Output", "Format", "disk"],
+]) {
+  const definition = registry.directives.find(
+    (directive) =>
+      directive.dialect === "mkosi" && directive.section === section && directive.name === name,
+  );
+  if (!definition?.choices?.includes(expected)) {
+    failures.push("mkosi enum choices are missing for [" + section + "] " + name + "=");
   }
 }
 if (failures.length > 0) {
