@@ -147,6 +147,8 @@ describe("language server JSON-RPC contract", () => {
       position: { line: 0, character: 3 },
     });
     expect(sectionCompletion.some((item) => item.label === "Unit")).toBe(true);
+    expect(sectionCompletion.some((item) => item.label === "Service")).toBe(true);
+    expect(sectionCompletion.some((item) => item.label === "Socket")).toBe(false);
 
     const valueCompletion = await request<CompletionItem[]>(client, "textDocument/completion", {
       textDocument: { uri },

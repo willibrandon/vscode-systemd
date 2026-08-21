@@ -13,9 +13,8 @@ export function analyzeSystemdJson(document: ParsedDocument): readonly CoreDiagn
   });
   if (root === undefined) return [];
 
-  const path = decodeURIComponent(document.uri).split(/[?#]/u)[0]?.toLowerCase() ?? "";
-  if (path.endsWith(".pcrlock")) return analyzePcrlock(document, root);
-  if (path.endsWith(".rr")) return analyzeResourceRecords(document, root);
+  if (document.kind === "systemd-json:pcrlock") return analyzePcrlock(document, root);
+  if (document.kind === "systemd-json:rr") return analyzeResourceRecords(document, root);
   return [];
 }
 

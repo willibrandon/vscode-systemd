@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectDialect, parse } from "../src/index.js";
+import { classifyDocument, detectDialect, parse } from "../src/index.js";
 import type { DialectId } from "../src/index.js";
 
 describe("complete dialect recognition", () => {
@@ -51,6 +51,33 @@ describe("complete dialect recognition", () => {
 });
 
 describe("lossless parsers", () => {
+  it.each([
+    [
+      "file:///etc/systemd/system/demo.service.d/override.conf",
+      "systemd-unit",
+      "systemd-unit:service",
+    ],
+    ["file:///etc/systemd/network/10-lan.netdev", "systemd-network", "systemd-network:netdev"],
+    [
+      "file:///etc/systemd/journald@audit.conf.d/override.conf",
+      "systemd-config",
+      "systemd-config:journald",
+    ],
+    ["file:///workspace/mkosi.repart/10-root.conf", "systemd-config", "systemd-config:repart"],
+    [
+      "file:///etc/kernel/install.conf.d/layout.conf",
+      "systemd-boot",
+      "systemd-boot:kernel-install",
+    ],
+    ["file:///workspace/app.container.d/local.conf", "podman-quadlet", "podman-quadlet:container"],
+    ["file:///workspace/mkosi.images/initrd/mkosi.conf", "mkosi", "mkosi:subimage"],
+    ["file:///workspace/mkosi.uki-profiles/secure.conf", "mkosi", "mkosi:uki-profile"],
+    ["file:///etc/pcrlock.d/app.pcrlock", "systemd-json", "systemd-json:pcrlock"],
+  ] as const)("classifies %s as %s", (uri, dialect, expected) => {
+    expect(classifyDocument(uri, dialect)).toBe(expected);
+    expect(parse("", dialect, uri).kind).toBe(expected);
+  });
+
   it("represents every INI line and reports malformed input", () => {
     const source =
       "\uFEFF\n  # comment\n{{ template }}\n[ Service ]\nDescription = demo\\\n  continued\n[broken\nNoEquals\n9Invalid=value\nEmpty=\n";
@@ -121,6 +148,13 @@ describe("lossless parsers", () => {
       },
       { name: "Format", value: "directory", physicalLines: [8] },
     ]);
+  });
+
+  it("treats mkosi.version as a version record instead of an INI assignment", () => {
+    const document = parse("26.1\n", "mkosi", "file:///workspace/mkosi.version");
+    expect(document.kind).toBe("mkosi:version");
+    expect(document.diagnostics).toEqual([]);
+    expect(document.nodes[0]).toMatchObject({ kind: "record", fields: ["26.1"] });
   });
 
   it("parses hwdb properties, simple assignments, templates, and records", () => {

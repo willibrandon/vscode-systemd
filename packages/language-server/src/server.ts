@@ -1,5 +1,6 @@
 import {
   analyze,
+  buildReferenceGraph,
   configurationIdentity,
   configureRegistryChannel,
   definitionFor,
@@ -25,6 +26,7 @@ import type {
   ParsedDocument,
   Reference,
   SyntaxNode,
+  TargetVersions,
   TextSpan,
 } from "@systemd/language-core";
 import {
@@ -109,11 +111,7 @@ export interface TimerHost {
 
 interface ServerSettings {
   readonly validation: Readonly<{ enable: boolean; maxProblems: number }>;
-  readonly targetVersions: Readonly<{
-    systemd: string;
-    podman: string;
-    mkosi: string;
-  }>;
+  readonly targetVersions: TargetVersions;
 }
 
 interface DetectedVersions {
@@ -310,7 +308,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       end: params.position,
     });
     if (/^\s*\[[^\]]*$/u.test(line)) {
-      return sectionsFor(tree.dialect).map((section): CompletionItem => ({
+      return sectionsFor(tree.dialect, tree.kind).map((section): CompletionItem => ({
         label: section,
         kind: CompletionItemKind.Module,
         insertText: section + "]",
@@ -322,7 +320,7 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       return valueCompletions(assignment, allParsed());
     }
     const settings = await settingsFor(document.uri);
-    return definitionsFor(tree.dialect, sectionAt(tree, offset))
+    return definitionsFor(tree.dialect, sectionAt(tree, offset), tree.kind)
       .filter((definition) =>
         isDefinitionAvailable(definition, targetVersionForDefinition(definition, settings)),
       )
@@ -351,7 +349,12 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     if (context.node.kind !== "assignment") return null;
     const definition =
       context.node.definition ??
-      definitionFor(context.tree.dialect, context.node.section, context.node.name);
+      definitionFor(
+        context.tree.dialect,
+        context.node.section,
+        context.node.name,
+        context.tree.kind,
+      );
     if (definition === undefined) return null;
     return {
       contents: { kind: MarkupKind.Markdown, value: directiveMarkdown(definition) },
@@ -597,7 +600,10 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
       if (diagnostic.code !== "unknown-setting") continue;
       const node = assignmentAt(tree, document.offsetAt(diagnostic.range.start));
       if (node === undefined) continue;
-      const replacement = closestDefinition(node.name, definitionsFor(tree.dialect, node.section));
+      const replacement = closestDefinition(
+        node.name,
+        definitionsFor(tree.dialect, node.section, tree.kind),
+      );
       if (replacement === undefined) continue;
       result.push({
         title: "Change to " + replacement.name + "=",
@@ -674,17 +680,11 @@ export function startLanguageServer(connection: Connection, timers: TimerHost): 
     const available = allParsed();
     const selected =
       uri === undefined ? available : resolveConfigurationDocuments(uri, available).documents;
-    const nodes = new Set(selected.map((tree) => basename(tree.uri)));
-    const edges: { source: string; target: string; kind: string }[] = [];
-    for (const tree of selected) {
-      const source = basename(tree.uri);
-      for (const reference of extractReferences(tree)) {
-        if (!["unit", "quadlet", "mkosi"].includes(reference.kind)) continue;
-        nodes.add(reference.target);
-        edges.push({ source, target: reference.target, kind: reference.kind });
-      }
-    }
-    return { nodes: [...nodes].sort(), edges };
+    const graph = buildReferenceGraph(selected);
+    return {
+      nodes: graph.nodes.map(({ identity }) => identity),
+      edges: graph.edges.map(({ source, target, kind }) => ({ source, target, kind })),
+    };
   });
   connection.onRequest(workspaceSnapshotRequest, (): WorkspaceSnapshot => {
     const available = allParsed();

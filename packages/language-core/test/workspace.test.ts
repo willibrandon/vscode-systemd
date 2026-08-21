@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildReferenceGraph,
+  buildSemanticModel,
   findOrderingDependencyCycles,
   mergeConfigurations,
   parse,
@@ -243,5 +245,35 @@ describe("systemd ordering dependency graph", () => {
     expect(cycles).toHaveLength(1);
     expect(cycles[0]?.nodes).toEqual(["reset-a.service", "reset-b.service"]);
     expect(cycles[0]?.edges.map(({ directive }) => directive)).toEqual(["After", "After"]);
+  });
+});
+
+describe("typed semantic and reference models", () => {
+  it("builds a lossless semantic view and a deterministic cross-file graph", () => {
+    const first = unit(
+      "file:///workspace/first.service",
+      "[Unit]\nWants=second.service\n[Service]\nExecStart=/bin/true\n",
+    );
+    const second = unit("file:///workspace/second.service");
+
+    const model = buildSemanticModel(first);
+    expect(model.document).toBe(first);
+    expect(model.sections.map(({ name }) => name)).toEqual(["Unit", "Service"]);
+    expect(model.assignments.map(({ name }) => name)).toEqual(["Wants", "ExecStart"]);
+    expect(model.references.map(({ target }) => target)).toEqual(["second.service"]);
+
+    const graph = buildReferenceGraph([second, first]);
+    expect(graph.nodes).toEqual([
+      { identity: "first.service", sourceUris: [first.uri] },
+      { identity: "second.service", sourceUris: [second.uri] },
+    ]);
+    expect(graph.edges).toMatchObject([
+      {
+        source: "first.service",
+        target: "second.service",
+        kind: "unit",
+        sourceUri: first.uri,
+      },
+    ]);
   });
 });

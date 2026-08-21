@@ -66,5 +66,8 @@ All notable changes to this project will be documented here. The format follows
 - Workspace indexing now discovers unit and resource drop-ins, directory-based systemd formats,
   namespaced journal configuration, kernel-install configuration, and nested mkosi profiles,
   subimages, local overrides, tools trees, UKI profiles, and repart definitions.
+- Section, directive, completion, and quick-fix lookup is now constrained by the concrete unit,
+  network, systemd configuration, Quadlet, or mkosi file kind; `mkosi.version` is parsed as a
+  version record, and the `.link` snippet now uses link-file settings only.
 
 [Unreleased]: https://github.com/willibrandon/vscode-systemd/commits/main

@@ -60,6 +60,52 @@ describe("registry queries", () => {
     expect(isDynamicDirective("UnknownSetting")).toBe(false);
   });
 
+  it("filters sections and settings by concrete file kind", () => {
+    expect(sectionsFor("systemd-unit", "systemd-unit:service")).toEqual([
+      "Install",
+      "Service",
+      "Unit",
+    ]);
+    expect(sectionsFor("podman-quadlet", "podman-quadlet:volume")).toEqual([
+      "Install",
+      "Quadlet",
+      "Service",
+      "Unit",
+      "Volume",
+    ]);
+    expect(sectionsFor("systemd-config", "systemd-config:system")).toEqual(["Manager"]);
+    expect(sectionsFor("systemd-network", "systemd-network:link")).toEqual([
+      "EnergyEfficientEthernet",
+      "Link",
+      "Match",
+      "SR-IOV",
+    ]);
+    expect(sectionsFor("mkosi", "mkosi:uki-profile")).toEqual(["UKIProfile"]);
+
+    expect(
+      definitionFor("systemd-network", "Route", "Gateway", "systemd-network:link"),
+    ).toBeUndefined();
+    expect(
+      definitionFor("systemd-network", "Link", "MACAddressPolicy", "systemd-network:link"),
+    ).toBeDefined();
+    expect(
+      definitionFor("systemd-config", "Manager", "DefaultTimeoutStartSec", "systemd-config:system"),
+    ).toBeDefined();
+    expect(
+      definitionFor(
+        "systemd-config",
+        "Manager",
+        "DefaultTimeoutStartSec",
+        "systemd-config:journald",
+      ),
+    ).toBeUndefined();
+    expect(
+      definitionsFor("podman-quadlet", "Unit", "podman-quadlet:container").some(
+        ({ name }) => name === "ExecStart",
+      ),
+    ).toBe(false);
+  });
+
   it("preserves predecessor issue regressions in generated stable metadata", () => {
     expect(definitionFor("systemd-unit", "Service", "User")).toBeDefined();
     expect(definitionFor("systemd-unit", "Service", "Group")).toBeDefined();

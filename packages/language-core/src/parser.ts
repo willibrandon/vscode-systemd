@@ -1,4 +1,5 @@
 import { definitionFor } from "./registry.js";
+import { classifyDocument } from "./document-kind.js";
 import type {
   AssignmentNode,
   CoreDiagnostic,
@@ -32,13 +33,15 @@ export function parse(
   uri = "untitled:systemd",
 ): ParsedDocument {
   const lineStarts = computeLineStarts(source);
-  if (dialect === "systemd-json") return parseJson(source, dialect, uri, lineStarts);
+  const kind = classifyDocument(uri, dialect);
+  if (dialect === "systemd-json") return parseJson(source, dialect, kind, uri, lineStarts);
   const physical = physicalLines(source);
   const diagnostics: CoreDiagnostic[] = [];
-  const nodes = iniDialects.has(dialect)
-    ? parseIni(physical, dialect, diagnostics)
-    : parseRecords(physical, dialect, diagnostics);
-  return { uri, source, dialect, nodes, diagnostics, lineStarts };
+  const nodes =
+    iniDialects.has(dialect) && kind !== "mkosi:version"
+      ? parseIni(physical, dialect, kind, diagnostics)
+      : parseRecords(physical, dialect, diagnostics);
+  return { uri, source, dialect, kind, nodes, diagnostics, lineStarts };
 }
 
 export function detectDialect(
@@ -109,6 +112,7 @@ export function detectDialect(
 function parseIni(
   physical: readonly PhysicalLine[],
   dialect: DialectId,
+  documentKind: ParsedDocument["kind"],
   diagnostics: CoreDiagnostic[],
 ): SyntaxNode[] {
   const nodes: SyntaxNode[] = [];
@@ -202,7 +206,7 @@ function parseIni(
       value === ""
         ? first.start + firstValueOffset
         : first.start + firstValueOffset + Math.max(0, valueLeading);
-    const definition = definitionFor(dialect, section, name);
+    const definition = definitionFor(dialect, section, name, documentKind);
     const node: AssignmentNode = {
       kind: "assignment",
       span,
@@ -337,6 +341,7 @@ function parseRecords(
 function parseJson(
   source: string,
   dialect: DialectId,
+  kind: ParsedDocument["kind"],
   uri: string,
   lineStarts: readonly number[],
 ): ParsedDocument {
@@ -360,7 +365,7 @@ function parseJson(
       span: { start, end: Math.min(source.length, start + 1) },
     });
   }
-  return { uri, source, dialect, nodes, diagnostics, lineStarts };
+  return { uri, source, dialect, kind, nodes, diagnostics, lineStarts };
 }
 
 function invalid(

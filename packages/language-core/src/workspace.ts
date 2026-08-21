@@ -4,6 +4,9 @@ import type {
   EffectiveEntry,
   ParsedDocument,
   Reference,
+  ReferenceGraph,
+  ReferenceGraphEdge,
+  SemanticModel,
   TextSpan,
 } from "./types.js";
 
@@ -37,6 +40,7 @@ const quadletReferenceSettings = new Set([
   "Pod",
   "Volume",
 ]);
+const graphReferenceKinds = new Set<Reference["kind"]>(["unit", "quadlet", "mkosi"]);
 
 const unitTypes = new Set([
   "service",
@@ -270,6 +274,49 @@ export function extractReferences(document: ParsedDocument): readonly Reference[
     }
   }
   return result;
+}
+
+export function buildSemanticModel(document: ParsedDocument): SemanticModel {
+  return {
+    document,
+    sections: document.nodes.filter((node) => node.kind === "section"),
+    assignments: document.nodes.filter((node) => node.kind === "assignment"),
+    records: document.nodes.filter((node) => node.kind === "record"),
+    references: extractReferences(document),
+  };
+}
+
+export function buildReferenceGraph(documents: readonly ParsedDocument[]): ReferenceGraph {
+  const sourceUris = new Map<string, Set<string>>();
+  const edges: ReferenceGraphEdge[] = [];
+  for (const document of documents) {
+    const source = configurationIdentity(document.uri);
+    const sourceSet = sourceUris.get(source) ?? new Set<string>();
+    sourceSet.add(document.uri);
+    sourceUris.set(source, sourceSet);
+    for (const reference of extractReferences(document)) {
+      if (!graphReferenceKinds.has(reference.kind)) continue;
+      if (!sourceUris.has(reference.target)) sourceUris.set(reference.target, new Set());
+      edges.push({
+        source,
+        target: reference.target,
+        kind: reference.kind,
+        sourceUri: reference.sourceUri,
+        span: reference.span,
+      });
+    }
+  }
+  return {
+    nodes: [...sourceUris]
+      .map(([identity, uris]) => ({ identity, sourceUris: [...uris].sort() }))
+      .sort((left, right) => left.identity.localeCompare(right.identity)),
+    edges: edges.sort(
+      (left, right) =>
+        left.source.localeCompare(right.source) ||
+        left.target.localeCompare(right.target) ||
+        left.sourceUri.localeCompare(right.sourceUri),
+    ),
+  };
 }
 
 export function mergeConfigurations(

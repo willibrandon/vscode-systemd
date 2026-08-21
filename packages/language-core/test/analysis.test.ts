@@ -23,6 +23,31 @@ describe("INI semantic analysis", () => {
     );
   });
 
+  it("applies section and directive rules for the concrete file kind", () => {
+    expect(codes("[Socket]\nListenStream=1\n", "systemd-unit", "file:///demo.service")).toEqual(
+      expect.arrayContaining(["unknown-section", "unknown-setting", "missing-required-section"]),
+    );
+    expect(codes("[Network]\nDHCP=yes\n", "systemd-network", "file:///10-app.link")).toEqual(
+      expect.arrayContaining(["unknown-section", "unknown-setting"]),
+    );
+    expect(
+      codes("[Manager]\nDefaultTimeoutStartSec=30s\n", "systemd-config", "file:///system.conf"),
+    ).toEqual([]);
+    expect(codes("[Resolve]\nDNS=1.1.1.1\n", "systemd-config", "file:///journald.conf")).toEqual(
+      expect.arrayContaining(["unknown-section", "unknown-setting"]),
+    );
+    expect(codes("[Container]\nImage=example\n", "podman-quadlet", "file:///data.volume")).toEqual(
+      expect.arrayContaining(["unknown-section", "unknown-setting"]),
+    );
+    const extensionSection = codes(
+      "[X-Project]\nAnything=preserved\n",
+      "systemd-unit",
+      "file:///demo.service",
+    );
+    expect(extensionSection).not.toContain("unknown-section");
+    expect(extensionSection).not.toContain("unknown-setting");
+  });
+
   it("accepts dynamic names, resets, templates, and supported target aliases", () => {
     for (const value of ["", "{{ enabled }}", "@ENABLED@", "{% if enabled %}yes{% endif %}"]) {
       expect(codes("[Coredump]\nCompress=" + value + "\n", "systemd-config")).not.toContain(

@@ -23,15 +23,100 @@ export type RegistryDialect =
 
 export type RegistryChannel = "stable" | "preview";
 
+export type UnitDocumentType =
+  | "service"
+  | "socket"
+  | "timer"
+  | "path"
+  | "mount"
+  | "automount"
+  | "swap"
+  | "target"
+  | "device"
+  | "slice"
+  | "scope";
+
+export type NetworkDocumentType = "network" | "netdev" | "link" | "dnssd" | "dns-delegate";
+
+export type SystemdConfigFamily =
+  | "system"
+  | "user"
+  | "journald"
+  | "logind"
+  | "resolved"
+  | "timesyncd"
+  | "networkd"
+  | "coredump"
+  | "oomd"
+  | "homed"
+  | "pstore"
+  | "sleep"
+  | "iocost"
+  | "journal-remote"
+  | "journal-upload"
+  | "udev"
+  | "sysext"
+  | "confext"
+  | "ukify"
+  | "uki"
+  | "nspawn"
+  | "repart"
+  | "sysupdate"
+  | "portable-profile"
+  | "generic";
+
+export type QuadletDocumentType =
+  "artifact" | "build" | "container" | "image" | "kube" | "network" | "pod" | "volume";
+
+export type MkosiDocumentType =
+  | "main"
+  | "drop-in"
+  | "profile"
+  | "subimage"
+  | "local"
+  | "tools"
+  | "uki-profile"
+  | "version"
+  | "generic";
+
+export type DocumentKind =
+  | `systemd-unit:${UnitDocumentType}`
+  | `systemd-network:${NetworkDocumentType}`
+  | `systemd-config:${SystemdConfigFamily}`
+  | "systemd-tmpfiles:tmpfiles"
+  | "systemd-sysusers:sysusers"
+  | "systemd-udev-rules:rules"
+  | "systemd-hwdb:hwdb"
+  | `systemd-environment:${"environment" | "os-release" | "hostname" | "machine-info" | "locale" | "vconsole"}`
+  | "systemd-sysctl:sysctl"
+  | "systemd-modules-load:modules-load"
+  | "systemd-binfmt:binfmt"
+  | "systemd-preset:preset"
+  | `systemd-table:${"fstab" | "crypttab" | "veritytab" | "integritytab" | "clonetab"}`
+  | `systemd-boot:${"loader" | "entry" | "kernel-command-line" | "entry-token" | "kernel-install"}`
+  | `systemd-dns-trust-anchor:${"positive" | "negative"}`
+  | `systemd-json:${"pcrlock" | "rr"}`
+  | `podman-quadlet:${QuadletDocumentType}`
+  | `mkosi:${MkosiDocumentType}`
+  | `${DialectId}:unknown`;
+
+export interface TargetVersions {
+  readonly systemd: string;
+  readonly podman: string;
+  readonly mkosi: string;
+}
+
 export type ValueKind =
   "string" | "boolean" | "number" | "duration" | "size" | "path" | "address" | "list" | "command";
 
 export type AssignmentMode = "replace" | "append" | "append-no-reset" | "first";
 
-export interface TextSpan {
+export interface SourceSpan {
   readonly start: number;
   readonly end: number;
 }
+
+export type TextSpan = SourceSpan;
 
 export interface DirectiveDefinition {
   readonly dialect: RegistryDialect;
@@ -116,14 +201,18 @@ export interface CoreDiagnostic {
   readonly documentation?: string;
 }
 
-export interface ParsedDocument {
-  readonly uri: string;
-  readonly canonicalUri?: string;
+export interface ParseResult {
   readonly source: string;
-  readonly dialect: DialectId;
   readonly nodes: readonly SyntaxNode[];
   readonly diagnostics: readonly CoreDiagnostic[];
   readonly lineStarts: readonly number[];
+}
+
+export interface ParsedDocument extends ParseResult {
+  readonly uri: string;
+  readonly canonicalUri?: string;
+  readonly dialect: DialectId;
+  readonly kind: DocumentKind;
 }
 
 export interface FormatOptions {
@@ -143,6 +232,32 @@ export interface Reference {
   readonly target: string;
   readonly kind: "unit" | "path" | "quadlet" | "mkosi" | "documentation";
   readonly span: TextSpan;
+}
+
+export interface SemanticModel {
+  readonly document: ParsedDocument;
+  readonly sections: readonly SectionNode[];
+  readonly assignments: readonly AssignmentNode[];
+  readonly records: readonly RecordNode[];
+  readonly references: readonly Reference[];
+}
+
+export interface ReferenceGraphNode {
+  readonly identity: string;
+  readonly sourceUris: readonly string[];
+}
+
+export interface ReferenceGraphEdge {
+  readonly source: string;
+  readonly target: string;
+  readonly kind: Reference["kind"];
+  readonly sourceUri: string;
+  readonly span: SourceSpan;
+}
+
+export interface ReferenceGraph {
+  readonly nodes: readonly ReferenceGraphNode[];
+  readonly edges: readonly ReferenceGraphEdge[];
 }
 
 export interface EffectiveEntry {

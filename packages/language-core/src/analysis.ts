@@ -93,10 +93,10 @@ function analyzeIni(
   diagnostics: CoreDiagnostic[],
   options: AnalysisOptions,
 ): void {
-  const knownSections = new Set(sectionsFor(document.dialect));
+  const knownSections = new Set(sectionsFor(document.dialect, document.kind));
   for (const node of document.nodes) {
     if (node.kind === "section") {
-      if (knownSections.size > 0 && !knownSections.has(node.name)) {
+      if (knownSections.size > 0 && !knownSections.has(node.name) && !node.name.startsWith("X-")) {
         diagnostics.push({
           code: "unknown-section",
           message: "Unknown [" + node.name + "] section for " + document.dialect + ".",
@@ -107,6 +107,7 @@ function analyzeIni(
       continue;
     }
     if (node.kind !== "assignment") continue;
+    if (node.section?.startsWith("X-") === true) continue;
     if (node.section === null) {
       diagnostics.push({
         code: "setting-outside-section",
@@ -116,7 +117,8 @@ function analyzeIni(
       });
       continue;
     }
-    const definition = node.definition ?? definitionFor(document.dialect, node.section, node.name);
+    const definition =
+      node.definition ?? definitionFor(document.dialect, node.section, node.name, document.kind);
     if (definition === undefined && !isDynamicDirective(node.name)) {
       diagnostics.push({
         code: "unknown-setting",
@@ -232,12 +234,11 @@ function validateRequiredStructure(document: ParsedDocument, diagnostics: CoreDi
   const present = new Set(
     document.nodes.filter((node) => node.kind === "section").map((node) => node.name),
   );
-  const normalized = decodeURIComponent(document.uri).toLowerCase();
   const required =
     document.dialect === "podman-quadlet"
-      ? quadletSection(normalized)
+      ? quadletSection(document.kind)
       : document.dialect === "systemd-unit"
-        ? unitSection(normalized)
+        ? unitSection(document.kind)
         : undefined;
   if (required !== undefined && !present.has(required)) {
     diagnostics.push({
@@ -572,14 +573,14 @@ function fieldError(
   });
 }
 
-function unitSection(uri: string): string | undefined {
-  const match = /\.(service|socket|timer|path|mount|automount|swap)(?:\.|$)/u.exec(uri)?.[1];
+function unitSection(kind: ParsedDocument["kind"]): string | undefined {
+  const match = /^systemd-unit:(service|socket|timer|path|mount|automount|swap)$/u.exec(kind)?.[1];
   return match === undefined ? undefined : match.slice(0, 1).toUpperCase() + match.slice(1);
 }
 
-function quadletSection(uri: string): string | undefined {
-  const match = /\.(artifact|build|container|image|kube|network|pod|volume)(?:\.|$)/u.exec(
-    uri,
+function quadletSection(kind: ParsedDocument["kind"]): string | undefined {
+  const match = /^podman-quadlet:(artifact|build|container|image|kube|network|pod|volume)$/u.exec(
+    kind,
   )?.[1];
   return match === undefined ? undefined : match.slice(0, 1).toUpperCase() + match.slice(1);
 }

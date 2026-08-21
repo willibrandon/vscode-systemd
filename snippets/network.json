@@ -40,14 +40,14 @@
   },
   "Link policy": {
     "prefix": "link-policy",
-    "description": "Match a link and configure its naming and activation policy",
+    "description": "Match a link and configure its naming and MAC address policy",
     "body": [
       "[Match]",
       "OriginalName=${1:eth*}",
       "",
       "[Link]",
       "NamePolicy=${2:keep kernel database onboard slot path}",
-      "ActivationPolicy=${3|up,always-up,manual,always-down,down,bound|}",
+      "MACAddressPolicy=${3|persistent,random,none|}",
       "$0"
     ]
   },

@@ -170,7 +170,7 @@ describe("formatting and workspace semantics", () => {
         "",
       ].join("\n"),
       "systemd-unit",
-      "file:///workspace/example.service",
+      "untitled:merge-base",
     );
     const dropIn = parse(
       [
@@ -189,7 +189,7 @@ describe("formatting and workspace semantics", () => {
         "",
       ].join("\n"),
       "systemd-unit",
-      "file:///workspace/example.service.d/override.conf",
+      "untitled:merge-override",
     );
 
     const rendered = renderEffectiveConfiguration(mergeConfigurations([base, dropIn]));
