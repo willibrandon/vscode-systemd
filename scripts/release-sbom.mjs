@@ -24,7 +24,35 @@ export function prepareCycloneDxForAttestation(value, seed) {
     typeof value.metadata === "object" && value.metadata !== null && !Array.isArray(value.metadata)
       ? { ...value.metadata }
       : undefined;
-  if (metadata !== undefined) delete metadata.timestamp;
+  if (metadata !== undefined) {
+    delete metadata.timestamp;
+    delete metadata.tools;
+    if (metadata.component !== undefined) {
+      metadata.component = normalizeNpmComponent(metadata.component);
+    }
+  }
 
-  return { ...value, metadata, serialNumber: `urn:uuid:${uuid}` };
+  const components = Array.isArray(value.components)
+    ? value.components.map(normalizeNpmComponent)
+    : value.components;
+
+  return { ...value, metadata, components, serialNumber: `urn:uuid:${uuid}` };
+}
+
+function normalizeNpmComponent(value) {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    typeof value["bom-ref"] !== "string" ||
+    typeof value.purl !== "string" ||
+    !value.purl.startsWith("pkg:npm/")
+  ) {
+    return value;
+  }
+
+  const versionSeparator = value["bom-ref"].lastIndexOf("@");
+  if (versionSeparator <= 0) return value;
+
+  return { ...value, name: value["bom-ref"].slice(0, versionSeparator) };
 }
