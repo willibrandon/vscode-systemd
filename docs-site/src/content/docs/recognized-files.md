@@ -1,51 +1,35 @@
 ---
 title: Recognized files
-description: See every supported configuration family and configure unusual project names.
+description: Supported names, paths, and suffixes.
 ---
-
-The extension uses separate language modes so completion, validation, and formatting match the
-actual configuration grammar.
 
 ## systemd
 
 - Units: `.service`, `.socket`, `.timer`, `.path`, `.mount`, `.automount`, `.swap`, `.target`,
-  `.device`, `.slice`, and `.scope`, including unit drop-ins.
-- Network configuration: `.network`, `.netdev`, `.link`, `.dnssd`, and `.dns-delegate`, including
-  drop-ins.
-- Daemon configuration: recognized systemd `*.conf` names, their `*.conf.d` drop-ins, `.nspawn`,
-  systemd-oomd `.oomrule` rulesets, repart, sysupdate, and portable-service profiles.
-- Line-oriented formats: `tmpfiles.d`, `sysusers.d`, `sysctl.d`, `modules-load.d`, `binfmt.d`,
-  presets, udev rules, hwdb, environment files, boot configuration, and fstab-family tables.
-- Specialized data: DNSSEC trust anchors, plus schema-backed PCR lock files, DNS resource records,
-  and public userdb `.user`, `.group`, and `.membership` JSON with source-aligned semantic
-  diagnostics. Secret-bearing `.user-privileged` and `.group-privileged` companions are excluded.
+  `.device`, `.slice`, and `.scope`
+- Networkd: `.network`, `.netdev`, `.link`, `.dnssd`, and `.dns-delegate`
+- Daemon configuration, `.nspawn`, `.oomrule`, repart, sysupdate, and drop-ins
+- udev, hwdb, tmpfiles, sysusers, sysctl, modules-load, binfmt, presets, boot files, and systemd
+  tables
+- PCR lock, DNS record, and public userdb JSON
 
-## Podman Quadlet and mkosi
+## Quadlet and mkosi
 
-Quadlet recognizes `.artifact`, `.build`, `.container`, `.image`, `.kube`, `.network`, `.pod`, and
-`.volume`, plus their drop-ins. A `.network` file is treated as Quadlet when it is under a
-recognized `containers/systemd` or Quadlet path or contains Quadlet-only network settings; ordinary
-`.network` files remain systemd-networkd files.
+Quadlet supports `.artifact`, `.build`, `.container`, `.image`, `.kube`, `.network`, `.pod`, and
+`.volume`.
 
-mkosi recognizes `mkosi.conf`, local, tools, initrd, version, drop-in, historical `mkosi.presets/`,
-profile, image, and UKI-profile configuration paths.
+mkosi supports its main file, drop-ins, presets, profiles, images, local files, tools, initrd,
+version, and UKI profiles.
 
-## Templates and unusual paths
-
-Built-in compound suffixes include `.in`, `.erb`, `.j2`, `.jinja`, `.tmpl`, `.template`, `.backup`,
-and `.ignore`. Template expressions remain visually distinct and are not reported as systemd syntax
-errors.
-
-Use Visual Studio Code's standard file association for a project-specific name:
+## Custom names
 
 ```json
 {
   "files.associations": {
-    "deploy/my-unit": "systemd-unit",
-    "images/production": "mkosi"
+    "deploy/my-unit": "systemd-unit"
   }
 }
 ```
 
-For path-sensitive ambiguity, `systemd.dialectAssociations` accepts glob-to-language mappings. Use
-`systemd.templateSuffixes` to add a compound suffix used by the project.
+Use `systemd.dialectAssociations` for path-based choices and `systemd.templateSuffixes` for custom
+compound suffixes.

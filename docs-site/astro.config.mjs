@@ -19,7 +19,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "systemd Unit Files",
-      description: "Language support for systemd, Podman Quadlet, and mkosi in Visual Studio Code.",
+      description: "VS Code support for systemd, Podman Quadlet, and mkosi.",
       favicon: "/icon.png",
       customCss: ["./src/styles/docs.css"],
       credits: false,
