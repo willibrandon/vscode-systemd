@@ -6,6 +6,9 @@ import { spawnSync } from "node:child_process";
 import { runTests } from "@vscode/test-electron";
 
 const root = resolve(import.meta.dirname, "..");
+const installedExtensions = process.env.SYSTEMD_VSIX_EXTENSIONS_DIR;
+const installedUserData = process.env.SYSTEMD_VSIX_USER_DATA_DIR;
+const installedSmoke = installedExtensions !== undefined && installedUserData !== undefined;
 
 if (process.platform === "linux" && process.env.SYSTEMD_TEST_XVFB !== "1") {
   const child = spawnSync(
@@ -20,25 +23,32 @@ if (process.platform === "linux" && process.env.SYSTEMD_TEST_XVFB !== "1") {
   process.exit(child.status ?? 1);
 }
 
-const userData = await mkdtemp(resolve(tmpdir(), "vscode-systemd-integration-"));
+const temporaryUserData = installedSmoke
+  ? undefined
+  : await mkdtemp(resolve(tmpdir(), "vscode-systemd-integration-"));
+const userData = installedUserData ?? temporaryUserData;
+if (userData === undefined) throw new Error("Unable to create an integration-test profile.");
 
 try {
   await runTests({
     version: process.env.VSCODE_VERSION ?? "1.102.0",
-    extensionDevelopmentPath: root,
+    extensionDevelopmentPath: installedSmoke ? resolve(root, "test/package/host") : root,
     extensionTestsPath: resolve(root, "test/integration/suite/index.cjs"),
     launchArgs: [
       resolve(root, "test/integration/fixtures"),
-      "--disable-extensions",
+      ...(installedSmoke ? [] : ["--disable-extensions"]),
       "--disable-workspace-trust",
       "--skip-release-notes",
       "--skip-welcome",
       "--user-data-dir=" + userData,
+      ...(installedExtensions === undefined ? [] : ["--extensions-dir=" + installedExtensions]),
     ],
   });
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 } finally {
-  await rm(userData, { recursive: true, force: true });
+  if (temporaryUserData !== undefined) {
+    await rm(temporaryUserData, { recursive: true, force: true });
+  }
 }

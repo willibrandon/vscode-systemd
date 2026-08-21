@@ -1,4 +1,5 @@
-import { runTests, runVSCodeCommand } from "@vscode/test-electron";
+import { spawn } from "node:child_process";
+import { runVSCodeCommand } from "@vscode/test-electron";
 import { resolve } from "node:path";
 import { createIsolatedVSCodeEnvironment } from "./vscode-test-environment.mjs";
 
@@ -31,23 +32,37 @@ export async function runInstalledDesktopSmoke(options) {
     );
   }
 
-  await runTests({
-    version,
-    extensionDevelopmentPath: resolve(root, "test/package/host"),
-    extensionTestsPath: resolve(root, "test/integration/suite/index.cjs"),
-    extensionTestsEnv: {
+  const exitCode = await run(
+    process.execPath,
+    [resolve(root, "scripts/run-integration-tests.mjs")],
+    {
       ...commandEnvironment,
       SYSTEMD_EXPECTED_INSTALLED_EXTENSION_PATH_PREFIX: extensionsDirectory,
       SYSTEMD_EXPECTED_INSTALLED_EXTENSION_VERSION: expectedIdentity.slice(
         expectedIdentity.lastIndexOf("@") + 1,
       ),
+      SYSTEMD_VSIX_EXTENSIONS_DIR: extensionsDirectory,
+      SYSTEMD_VSIX_USER_DATA_DIR: userDataDirectory,
+      VSCODE_VERSION: version,
     },
-    launchArgs: [
-      resolve(root, "test/integration/fixtures"),
-      "--disable-workspace-trust",
-      "--skip-release-notes",
-      "--skip-welcome",
-      ...profileArguments,
-    ],
+  );
+  if (exitCode !== 0)
+    throw new Error(`Installed-extension smoke test exited with code ${exitCode}.`);
+}
+
+function run(command, arguments_, environment) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(command, arguments_, {
+      cwd: process.cwd(),
+      env: environment,
+      shell: false,
+      stdio: "inherit",
+      windowsHide: true,
+    });
+    child.once("error", rejectPromise);
+    child.once("close", (code, signal) => {
+      if (signal !== null) rejectPromise(new Error(`${command} stopped with ${signal}.`));
+      else resolvePromise(code ?? 1);
+    });
   });
 }
