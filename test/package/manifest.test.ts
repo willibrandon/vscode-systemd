@@ -12,7 +12,7 @@ interface Manifest {
   readonly icon: string;
   readonly activationEvents?: readonly string[];
   readonly contributes: {
-    readonly commands: readonly { readonly command: string }[];
+    readonly commands: readonly { readonly command: string; readonly category: string }[];
     readonly languages: readonly {
       readonly id: string;
       readonly configuration: string;
@@ -131,14 +131,25 @@ describe("extension manifest", () => {
     );
   });
 
-  it("contributes one stable Systemd Activity Bar container without a duplicate folder icon", () => {
+  it("contributes one stable systemd Activity Bar container without a duplicate folder icon", () => {
     expect(manifest.contributes.viewsContainers.activitybar).toEqual([
-      { id: "systemd", title: "Systemd", icon: "$(server)" },
+      { id: "systemd", title: "systemd", icon: "$(server)" },
     ]);
     expect(manifest.contributes.views).toEqual({
       systemd: [{ id: "systemd.explorer", name: "Explorer" }],
     });
     expect(manifest.contributes.views).not.toHaveProperty("explorer");
+  });
+
+  it("keeps the generated Explorer command and declared command categories lowercase", () => {
+    const container = manifest.contributes.viewsContainers.activitybar[0];
+    const explorer = manifest.contributes.views["systemd"]?.[0];
+    expect(`${container?.title}: Focus on ${explorer?.name} View`).toBe(
+      "systemd: Focus on Explorer View",
+    );
+    expect(new Set(manifest.contributes.commands.map((command) => command.category))).toEqual(
+      new Set(["systemd"]),
+    );
   });
 
   it("uses a small deterministic PNG icon", async () => {

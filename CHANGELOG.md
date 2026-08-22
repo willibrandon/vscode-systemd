@@ -4,8 +4,12 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-21
+
 ### Fixed
 
+- Kept the generated Explorer commands under the lowercase `systemd` category used by every other
+  command.
 - Made documentation image popups use the largest natural image size that fits the current viewport
   instead of a fixed laptop-sized cap.
 
@@ -20,7 +24,7 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ### Fixed
 
-- Moved the Systemd Explorer into its own stable Activity Bar container so opening or closing it
+- Moved the systemd Explorer into its own stable Activity Bar container so opening or closing it
   does not create a duplicate folder icon or reorder other icons.
 - Split Explorer results into an expanded Workspace section and a collapsed Host section so project
   files are not buried by system units on Linux and WSL.
@@ -37,7 +41,7 @@ Notable changes are listed here. Releases follow semantic versioning.
   systemd JSON, all current Quadlet types, and mkosi.
 - Highlighting, completion, hover, diagnostics, quick fixes, navigation, rename, symbols, semantic
   tokens, inlay hints, formatting, and snippets.
-- A Systemd Explorer, merged unit views, dependency graphs, drop-in support, and safe creation of
+- A systemd Explorer, merged unit views, dependency graphs, drop-in support, and safe creation of
   missing workspace files.
 - Version-aware data generated from pinned systemd, Podman, and mkosi source.
 - Optional validation with installed systemd, Quadlet, and mkosi tools.
@@ -58,7 +62,8 @@ Notable changes are listed here. Releases follow semantic versioning.
 - Release artifacts include a reproducible VSIX, SHA-256 checksum, CycloneDX SBOM, and build
   attestations.
 
-[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.1...v0.4.0
 [0.2.1]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/willibrandon/vscode-systemd/releases/tag/v0.2.0
