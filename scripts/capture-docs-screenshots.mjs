@@ -104,7 +104,7 @@ try {
   await runCommand(page, "View: Toggle Secondary Side Bar Visibility");
   await waitForEditor(page);
   await waitForDiagnostics(page);
-  await runCommand(page, "View: Show Systemd");
+  await runCommand(page, "systemd: Focus on Explorer View");
   await expandSystemdExplorer(page);
 
   await replaceLine(page, 7, "Rest");
@@ -206,7 +206,7 @@ async function waitForDiagnostics(page) {
 }
 
 async function expandSystemdExplorer(page) {
-  await page.getByText("Systemd: Explorer", { exact: true }).first().waitFor({
+  await page.getByText("systemd: Explorer", { exact: true }).first().waitFor({
     state: "visible",
     timeout: 30_000,
   });
@@ -240,6 +240,10 @@ async function runCommand(page, label) {
     .filter({ hasText: label })
     .first();
   await command.waitFor({ state: "visible", timeout: 10_000 });
+  const commandText = await command.textContent();
+  if (!commandText?.includes(label)) {
+    throw new Error(`Command Palette did not show the exact command label: ${label}`);
+  }
   await command.click();
 }
 

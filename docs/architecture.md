@@ -8,7 +8,7 @@ The extension has three private workspace packages and two host bundles.
 | -------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `packages/language-core`   | File recognition, parsing, generated directive data, diagnostics, formatting, and workspace indexing    |
 | `packages/language-server` | Language Server Protocol handlers for core features                                                     |
-| `packages/vscode-client`   | VS Code activation, commands, the Systemd Explorer, virtual documents, and optional external validation |
+| `packages/vscode-client`   | VS Code activation, commands, the systemd Explorer, virtual documents, and optional external validation |
 
 `language-core` has no Node.js, DOM, or VS Code dependency. The node and browser language servers
 use the same core implementation.
