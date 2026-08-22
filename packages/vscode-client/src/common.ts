@@ -84,8 +84,8 @@ export function registerCommonFeatures(
   );
   registerLanguageDetection(context, runtime.client, systemdLanguageIds);
   context.subscriptions.push(indexer);
-  const refreshIndex = async (): Promise<void> => {
-    if (!(await indexer.refresh())) return;
+  const refreshIndex = async (changedUris: readonly vscode.Uri[] = []): Promise<void> => {
+    if (!(await indexer.refresh(changedUris))) return;
     await explorer.refresh();
     await virtualDocuments.refreshEffectiveDocuments();
   };
@@ -153,11 +153,18 @@ export function registerCommonFeatures(
 
   let watchers: vscode.FileSystemWatcher[] = [];
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
-  const scheduleRefresh = (): void => {
+  const pendingIndexUris = new Map<string, vscode.Uri>();
+  const scheduleRefresh = (uri?: vscode.Uri): void => {
+    if (uri !== undefined) {
+      if (!indexer.isCandidate(uri)) return;
+      pendingIndexUris.set(uri.toString(), uri);
+    }
     if (refreshTimer !== undefined) clearTimeout(refreshTimer);
     refreshTimer = setTimeout((): void => {
       refreshTimer = undefined;
-      void refreshIndex();
+      const changedUris = [...pendingIndexUris.values()];
+      pendingIndexUris.clear();
+      void refreshIndex(changedUris);
     }, 300);
   };
   const createWatcher = (): void => {
@@ -184,27 +191,28 @@ export function registerCommonFeatures(
       dispose(): void {
         for (const current of watchers) current.dispose();
         watchers = [];
+        pendingIndexUris.clear();
         if (refreshTimer !== undefined) clearTimeout(refreshTimer);
         if (virtualRefreshTimer !== undefined) clearTimeout(virtualRefreshTimer);
       },
     },
     vscode.workspace.onDidCreateFiles(({ files }): void => {
-      if (files.some((uri) => indexer.isCandidate(uri))) scheduleRefresh();
+      for (const uri of files) scheduleRefresh(uri);
     }),
     vscode.workspace.onDidSaveTextDocument((document): void => {
-      if (indexer.isCandidate(document.uri)) scheduleRefresh();
+      scheduleRefresh(document.uri);
     }),
     vscode.workspace.onDidRenameFiles(({ files }): void => {
-      if (
-        files.some(
-          ({ oldUri, newUri }) => indexer.isCandidate(oldUri) || indexer.isCandidate(newUri),
-        )
-      ) {
-        scheduleRefresh();
+      for (const { oldUri, newUri } of files) {
+        scheduleRefresh(oldUri);
+        scheduleRefresh(newUri);
       }
     }),
     vscode.workspace.onDidDeleteFiles(({ files }): void => {
-      if (files.some((uri) => indexer.isCandidate(uri))) scheduleRefresh();
+      for (const uri of files) scheduleRefresh(uri);
+    }),
+    vscode.workspace.onDidCloseTextDocument((document): void => {
+      runtime.client.diagnostics?.delete(document.uri);
     }),
     vscode.workspace.onDidChangeWorkspaceFolders((): void => {
       createWatcher();
