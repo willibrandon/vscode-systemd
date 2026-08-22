@@ -10,6 +10,9 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 - Kept the generated Explorer commands under the lowercase `systemd` category used by every other
   command.
+- Indexed the exact URI from workspace file events so new references do not depend on file-search
+  cache timing.
+- Cleared language server diagnostics as soon as a document leaves a supported language.
 - Made documentation image popups use the largest natural image size that fits the current viewport
   instead of a fixed laptop-sized cap.
 

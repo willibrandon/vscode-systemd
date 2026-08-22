@@ -36,7 +36,7 @@ export interface HostIndexingOptions {
 }
 
 export interface WorkspaceIndexer extends vscode.Disposable {
-  refresh(): Promise<boolean>;
+  refresh(changedUris?: readonly vscode.Uri[]): Promise<boolean>;
   workspaceGlobs(): readonly string[];
   isCandidate(uri: vscode.Uri): boolean;
 }
@@ -137,7 +137,7 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
     );
   }
 
-  public async refresh(): Promise<boolean> {
+  public async refresh(changedUris: readonly vscode.Uri[] = []): Promise<boolean> {
     this.active?.abort();
     const controller = new AbortController();
     this.active = controller;
@@ -153,7 +153,15 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
       }),
     );
     const workspaceUris = [
-      ...new Map(workspaceGroups.flat().map((uri) => [uri.toString(), uri])).values(),
+      ...new Map(
+        [
+          ...workspaceGroups.flat(),
+          ...changedUris.filter(
+            (uri) =>
+              vscode.workspace.getWorkspaceFolder(uri) !== undefined && this.isCandidate(uri),
+          ),
+        ].map((uri) => [uri.toString(), uri]),
+      ).values(),
     ].slice(0, maximumFiles);
     if (this.isCancelled(controller)) return false;
     const externalUris = await this.externalUris(controller.signal);
