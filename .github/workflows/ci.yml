@@ -149,7 +149,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: systemd/systemd
-          ref: 15458a89f1e39223c958f9ba06f4355b7d60a3ed
+          ref: ebe4dbf426e7faf4ba95a67ff8eb7d0443b14968
           path: .systemd-upstream
           fetch-depth: 0
           persist-credentials: false
@@ -157,7 +157,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: podman-container-tools/podman
-          ref: e14fafc21edcbd691ffbb5cab2d541d18de43838
+          ref: de350af4b10b2d50d88141da646d0d0f2c0aa872
           path: .podman-upstream
           fetch-depth: 0
           persist-credentials: false
