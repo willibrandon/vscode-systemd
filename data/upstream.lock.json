@@ -7,8 +7,8 @@
       "tag": "v261",
       "revision": "102d5065bc82a875cfa0f6fcae6a5bda651cbf0a",
       "tree": "bcdd832c31c509f3126f7a5b88e809ea1d8172e0",
-      "previewRevision": "15458a89f1e39223c958f9ba06f4355b7d60a3ed",
-      "previewTree": "589f6ca9092af638caf08c88a93423660ea83e2d",
+      "previewRevision": "ebe4dbf426e7faf4ba95a67ff8eb7d0443b14968",
+      "previewTree": "5e7012d096ab61744ab2171e3f2161d4692fb134",
       "license": "LGPL-2.1-or-later"
     },
     "podman": {
@@ -16,8 +16,8 @@
       "tag": "v6.1.0",
       "revision": "3070f607ac34891ead088fc3589f767af3574ca6",
       "tree": "a7a967fb4352f9b3b9b26f74b5368eb239075347",
-      "previewRevision": "e14fafc21edcbd691ffbb5cab2d541d18de43838",
-      "previewTree": "449633219bdc4de61228ad2dd0703061e3ae7de6",
+      "previewRevision": "de350af4b10b2d50d88141da646d0d0f2c0aa872",
+      "previewTree": "d88ffef316733a792dd0a72c873b03f9d4cccba1",
       "license": "Apache-2.0"
     },
     "mkosi": {

@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "generatedAt": "1970-01-01T00:00:00.000Z",
   "upstream": {
-    "systemd": "15458a89f1e39223c958f9ba06f4355b7d60a3ed",
-    "podman": "e14fafc21edcbd691ffbb5cab2d541d18de43838",
+    "systemd": "ebe4dbf426e7faf4ba95a67ff8eb7d0443b14968",
+    "podman": "de350af4b10b2d50d88141da646d0d0f2c0aa872",
     "mkosi": "583dcb0e16bb74ecaa45edc3afaaddb1e7312307"
   },
   "quadletExtensions": [
@@ -10503,6 +10503,17 @@
     [
       "systemd-config",
       "*",
+      "FONT_SCALE",
+      "string",
+      "262",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/vconsole.conf.html#FONT_SCALE=",
+      "Specifies a font scaling factor.",
+      []
+    ],
+    [
+      "systemd-config",
+      "*",
       "FONT_UNIMAP",
       "string",
       null,
@@ -14322,6 +14333,17 @@
       "186",
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/kernel-command-line.html#vconsole.font_map=",
+      "Parameters understood by the virtual console setup logic.",
+      []
+    ],
+    [
+      "systemd-config",
+      "*",
+      "vconsole.font_scale",
+      "string",
+      "186",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/kernel-command-line.html#vconsole.font_scale=",
       "Parameters understood by the virtual console setup logic.",
       []
     ],
@@ -19034,6 +19056,17 @@
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/ukify.html#SecureBootCertificate=",
       "A path to a certificate to use for signing of the resulting binary.",
+      []
+    ],
+    [
+      "systemd-config",
+      "UKI",
+      "SecureBootCertificateCommonName",
+      "string",
+      "262",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/ukify.html#SecureBootCertificateCommonName=",
+      "The common name and issuer name (certificate is self-signed) of a certificate created by `genkey`.",
       []
     ],
     [
