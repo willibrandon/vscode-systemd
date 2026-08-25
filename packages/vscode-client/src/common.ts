@@ -161,7 +161,7 @@ export function registerCommonFeatures(
     }),
   );
 
-  let watcher: vscode.FileSystemWatcher | undefined;
+  let watchers: vscode.FileSystemWatcher[] = [];
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   const pendingIndexUris = new Map<string, vscode.Uri>();
   const scheduleRefresh = (uri?: vscode.Uri): void => {
@@ -177,15 +177,19 @@ export function registerCommonFeatures(
       void refreshIndex(changedUris);
     }, 300);
   };
-  const createWatcher = (): void => {
-    watcher?.dispose();
-    const current = vscode.workspace.createFileSystemWatcher("**/*");
-    current.onDidCreate(scheduleRefresh);
-    current.onDidChange(scheduleRefresh);
-    current.onDidDelete(scheduleRefresh);
-    watcher = current;
+  const createWatchers = (): void => {
+    for (const current of watchers) current.dispose();
+    watchers = (vscode.workspace.workspaceFolders ?? []).map(({ uri }) => {
+      const current = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(uri, "**"),
+      );
+      current.onDidCreate(scheduleRefresh);
+      current.onDidChange(scheduleRefresh);
+      current.onDidDelete(scheduleRefresh);
+      return current;
+    });
   };
-  createWatcher();
+  createWatchers();
   let virtualRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   const scheduleVirtualRefresh = (): void => {
     if (virtualRefreshTimer !== undefined) clearTimeout(virtualRefreshTimer);
@@ -197,8 +201,8 @@ export function registerCommonFeatures(
   context.subscriptions.push(
     {
       dispose(): void {
-        watcher?.dispose();
-        watcher = undefined;
+        for (const current of watchers) current.dispose();
+        watchers = [];
         pendingIndexUris.clear();
         if (refreshTimer !== undefined) clearTimeout(refreshTimer);
         if (virtualRefreshTimer !== undefined) clearTimeout(virtualRefreshTimer);
@@ -231,7 +235,7 @@ export function registerCommonFeatures(
       }, 0);
     }),
     vscode.workspace.onDidChangeWorkspaceFolders((): void => {
-      createWatcher();
+      createWatchers();
       scheduleRefresh();
     }),
     vscode.workspace.onDidChangeTextDocument(scheduleVirtualRefresh),
@@ -251,7 +255,7 @@ export function registerCommonFeatures(
         event.affectsConfiguration("systemd.dialectAssociations") ||
         event.affectsConfiguration("systemd.templateSuffixes")
       ) {
-        createWatcher();
+        createWatchers();
         scheduleRefresh();
       }
     }),
