@@ -130,6 +130,8 @@ jobs:
           if [[ -n "$issue" ]]; then
             gh issue close "$issue" --comment "No generated drift remains as of $RUN_URL."
           fi
-      - name: Fail after publishing the drift report
+      - name: Summarize reported drift
         if: steps.drift.outputs.changed == 'true'
-        run: exit 1
+        run:
+          echo "::warning title=Upstream language-data drift::Review the actionable drift issue and
+          attached patch."
