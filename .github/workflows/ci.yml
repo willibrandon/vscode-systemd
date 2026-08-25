@@ -149,7 +149,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: systemd/systemd
-          ref: 58b0764a206fc6cc67aa1a1c60f9f766a366edf8
+          ref: 15458a89f1e39223c958f9ba06f4355b7d60a3ed
           path: .systemd-upstream
           fetch-depth: 0
           persist-credentials: false
@@ -157,7 +157,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: podman-container-tools/podman
-          ref: f19c577355dd5fab3411aee8d12b47da61f2237b
+          ref: e14fafc21edcbd691ffbb5cab2d541d18de43838
           path: .podman-upstream
           fetch-depth: 0
           persist-credentials: false
@@ -165,7 +165,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: systemd/mkosi
-          ref: 9b7d87a1707e39a42cfb54dce5cf745ef7b99a7e
+          ref: 583dcb0e16bb74ecaa45edc3afaaddb1e7312307
           path: .mkosi-upstream
           fetch-depth: 0
           persist-credentials: false
