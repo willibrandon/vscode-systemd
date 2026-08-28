@@ -78,8 +78,12 @@ export async function loadWorkspaceExclusions(
       } catch {
         // Virtual providers may not implement file search even when reads work.
       }
+      const rootIgnoreUri = vscode.Uri.joinPath(folder.uri, ".gitignore");
+      const ignoreUris = new Map(
+        [rootIgnoreUri, ...uris].map((uri) => [uri.toString(), uri] as const),
+      );
       const files = await Promise.all(
-        uris.map(async (uri): Promise<GitIgnoreFile | undefined> => {
+        [...ignoreUris.values()].map(async (uri): Promise<GitIgnoreFile | undefined> => {
           const relative = relativePath(folder.uri, uri);
           if (relative === undefined) return undefined;
           try {
