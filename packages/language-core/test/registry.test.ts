@@ -320,14 +320,16 @@ describe("registry queries", () => {
 
   it("switches between pinned stable data and the compact preview delta", () => {
     configureRegistryChannel("stable");
-    const stableRevision = registryMetadata.upstream.mkosi;
-    expect(definitionFor("mkosi", "Build", "ForeignUIDRange")).toBeUndefined();
+    const stableRevision = registryMetadata.upstream.systemd;
+    expect(definitionFor("systemd-unit", "Service", "RestartRandomizedDelaySec")).toBeUndefined();
     expect(hwdbPropertyFor("SOUND_FORM_FACTOR")?.choices).not.toContain("controller");
 
     configureRegistryChannel("preview");
     try {
-      expect(definitionFor("mkosi", "Build", "ForeignUIDRange")?.since).toBe("preview");
-      expect(registryMetadata.upstream.mkosi).not.toBe(stableRevision);
+      expect(definitionFor("systemd-unit", "Service", "RestartRandomizedDelaySec")?.since).toBe(
+        "262",
+      );
+      expect(registryMetadata.upstream.systemd).not.toBe(stableRevision);
       expect(hwdbPropertyFor("SOUND_FORM_FACTOR")?.choices).toContain("controller");
     } finally {
       configureRegistryChannel("stable");
