@@ -4,6 +4,25 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-28
+
+### Added
+
+- Added a default-on `systemd.index.useIgnoreFiles` setting so developers can opt out of
+  `.gitignore`-aware workspace discovery when needed.
+
+### Changed
+
+- Made ambient workspace indexing honor `files.exclude`, nested `.gitignore` rules, and common
+  generated-output directories while keeping explicitly opened and imported files available.
+- Updated the generated mkosi setting registry for the stable mkosi 27 release.
+
+### Fixed
+
+- Normalized Windows workspace URIs before applying ignore rules so drive-letter casing cannot leak
+  excluded units into the index.
+- Refreshed the index when ignore settings or ignore files change.
+
 ## [0.4.1] - 2026-08-21
 
 ### Fixed
@@ -65,7 +84,8 @@ Notable changes are listed here. Releases follow semantic versioning.
 - Release artifacts include a reproducible VSIX, SHA-256 checksum, CycloneDX SBOM, and build
   attestations.
 
-[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.1...v0.4.0
 [0.2.1]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.0...v0.2.1
