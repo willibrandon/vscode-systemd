@@ -7,7 +7,8 @@ Use the VS Code Settings editor to change these options.
 
 - **Versions:** `systemd.target.systemdVersion`, `podmanVersion`, and `mkosiVersion`
 - **Language data:** `systemd.dataChannel`
-- **Indexing:** `systemd.index.scope` and `systemd.index.extraPaths`
+- **Indexing:** `systemd.index.scope`, `systemd.index.useIgnoreFiles`, and
+  `systemd.index.extraPaths`
 - **File names:** `systemd.dialectAssociations` and `systemd.templateSuffixes`
 - **Installed tools:** `systemd.externalValidation.*`
 - **Protocol logs:** `systemd.trace.server`

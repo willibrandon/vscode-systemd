@@ -11,6 +11,23 @@ exports.run = async function run() {
   const extension = vscode.extensions.getExtension(extensionId);
   assert.ok(extension, extensionId + " must be installed as the development extension.");
 
+  const ignoredDirectory = vscode.Uri.joinPath(root, "artifacts", "tools", "emacs");
+  const ignoredUri = vscode.Uri.joinPath(ignoredDirectory, "emacs.service");
+  const ignoreUri = vscode.Uri.joinPath(root, ".gitignore");
+  await vscode.workspace.fs.createDirectory(ignoredDirectory);
+  await vscode.workspace.fs.writeFile(ignoreUri, new TextEncoder().encode("artifacts/\n"));
+  await vscode.workspace.fs.writeFile(
+    ignoredUri,
+    new TextEncoder().encode("[Unit]\nIgnoredArtifactMarker=yes\n"),
+  );
+  const vscodeExcludedDirectory = vscode.Uri.joinPath(root, "excluded-by-vscode");
+  const vscodeExcludedUri = vscode.Uri.joinPath(vscodeExcludedDirectory, "excluded.service");
+  await vscode.workspace.fs.createDirectory(vscodeExcludedDirectory);
+  await vscode.workspace.fs.writeFile(
+    vscodeExcludedUri,
+    new TextEncoder().encode("[Unit]\nVsCodeExcludedMarker=yes\n"),
+  );
+
   const uri = vscode.Uri.joinPath(root, "demo.service");
   const document = await vscode.workspace.openTextDocument(uri);
   await vscode.window.showTextDocument(document);
@@ -29,6 +46,140 @@ exports.run = async function run() {
       "The smoke test must activate the extension installed from the VSIX.",
     );
   }
+
+  const visibleAfterActivationUri = vscode.Uri.joinPath(root, "visible-after-activation.service");
+  await vscode.workspace.fs.writeFile(
+    visibleAfterActivationUri,
+    new TextEncoder().encode("[Unit]\nVisibleAfterActivationMarker=yes\n"),
+  );
+  await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "VisibleAfterActivationMarker",
+      ),
+    (items) =>
+      items.some(
+        (symbol) => symbol.location.uri.toString() === visibleAfterActivationUri.toString(),
+      ),
+    "post-activation workspace refresh",
+  );
+  let ignoredSymbols = await vscode.commands.executeCommand(
+    "vscode.executeWorkspaceSymbolProvider",
+    "IgnoredArtifactMarker",
+  );
+  assert.equal(
+    ignoredSymbols.some((symbol) => symbol.location.uri.toString() === ignoredUri.toString()),
+    false,
+    "Git-ignored units must stay out of ambient workspace indexing.",
+  );
+  let vscodeExcludedSymbols = await vscode.commands.executeCommand(
+    "vscode.executeWorkspaceSymbolProvider",
+    "VsCodeExcludedMarker",
+  );
+  assert.equal(
+    vscodeExcludedSymbols.some(
+      (symbol) => symbol.location.uri.toString() === vscodeExcludedUri.toString(),
+    ),
+    false,
+    "files.exclude entries must stay out of ambient workspace indexing.",
+  );
+
+  const filesConfiguration = vscode.workspace.getConfiguration("files", vscodeExcludedUri);
+  await filesConfiguration.update(
+    "exclude",
+    { "**/excluded-by-vscode": false },
+    vscode.ConfigurationTarget.Workspace,
+  );
+  await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "VsCodeExcludedMarker",
+      ),
+    (items) =>
+      items.some((symbol) => symbol.location.uri.toString() === vscodeExcludedUri.toString()),
+    "unit to enter the index after files.exclude changes",
+  );
+  await filesConfiguration.update(
+    "exclude",
+    { "**/excluded-by-vscode": true },
+    vscode.ConfigurationTarget.Workspace,
+  );
+  await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "VsCodeExcludedMarker",
+      ),
+    (items) =>
+      items.every((symbol) => symbol.location.uri.toString() !== vscodeExcludedUri.toString()),
+    "unit to leave the index after files.exclude changes",
+  );
+
+  await vscode.workspace.fs.writeFile(ignoreUri, new TextEncoder().encode(""));
+  await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "IgnoredArtifactMarker",
+      ),
+    (items) => items.some((symbol) => symbol.location.uri.toString() === ignoredUri.toString()),
+    "unit to enter the index after .gitignore changes",
+  );
+  await vscode.workspace.fs.writeFile(ignoreUri, new TextEncoder().encode("artifacts/\n"));
+  await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "IgnoredArtifactMarker",
+      ),
+    (items) => items.every((symbol) => symbol.location.uri.toString() !== ignoredUri.toString()),
+    "unit to leave the index after .gitignore changes",
+  );
+
+  const indexConfiguration = vscode.workspace.getConfiguration("systemd", ignoredUri);
+  await indexConfiguration.update(
+    "index.useIgnoreFiles",
+    false,
+    vscode.ConfigurationTarget.WorkspaceFolder,
+  );
+  await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "IgnoredArtifactMarker",
+      ),
+    (items) => items.some((symbol) => symbol.location.uri.toString() === ignoredUri.toString()),
+    "ignored unit to enter the index when Git ignore filtering is disabled",
+  );
+  await indexConfiguration.update(
+    "index.useIgnoreFiles",
+    true,
+    vscode.ConfigurationTarget.WorkspaceFolder,
+  );
+  await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "IgnoredArtifactMarker",
+      ),
+    (items) => items.every((symbol) => symbol.location.uri.toString() !== ignoredUri.toString()),
+    "ignored unit to leave the index when Git ignore filtering is restored",
+  );
+
+  const ignoredDocument = await vscode.workspace.openTextDocument(ignoredUri);
+  await vscode.window.showTextDocument(ignoredDocument);
+  assert.equal(ignoredDocument.languageId, "systemd-unit");
+  await waitFor(
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "IgnoredArtifactMarker",
+      ),
+    (items) => items.some((symbol) => symbol.location.uri.toString() === ignoredUri.toString()),
+    "explicitly opened ignored unit to retain language support",
+  );
 
   const completion = await vscode.commands.executeCommand(
     "vscode.executeCompletionItemProvider",

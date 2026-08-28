@@ -19,6 +19,7 @@ and [Open VSX](https://open-vsx.org/extension/willibrandon/systemd) publish the 
 - Completion, hover, diagnostics, and quick fixes
 - Navigation, rename, symbols, and formatting
 - Unit drop-ins, merged configuration, and dependency graphs
+- Workspace indexing that respects `files.exclude` and `.gitignore`
 - Desktop, remote, and browser support
 - Optional validation with installed tools
 

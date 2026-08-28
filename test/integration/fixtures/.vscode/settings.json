@@ -2,6 +2,9 @@
   "systemd.dialectAssociations": {
     "**/*.daemon": "systemd-unit"
   },
+  "files.exclude": {
+    "**/excluded-by-vscode": true
+  },
   "systemd.index.scope": "workspace",
   "systemd.templateSuffixes": [".rendered"]
 }

@@ -7,7 +7,10 @@ The index powers cross-file completion, navigation, the systemd Explorer, merged
 dependency graphs.
 
 Select the **systemd** server icon in the Activity Bar to open the Explorer. Workspace files are
-shown first. Indexed Linux or WSL files are grouped under **Host**.
+shown first. Automatic workspace discovery respects VS Code `files.exclude` and nested `.gitignore`
+files. Opened files and files reached through explicit mkosi includes remain available. Set
+`systemd.index.useIgnoreFiles` to `false` only when an ignored generated tree should be indexed.
+Indexed Linux or WSL files are grouped under **Host**.
 
 On trusted Linux hosts, it can also read standard systemd paths. Set `systemd.index.scope` to
 `workspace` to skip them. Host files are read-only.

@@ -662,6 +662,12 @@
           "scope": "window",
           "description": "Files included in cross-file indexing."
         },
+        "systemd.index.useIgnoreFiles": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Exclude files matched by workspace .gitignore files from automatic indexing. Explicitly opened and referenced files remain available."
+        },
         "systemd.index.extraPaths": {
           "type": "array",
           "items": {
@@ -810,6 +816,7 @@
     "yauzl": "3.4.0"
   },
   "dependencies": {
+    "ignore": "7.0.6",
     "minimatch": "10.2.6",
     "vscode-languageclient": "10.1.0",
     "vscode-languageserver": "10.1.0",

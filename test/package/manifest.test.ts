@@ -13,6 +13,19 @@ interface Manifest {
   readonly activationEvents?: readonly string[];
   readonly contributes: {
     readonly commands: readonly { readonly command: string; readonly category: string }[];
+    readonly configuration: {
+      readonly properties: Readonly<
+        Record<
+          string,
+          Readonly<{
+            readonly default?: unknown;
+            readonly description?: string;
+            readonly scope?: string;
+            readonly type?: string;
+          }>
+        >
+      >;
+    };
     readonly languages: readonly {
       readonly id: string;
       readonly configuration: string;
@@ -67,6 +80,16 @@ describe("extension manifest", () => {
 
   it("relies on generated activation events from contributions", () => {
     expect(manifest.activationEvents).toBeUndefined();
+  });
+
+  it("enables Git ignore filtering for automatic workspace indexing by default", () => {
+    expect(manifest.contributes.configuration.properties["systemd.index.useIgnoreFiles"]).toEqual({
+      type: "boolean",
+      default: true,
+      scope: "resource",
+      description:
+        "Exclude files matched by workspace .gitignore files from automatic indexing. Explicitly opened and referenced files remain available.",
+    });
   });
 
   it("bundles schemas for every systemd JSON format with a defined structure", async () => {
