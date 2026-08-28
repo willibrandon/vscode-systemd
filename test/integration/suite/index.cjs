@@ -47,10 +47,22 @@ exports.run = async function run() {
     );
   }
 
+  const visibleAfterActivationUri = vscode.Uri.joinPath(root, "visible-after-activation.service");
+  await vscode.workspace.fs.writeFile(
+    visibleAfterActivationUri,
+    new TextEncoder().encode("[Unit]\nVisibleAfterActivationMarker=yes\n"),
+  );
   await waitFor(
-    () => vscode.commands.executeCommand("vscode.executeWorkspaceSymbolProvider", "ExecStart"),
-    (items) => items.some((symbol) => symbol.location.uri.toString() === uri.toString()),
-    "initial workspace index",
+    () =>
+      vscode.commands.executeCommand(
+        "vscode.executeWorkspaceSymbolProvider",
+        "VisibleAfterActivationMarker",
+      ),
+    (items) =>
+      items.some(
+        (symbol) => symbol.location.uri.toString() === visibleAfterActivationUri.toString(),
+      ),
+    "post-activation workspace refresh",
   );
   let ignoredSymbols = await vscode.commands.executeCommand(
     "vscode.executeWorkspaceSymbolProvider",
