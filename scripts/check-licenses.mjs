@@ -28,6 +28,7 @@ const approvedLicenses = new Set([
 const expectedRuntimePackages = new Set([
   "balanced-match@4.0.4",
   "brace-expansion@5.0.9",
+  "ignore@7.0.6",
   "jsonc-parser@3.3.1",
   "minimatch@10.2.6",
   "semver@7.8.5",

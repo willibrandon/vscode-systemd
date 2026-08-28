@@ -9,6 +9,7 @@ import {
 } from "@systemd/language-server/protocol";
 import type { IndexedDocument } from "@systemd/language-server/protocol";
 import { configurationWorkspaceGlobs } from "./index-patterns.js";
+import { loadWorkspaceExclusions } from "./workspace-exclusions.js";
 
 const maximumFiles = 20_000;
 const maximumFileBytes = 2 * 1024 * 1024;
@@ -141,26 +142,36 @@ class SystemdWorkspaceIndexer implements WorkspaceIndexer {
     this.active?.abort();
     const controller = new AbortController();
     this.active = controller;
-    const exclude = "**/{.git,node_modules,dist,out,coverage}/**";
+    const exclusions = await loadWorkspaceExclusions("systemd");
+    if (this.isCancelled(controller)) return false;
     const workspaceGroups = await Promise.all(
       this.workspaceGlobs().map(async (pattern) => {
         try {
-          return await vscode.workspace.findFiles(pattern, exclude, maximumFiles);
+          const uris = await vscode.workspace.findFiles(pattern, undefined, maximumFiles);
+          return uris.filter((uri) => !exclusions.excludes(uri));
         } catch (error) {
           this.output.warn("Unable to use index glob " + pattern + ": " + safeMessage(error));
           return [];
         }
       }),
     );
+    const changedWorkspaceUris = (
+      await Promise.all(
+        changedUris.map(async (uri): Promise<vscode.Uri | undefined> => {
+          if (
+            vscode.workspace.getWorkspaceFolder(uri) === undefined ||
+            !this.isCandidate(uri) ||
+            (await exclusions.excludesChangedUri(uri))
+          ) {
+            return undefined;
+          }
+          return uri;
+        }),
+      )
+    ).filter((uri) => uri !== undefined);
     const workspaceUris = [
       ...new Map(
-        [
-          ...workspaceGroups.flat(),
-          ...changedUris.filter(
-            (uri) =>
-              vscode.workspace.getWorkspaceFolder(uri) !== undefined && this.isCandidate(uri),
-          ),
-        ].map((uri) => [uri.toString(), uri]),
+        [...workspaceGroups.flat(), ...changedWorkspaceUris].map((uri) => [uri.toString(), uri]),
       ).values(),
     ].slice(0, maximumFiles);
     if (this.isCancelled(controller)) return false;

@@ -14,6 +14,7 @@ import { exactDialectAssociationPattern, withDialectAssociation } from "./dialec
 import { createWorkspaceIndexer, registerLanguageDetection } from "./indexer.js";
 import type { HostIndexingOptions } from "./indexer.js";
 import { registerVirtualDocuments } from "./virtual-documents.js";
+import { isGitIgnoreFile } from "./workspace-exclusions.js";
 
 export const systemdLanguageIds: readonly DialectId[] = [
   "systemd-unit",
@@ -165,7 +166,7 @@ export function registerCommonFeatures(
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   const pendingIndexUris = new Map<string, vscode.Uri>();
   const scheduleRefresh = (uri?: vscode.Uri): void => {
-    if (uri !== undefined) {
+    if (uri !== undefined && !isGitIgnoreFile(uri)) {
       if (!indexer.isCandidate(uri)) return;
       pendingIndexUris.set(uri.toString(), uri);
     }
@@ -253,7 +254,8 @@ export function registerCommonFeatures(
       if (
         event.affectsConfiguration("systemd.index") ||
         event.affectsConfiguration("systemd.dialectAssociations") ||
-        event.affectsConfiguration("systemd.templateSuffixes")
+        event.affectsConfiguration("systemd.templateSuffixes") ||
+        event.affectsConfiguration("files.exclude")
       ) {
         createWatchers();
         scheduleRefresh();
