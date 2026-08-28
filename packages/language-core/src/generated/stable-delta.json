@@ -4,7 +4,7 @@
   "upstream": {
     "systemd": "102d5065bc82a875cfa0f6fcae6a5bda651cbf0a",
     "podman": "3070f607ac34891ead088fc3589f767af3574ca6",
-    "mkosi": "ebd488899176524f08c3767cdea3224db0016c34"
+    "mkosi": "f2b04fcd671110e3a7372027162752f71de0c9b0"
   },
   "hwdbPropertyRemove": [],
   "hwdbProperties": [
@@ -23,21 +23,6 @@
     ]
   ],
   "remove": [
-    "mkosi\u0000Assert\u0000Bootloader",
-    "mkosi\u0000Build\u0000ForeignUIDRange",
-    "mkosi\u0000Build\u0000MakeScriptsExecutable",
-    "mkosi\u0000Match\u0000Bootloader",
-    "mkosi\u0000Output\u0000ElTorito",
-    "mkosi\u0000Output\u0000ElToritoPublisher",
-    "mkosi\u0000Output\u0000ElToritoSystem",
-    "mkosi\u0000Output\u0000ElToritoVolume",
-    "mkosi\u0000Output\u0000OciAnnotations",
-    "mkosi\u0000Output\u0000OciLabels",
-    "mkosi\u0000Output\u0000OutputSize",
-    "mkosi\u0000Runtime\u0000DiskType",
-    "mkosi\u0000TriggerAssert\u0000Bootloader",
-    "mkosi\u0000TriggerMatch\u0000Bootloader",
-    "mkosi\u0000Validation\u0000SignInitrdPCRs",
     "podman-quadlet\u0000Container\u0000Umask",
     "systemd-config\u0000*\u0000FONT_SCALE",
     "systemd-config\u0000*\u0000PolicyRef",
@@ -86,98 +71,19 @@
     [
       "mkosi",
       "Build",
-      "CacheOnly",
-      "boolean",
-      "25",
+      "ToolsTreeSnapshot",
+      "string",
+      "27",
       0,
       "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "Only use the package cache when installing packages.",
-      [
-        "always",
-        "auto",
-        "metadata",
-        "never",
-        ""
-      ],
-      {
-        "s": "multiversal",
-        "x": true
-      }
-    ],
-    [
-      "mkosi",
-      "Build",
-      "ExtraSearchPaths",
-      "list",
-      "25",
-      0,
-      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "List of comma-separated paths to look for programs before looking in PATH.",
+      "Set the distribution snapshot to use for the default tools tree.",
       [],
       {
-        "a": "append",
-        "s": "universal"
-      }
-    ],
-    [
-      "mkosi",
-      "Runtime",
-      "Firmware",
-      "string",
-      "25",
-      0,
-      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "Select the virtual machine firmware to use.",
-      [
-        "auto",
-        "linux",
-        "linux-noinitrd",
-        "uefi",
-        "uefi-secure-boot",
-        "bios",
-        ""
-      ],
-      {
-        "s": "main",
-        "x": true
-      }
-    ],
-    [
-      "mkosi",
-      "Runtime",
-      "QemuFirmware",
-      "string",
-      "25",
-      1,
-      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "Compatibility alias for Firmware.",
-      [
-        "auto",
-        "linux",
-        "linux-noinitrd",
-        "uefi",
-        "uefi-secure-boot",
-        "bios",
-        ""
-      ],
-      {
-        "s": "main",
-        "x": true
-      }
-    ],
-    [
-      "mkosi",
-      "Runtime",
-      "UnitProperties",
-      "list",
-      "25",
-      0,
-      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "Set properties on the scopes spawned by systemd-nspawn or systemd-run.",
-      [],
-      {
-        "a": "append",
-        "s": "main"
+        "s": "tools",
+        "t": [
+          "Distribution",
+          "Snapshot"
+        ]
       }
     ],
     [
