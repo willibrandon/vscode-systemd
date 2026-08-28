@@ -114,9 +114,16 @@ export function isGitIgnoreFile(uri: vscode.Uri): boolean {
 
 function relativePath(root: vscode.Uri, uri: vscode.Uri): string | undefined {
   if (root.scheme !== uri.scheme || root.authority !== uri.authority) return undefined;
-  const prefix = root.path.endsWith("/") ? root.path : root.path + "/";
-  if (!uri.path.startsWith(prefix)) return uri.path === root.path ? "" : undefined;
-  return uri.path.slice(prefix.length).replaceAll("\\", "/");
+  const rootPath = root.path.replaceAll("\\", "/");
+  const candidatePath = uri.path.replaceAll("\\", "/");
+  const windowsFileUri = root.scheme === "file" && /^\/[A-Za-z]:\//u.test(rootPath + "/");
+  const comparedRoot = windowsFileUri ? rootPath.toLowerCase() : rootPath;
+  const comparedCandidate = windowsFileUri ? candidatePath.toLowerCase() : candidatePath;
+  const prefix = comparedRoot.endsWith("/") ? comparedRoot : comparedRoot + "/";
+  if (!comparedCandidate.startsWith(prefix)) {
+    return comparedCandidate === comparedRoot ? "" : undefined;
+  }
+  return candidatePath.slice(prefix.length);
 }
 
 function matchesPathOrParent(relative: string, pattern: string): boolean {
