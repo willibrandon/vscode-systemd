@@ -820,7 +820,7 @@
     "minimatch": "10.2.6",
     "vscode-languageclient": "10.1.0",
     "vscode-languageserver": "10.1.0",
-    "vscode-languageserver-textdocument": "1.0.12"
+    "vscode-languageserver-textdocument": "1.0.14"
   },
   "overrides": {
     "cheerio": "1.0.0-rc.12",
