@@ -40,8 +40,11 @@ npm run check:upstream:corpus
 ```
 
 Generation updates the registries, version deltas, user database definitions, JSON schemas, and the
-source lock. The check commands verify deterministic output, minimum dialect coverage, source
-identity, pinned revisions, trees, and real upstream configuration fixtures.
+source lock, discovering the latest stable release tags available in each checkout.
+`check:generated` verifies against the stable tags already recorded in the source lock, so unrelated
+new upstream tags do not change pinned conformance. The other check commands verify deterministic
+output, minimum dialect coverage, source identity, pinned revisions, trees, and real upstream
+configuration fixtures.
 
 ## Updating a pin
 

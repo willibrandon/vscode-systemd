@@ -33,6 +33,7 @@ import type {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { startLanguageServer } from "../src/server.js";
 import { readDirectoryRequest } from "../src/protocol.js";
+import type { ReadDirectoryParams } from "../src/protocol.js";
 
 const uri = "file:///workspace/demo.service";
 const source = [
@@ -88,10 +89,14 @@ describe("language server JSON-RPC contract", () => {
     workspaceDirectories = new Map();
     directoryRequests = [];
     directoryResponder = (requestedUri) => workspaceDirectories.get(requestedUri) ?? [];
-    client.onRequest(readDirectoryRequest, ({ uri: requestedUri }, token) => {
-      directoryRequests.push(requestedUri);
-      return directoryResponder(requestedUri, token);
-    });
+    // Use the wire method across the client and server's separate JSON-RPC versions.
+    client.onRequest(
+      readDirectoryRequest.method,
+      ({ uri: requestedUri }: ReadDirectoryParams, token: CancellationToken) => {
+        directoryRequests.push(requestedUri);
+        return directoryResponder(requestedUri, token);
+      },
+    );
     const initialization = await client.sendRequest<InitializeResult>("initialize", {
       processId: null,
       rootUri: null,
