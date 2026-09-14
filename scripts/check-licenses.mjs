@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { getBundledPackages } from "./bundled-packages.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const approvedLicenses = new Set([
@@ -36,6 +37,7 @@ const expectedRuntimePackages = new Set([
   "vscode-languageclient@10.1.0",
   "vscode-languageserver-protocol@3.18.2",
   "vscode-languageserver-textdocument@1.0.12",
+  "vscode-languageserver-textdocument@1.0.13",
   "vscode-languageserver-types@3.18.0",
   "vscode-languageserver@10.1.0",
   "vscode-uri@3.1.0",
@@ -71,23 +73,7 @@ if (!notices.includes("systemd manual excerpts") || !notices.includes("LGPL-2.1-
   failures.push("third-party notice missing for generated systemd manual excerpts");
 }
 const metafiles = JSON.parse(await readFile(resolve(root, "dist/metafile.json"), "utf8"));
-const bundledNames = new Set();
-for (const metafile of metafiles) {
-  for (const input of Object.keys(metafile.inputs)) {
-    const match = /node_modules\/(?:@[^/]+\/[^/]+|[^/]+)/u.exec(input);
-    if (match !== null) bundledNames.add(match[0].slice("node_modules/".length));
-  }
-}
-const bundledPackages = new Set(
-  [...bundledNames].map((name) => {
-    const entry = lock.packages[`node_modules/${name}`];
-    if (entry?.version === undefined) {
-      failures.push(`bundled dependency ${name} has no root lockfile entry`);
-      return `${name}@unknown`;
-    }
-    return `${name}@${entry.version}`;
-  }),
-);
+const bundledPackages = getBundledPackages(metafiles, lock);
 for (const packageId of expectedRuntimePackages) {
   if (!bundledPackages.has(packageId))
     failures.push(`expected runtime dependency missing: ${packageId}`);
