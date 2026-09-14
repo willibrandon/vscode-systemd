@@ -23,6 +23,7 @@ License: `LICENSES/systemd-LGPL-2.1-or-later.txt`
 - vscode-languageserver@10.1.0
 - vscode-languageserver-protocol@3.18.2
 - vscode-languageserver-textdocument@1.0.12
+- vscode-languageserver-textdocument@1.0.13
 - vscode-languageserver-types@3.18.0
 
 Copyright (c) Microsoft Corporation

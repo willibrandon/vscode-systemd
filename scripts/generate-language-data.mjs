@@ -16,6 +16,7 @@ const membershipSchemaOutput = resolve(root, "schemas/systemd-membership.schema.
 const lockOutput = resolve(root, "data/upstream.lock.json");
 const checking = process.argv.includes("--check");
 const adapterVersion = 14;
+const pinnedLock = checking ? JSON.parse(await readFile(lockOutput, "utf8")) : undefined;
 const sources = {
   systemd: resolve(root, process.env.SYSTEMD_SOURCE ?? "../systemd"),
   podman: resolve(root, process.env.PODMAN_SOURCE ?? "../podman"),
@@ -103,17 +104,16 @@ if (unavailable.length > 0) {
   const bundledUserSchema = JSON.parse(await readFile(userSchemaOutput, "utf8"));
   const bundledGroupSchema = JSON.parse(await readFile(groupSchemaOutput, "utf8"));
   const bundledMembershipSchema = JSON.parse(await readFile(membershipSchemaOutput, "utf8"));
-  const lock = JSON.parse(await readFile(lockOutput, "utf8"));
   if (!Array.isArray(bundled.directives) || bundled.directives.length < 100) {
     throw new Error("Bundled registry is missing or incomplete.");
   }
   if (!Array.isArray(bundled.hwdbProperties) || !Array.isArray(bundled.hwdbMatchPrefixes)) {
     throw new Error("Bundled hwdb language data is missing or incomplete.");
   }
-  validateLock(lock, bundled.upstream, stableDelta.upstream);
+  validateLock(pinnedLock, bundled.upstream, stableDelta.upstream);
   if (
     bundledUserDb.schemaVersion !== 1 ||
-    bundledUserDb.upstream !== lock.sources?.systemd?.revision ||
+    bundledUserDb.upstream !== pinnedLock.sources?.systemd?.revision ||
     !Array.isArray(bundledUserDb.user?.fields) ||
     bundledUserDb.user.fields.length < 90 ||
     !Array.isArray(bundledUserDb.group?.fields) ||
@@ -137,11 +137,21 @@ if (unavailable.length > 0) {
 const availability = extractAvailability(sources);
 let records = new Map();
 const directives = await generateDirectives(sources);
-const stableTags = {
-  systemd: latestStableTag(sources.systemd, /^v\d+$/u),
-  podman: latestStableTag(sources.podman, /^v\d+\.\d+\.\d+$/u),
-  mkosi: latestStableTag(sources.mkosi, /^v\d+(?:\.\d+)*$/u),
-};
+const stableTags = checking
+  ? Object.fromEntries(
+      Object.keys(sources).map((name) => {
+        const tag = pinnedLock.sources?.[name]?.tag;
+        if (typeof tag !== "string" || tag.length === 0) {
+          throw new Error("Upstream lock entry has no stable tag: " + name + ".");
+        }
+        return [name, tag];
+      }),
+    )
+  : {
+      systemd: latestStableTag(sources.systemd, /^v\d+$/u),
+      podman: latestStableTag(sources.podman, /^v\d+\.\d+\.\d+$/u),
+      mkosi: latestStableTag(sources.mkosi, /^v\d+(?:\.\d+)*$/u),
+    };
 const stableSources = await extractStableSources(sources, stableTags);
 let stableDirectives;
 let stableHwdbLanguage;
