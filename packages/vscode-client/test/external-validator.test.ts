@@ -384,27 +384,35 @@ describe("installed validator policy", () => {
   it.skipIf(process.platform === "win32")(
     "force-kills a validator that ignores graceful termination",
     async () => {
+      const workspace = await mkdtemp(join(tmpdir(), "systemd-stubborn-validator-test-"));
+      const ready = join(workspace, "ready");
       const controller = new AbortController();
-      const validation = runValidator(
-        {
-          executable: process.execPath,
-          arguments: [
-            "-e",
-            "process.on('SIGTERM', () => {}); process.stdout.write('ready'); setInterval(() => {}, 1000)",
-          ],
-          cwd: process.cwd(),
-          label: "stubborn validator",
-        },
-        controller.signal,
-        () => true,
-      );
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      controller.abort();
-      await expect(validation).resolves.toMatchObject({
-        stdout: "ready",
-        cancelled: true,
-        timedOut: false,
-      });
+      try {
+        const validation = runValidator(
+          {
+            executable: process.execPath,
+            arguments: [
+              "-e",
+              "require('node:fs').writeFileSync(process.argv[1], ''); process.on('SIGTERM', () => {}); " +
+                "process.stdout.write('ready'); setInterval(() => {}, 1000)",
+              ready,
+            ],
+            cwd: process.cwd(),
+            label: "stubborn validator",
+          },
+          controller.signal,
+          () => true,
+        );
+        await waitForFile(ready);
+        controller.abort();
+        await expect(validation).resolves.toMatchObject({
+          stdout: "ready",
+          cancelled: true,
+          timedOut: false,
+        });
+      } finally {
+        await rm(workspace, { recursive: true, force: true });
+      }
     },
   );
 
@@ -511,3 +519,16 @@ describe("installed validator policy", () => {
     }
   });
 });
+
+async function waitForFile(path: string): Promise<void> {
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    try {
+      await readFile(path);
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+  throw new Error(`Timed out waiting for ${path}`);
+}

@@ -31,6 +31,7 @@ jobs:
           node-version: 24.19.0
           cache: npm
       - run: npm ci
+      - run: npm exec -- playwright install chromium
       - name: Verify release source
         run: npm run verify
       - name: Check tag, changelog, tree, and publisher identity
