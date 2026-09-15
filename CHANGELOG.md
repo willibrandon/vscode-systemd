@@ -4,6 +4,8 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-14
+
 ### Changed
 
 - Refreshed the bundled systemd, Podman, and mkosi language data: replaced the unreleased
@@ -90,7 +92,8 @@ Notable changes are listed here. Releases follow semantic versioning.
 - Release artifacts include a reproducible VSIX, SHA-256 checksum, CycloneDX SBOM, and build
   attestations.
 
-[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/willibrandon/vscode-systemd/compare/v0.2.1...v0.4.0
