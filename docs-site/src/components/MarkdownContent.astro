@@ -3,10 +3,14 @@ import Default from "@astrojs/starlight/components/MarkdownContent.astro";
 ---
 
 <docs-image-zoom>
-  <Default><slot /></Default>
+  <Default>
+    <slot />
+  </Default>
   <dialog aria-label="Expanded documentation image">
     <div class="image-frame">
-      <button type="button" data-close>Close</button>
+      <button type="button" data-close>
+        Close
+      </button>
       <img alt="" />
       <p data-caption></p>
     </div>

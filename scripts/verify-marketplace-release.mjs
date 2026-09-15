@@ -105,7 +105,7 @@ export function isMarketplacePropagationError(error) {
   if (typeof error !== "object" || error === null) return false;
   const message = "message" in error && typeof error.message === "string" ? error.message : "";
   const stderr = "stderr" in error && typeof error.stderr === "string" ? error.stderr : "";
-  return /Extension '[^']+' not found\./u.test(`${message}\n${stderr}`);
+  return /Extension '[^']+' not found\.|Server returned 503/u.test(`${message}\n${stderr}`);
 }
 
 async function queryMarketplace(extensionId) {
