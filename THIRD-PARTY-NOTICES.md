@@ -18,13 +18,12 @@ License: `LICENSES/systemd-LGPL-2.1-or-later.txt`
 
 ## Microsoft VS Code language packages
 
-- vscode-jsonrpc@9.0.1
-- vscode-languageclient@10.1.0
-- vscode-languageserver@10.1.0
-- vscode-languageserver-protocol@3.18.2
-- vscode-languageserver-textdocument@1.0.12
-- vscode-languageserver-textdocument@1.0.13
-- vscode-languageserver-types@3.18.0
+- vscode-jsonrpc@9.0.2
+- vscode-languageclient@10.1.1
+- vscode-languageserver@10.1.1
+- vscode-languageserver-protocol@3.18.3
+- vscode-languageserver-textdocument@1.0.14
+- vscode-languageserver-types@3.18.3
 
 Copyright (c) Microsoft Corporation
 
@@ -114,7 +113,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-## ignore@7.0.6
+## ignore@7.0.9
 
 Copyright (c) 2013 Kael Zhang <i@kael.me>, contributors <http://kael.me/>
 
@@ -181,7 +180,7 @@ No contributor can revoke this license.
 contributor will be liable to anyone for any damages related to this software or this license, under
 any kind of legal claim._**
 
-## vscode-uri@3.1.0
+## vscode-uri@3.2.0
 
 The MIT License (MIT)
 

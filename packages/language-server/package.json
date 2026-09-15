@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "@systemd/language-core": "0.4.2",
-    "vscode-uri": "^3.1.0"
+    "vscode-uri": "^3.2.0"
   }
 }
