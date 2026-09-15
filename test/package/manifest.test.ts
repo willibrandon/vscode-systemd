@@ -82,6 +82,18 @@ describe("extension manifest", () => {
     expect(manifest.activationEvents).toBeUndefined();
   });
 
+  it("installs the exact Playwright browser before browser-based checks", async () => {
+    for (const path of [
+      ".github/workflows/ci.yml",
+      ".github/workflows/docs.yml",
+      ".github/workflows/release.yml",
+    ]) {
+      expect(await readFile(resolve(root, path), "utf8"), path).toContain(
+        "npm exec -- playwright install chromium",
+      );
+    }
+  });
+
   it("enables Git ignore filtering for automatic workspace indexing by default", () => {
     expect(manifest.contributes.configuration.properties["systemd.index.useIgnoreFiles"]).toEqual({
       type: "boolean",
