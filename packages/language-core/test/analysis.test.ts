@@ -119,6 +119,31 @@ describe("INI semantic analysis", () => {
     ).not.toContain("setting-unavailable");
   });
 
+  it("gates refreshed preview systemd settings by target release", () => {
+    configureRegistryChannel("preview");
+    const document = parse(
+      "[Network]\nProxyNeighbor=192.0.2.1\n",
+      "systemd-network",
+      "file:///workspace/10-proxy.network",
+    );
+
+    try {
+      expect(
+        analyze(document, { targetVersions: { "systemd-network": "261" } }).map(({ code }) => code),
+      ).toContain("setting-unavailable");
+      expect(
+        analyze(document, { targetVersions: { "systemd-network": "262" } }).map(({ code }) => code),
+      ).not.toContain("setting-unavailable");
+      expect(
+        analyze(document, { targetVersions: { "systemd-network": "latest" } }).map(
+          ({ code }) => code,
+        ),
+      ).not.toContain("setting-unavailable");
+    } finally {
+      configureRegistryChannel("stable");
+    }
+  });
+
   it("models historical mkosi removals, section rules, and boolean literals", () => {
     const removed = parse(
       "[Output]\nCacheDirectory=mkosi.cache\n",

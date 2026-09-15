@@ -3,7 +3,7 @@
   "generatedAt": "1970-01-01T00:00:00.000Z",
   "upstream": {
     "systemd": "102d5065bc82a875cfa0f6fcae6a5bda651cbf0a",
-    "podman": "3070f607ac34891ead088fc3589f767af3574ca6",
+    "podman": "e0977ecff66d0b8feb3901df03b037e8716dd090",
     "mkosi": "f2b04fcd671110e3a7372027162752f71de0c9b0"
   },
   "hwdbPropertyRemove": [],
@@ -59,7 +59,7 @@
     "systemd-config\u0000Feature\u0000SuggestOnVirtualization",
     "systemd-config\u0000UKI\u0000SecureBootCertificateCommonName",
     "systemd-network\u0000Match\u0000MachineTag",
-    "systemd-network\u0000Network\u0000IPv4ProxyARPAddress",
+    "systemd-network\u0000Network\u0000ProxyNeighbor",
     "systemd-unit\u0000Service\u0000LUOSession",
     "systemd-unit\u0000Service\u0000RestartRandomizedDelaySec",
     "systemd-unit\u0000Slice\u0000ActivatingConcurrencyMax",
@@ -68,24 +68,6 @@
     "systemd-unit\u0000Socket\u0000XAttrListen"
   ],
   "directives": [
-    [
-      "mkosi",
-      "Build",
-      "ToolsTreeSnapshot",
-      "string",
-      "27",
-      0,
-      "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
-      "Set the distribution snapshot to use for the default tools tree.",
-      [],
-      {
-        "s": "tools",
-        "t": [
-          "Distribution",
-          "Snapshot"
-        ]
-      }
-    ],
     [
       "podman-quadlet",
       "Container",
@@ -159,6 +141,28 @@
       []
     ],
     [
+      "systemd-config",
+      "Feature",
+      "Documentation",
+      "string",
+      "257",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/sysupdate.features.html#Documentation=",
+      "A user-presentable URL to documentation about this feature.",
+      []
+    ],
+    [
+      "systemd-config",
+      "Files",
+      "PrivateUsersOwnership",
+      "string",
+      "249",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.nspawn.html#PrivateUsersOwnership=",
+      "Configures whether the ownership of the files and directories in the container tree shall be adjusted to the UID/GID range used, if necessary and user namespacing is enabled.",
+      []
+    ],
+    [
       "systemd-network",
       "Network",
       "IPoIB",
@@ -167,6 +171,22 @@
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#IPoIB=",
       "The name of an IPoIB, IPVLAN, IPVTAP, MACsec, MACVLAN, MACVTAP, tunnel, VLAN, VXLAN, or Xfrm to be created on the link.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "IPv6ProxyNDPAddress",
+      "address",
+      "233",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#IPv6ProxyNDPAddress=",
+      "An IPv6 address, for which Neighbour Advertisement messages will be proxied.",
       [],
       {
         "k": [
@@ -319,6 +339,36 @@
       }
     ],
     [
+      "systemd-network",
+      "WLAN",
+      "Type",
+      "string",
+      "251",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.netdev.html#Type=",
+      "Specifies the type of the interface.",
+      [
+        "ad-hoc",
+        "station",
+        "ap",
+        "ap-vlan",
+        "wds",
+        "monitor",
+        "mesh-point",
+        "p2p-client",
+        "p2p-go",
+        "p2p-device",
+        "ocb",
+        "nan"
+      ],
+      {
+        "k": [
+          "systemd-network:netdev"
+        ],
+        "x": false
+      }
+    ],
+    [
       "systemd-unit",
       "*",
       "NUMAPolicy",
@@ -390,6 +440,21 @@
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionCPUFeature=",
       "Verify that a given CPU feature is available via the `CPUID` instruction.",
+      [],
+      {
+        "a": "append",
+        "r": "unit-conditions"
+      }
+    ],
+    [
+      "systemd-unit",
+      "Unit",
+      "ConditionPathExists",
+      "path",
+      "244",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionPathExists=",
+      "Check for the existence of a file.",
       [],
       {
         "a": "append",
