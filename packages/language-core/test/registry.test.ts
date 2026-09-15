@@ -318,11 +318,33 @@ describe("registry queries", () => {
     expect(definitionFor("podman-quadlet", "Container", "Volume")?.assignmentMode).toBe("append");
   });
 
-  it("switches between pinned stable data and the compact preview delta", () => {
+  it("preserves released metadata while exposing refreshed preview data", () => {
     configureRegistryChannel("stable");
     const stableRevision = registryMetadata.upstream.systemd;
     expect(definitionFor("systemd-unit", "Service", "RestartRandomizedDelaySec")).toBeUndefined();
     expect(hwdbPropertyFor("SOUND_FORM_FACTOR")?.choices).not.toContain("controller");
+    expect(definitionFor("systemd-network", "Network", "ProxyNeighbor")).toBeUndefined();
+    expect(definitionFor("systemd-network", "Network", "IPv4ProxyARPAddress")).toBeUndefined();
+    expect(definitionFor("systemd-network", "Network", "IPv6ProxyNDPAddress")).toMatchObject({
+      since: "233",
+      summary: "An IPv6 address, for which Neighbour Advertisement messages will be proxied.",
+    });
+    expect(definitionFor("systemd-network", "WLAN", "Type")?.choices).not.toEqual(
+      expect.arrayContaining(["nan-data", "pd"]),
+    );
+    const stableToolsTreeSnapshot = definitionFor("mkosi", "Build", "ToolsTreeSnapshot");
+    expect(stableToolsTreeSnapshot?.since).toBe("27");
+    expect(stableToolsTreeSnapshot?.until).toBeUndefined();
+    expect(definitionFor("systemd-config", "Component", "Documentation")).toBeUndefined();
+    expect(definitionFor("systemd-config", "Feature", "Documentation")?.summary).toBe(
+      "A user-presentable URL to documentation about this feature.",
+    );
+    expect(definitionFor("systemd-config", "Files", "PrivateUsersOwnership")?.summary).toBe(
+      "Configures whether the ownership of the files and directories in the container tree shall be adjusted to the UID/GID range used, if necessary and user namespacing is enabled.",
+    );
+    expect(definitionFor("systemd-unit", "Unit", "ConditionPathExists")?.summary).toBe(
+      "Check for the existence of a file.",
+    );
 
     configureRegistryChannel("preview");
     try {
@@ -331,6 +353,37 @@ describe("registry queries", () => {
       );
       expect(registryMetadata.upstream.systemd).not.toBe(stableRevision);
       expect(hwdbPropertyFor("SOUND_FORM_FACTOR")?.choices).toContain("controller");
+      expect(definitionFor("systemd-network", "Network", "ProxyNeighbor")).toMatchObject({
+        valueKind: "address",
+        since: "262",
+        summary:
+          "Takes an IPv4 or IPv6 address for which ARP requests or Neighbour Advertisement messages will be proxied.",
+      });
+      expect(definitionFor("systemd-network", "Network", "IPv4ProxyARPAddress")).toBeUndefined();
+      expect(definitionFor("systemd-network", "Network", "IPv6ProxyNDPAddress")).toMatchObject({
+        valueKind: "address",
+        since: null,
+        documentation:
+          "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#IPv6ProxyNDPAddress=",
+        summary: "IPv6ProxyNDPAddress in [Network].",
+      });
+      expect(definitionFor("systemd-network", "WLAN", "Type")?.choices).toEqual(
+        expect.arrayContaining(["nan-data", "pd"]),
+      );
+      expect(definitionFor("mkosi", "Build", "ToolsTreeSnapshot")?.since).toBe("27");
+      expect(definitionFor("mkosi", "Build", "ToolsTreeSnapshot")?.until).toBeUndefined();
+      expect(definitionFor("systemd-config", "Component", "Documentation")?.summary).toBe(
+        "One or more user-presentable URLs to documentation about this component.",
+      );
+      expect(definitionFor("systemd-config", "Feature", "Documentation")?.summary).toBe(
+        "One or more user-presentable URLs to documentation about this feature.",
+      );
+      expect(definitionFor("systemd-config", "Files", "PrivateUsersOwnership")?.summary).toBe(
+        "Configures whether the ownership of the files and directories in the container tree shall be adjusted to the UID/GID range used, if necessary.",
+      );
+      expect(definitionFor("systemd-unit", "Unit", "ConditionPathExists")?.summary).toBe(
+        "Check for the existence of a path.",
+      );
     } finally {
       configureRegistryChannel("stable");
     }

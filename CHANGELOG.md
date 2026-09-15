@@ -4,6 +4,12 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- Refreshed the bundled systemd, Podman, and mkosi language data: replaced the unreleased
+  `IPv4ProxyARPAddress=` setting with systemd 262's `ProxyNeighbor=`, added WLAN interface types,
+  restored `ToolsTreeSnapshot=` in mkosi preview data, and advanced stable Podman data to 6.1.1.
+
 ## [0.4.2] - 2026-08-28
 
 ### Added

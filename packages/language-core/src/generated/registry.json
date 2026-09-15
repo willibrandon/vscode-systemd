@@ -2,9 +2,9 @@
   "schemaVersion": 2,
   "generatedAt": "1970-01-01T00:00:00.000Z",
   "upstream": {
-    "systemd": "ebe4dbf426e7faf4ba95a67ff8eb7d0443b14968",
-    "podman": "de350af4b10b2d50d88141da646d0d0f2c0aa872",
-    "mkosi": "583dcb0e16bb74ecaa45edc3afaaddb1e7312307"
+    "systemd": "e2c84823ede8fdfbb6a6e06233070a68f81af676",
+    "podman": "2962afff4151134a70693c3c2cd1603e7e1b427c",
+    "mkosi": "847d113863affa6d6ed393ae6a0b8cd5590e00d6"
   },
   "quadletExtensions": [
     ".artifact",
@@ -1692,8 +1692,7 @@
         "t": [
           "Distribution",
           "Snapshot"
-        ],
-        "u": "preview"
+        ]
       }
     ],
     [
@@ -14512,7 +14511,7 @@
       "262",
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/sysupdate.components.html#Documentation=",
-      "A user-presentable URL to documentation about this component.",
+      "One or more user-presentable URLs to documentation about this component.",
       []
     ],
     [
@@ -15645,7 +15644,7 @@
       "257",
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/sysupdate.features.html#Documentation=",
-      "A user-presentable URL to documentation about this feature.",
+      "One or more user-presentable URLs to documentation about this feature.",
       []
     ],
     [
@@ -15893,7 +15892,7 @@
       "249",
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.nspawn.html#PrivateUsersOwnership=",
-      "Configures whether the ownership of the files and directories in the container tree shall be adjusted to the UID/GID range used, if necessary and user namespacing is enabled.",
+      "Configures whether the ownership of the files and directories in the container tree shall be adjusted to the UID/GID range used, if necessary.",
       []
     ],
     [
@@ -31297,22 +31296,6 @@
     [
       "systemd-network",
       "Network",
-      "IPv4ProxyARPAddress",
-      "address",
-      "262",
-      0,
-      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#IPv4ProxyARPAddress=",
-      "An IPv4 address, for which ARP requests will be proxied.",
-      [],
-      {
-        "k": [
-          "systemd-network:network"
-        ]
-      }
-    ],
-    [
-      "systemd-network",
-      "Network",
       "IPv4ProxyARPPrivateVLAN",
       "boolean",
       "256",
@@ -31580,10 +31563,10 @@
       "Network",
       "IPv6ProxyNDPAddress",
       "address",
-      "233",
+      null,
       0,
-      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#IPv6ProxyNDPAddress=",
-      "An IPv6 address, for which Neighbour Advertisement messages will be proxied.",
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#IPv6ProxyNDPAddress=",
+      "IPv6ProxyNDPAddress in [Network].",
       [],
       {
         "k": [
@@ -31970,6 +31953,22 @@
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.directives.html#ProxyARP=",
       "ProxyARP in [Network].",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "Network",
+      "ProxyNeighbor",
+      "address",
+      "262",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#ProxyNeighbor=",
+      "Takes an IPv4 or IPv6 address for which ARP requests or Neighbour Advertisement messages will be proxied.",
       [],
       {
         "k": [
@@ -35835,7 +35834,9 @@
         "p2p-go",
         "p2p-device",
         "ocb",
-        "nan"
+        "nan",
+        "nan-data",
+        "pd"
       ],
       {
         "k": [
@@ -43274,7 +43275,7 @@
       "244",
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#ConditionPathExists=",
-      "Check for the existence of a file.",
+      "Check for the existence of a path.",
       [],
       {
         "a": "append",
