@@ -117,12 +117,22 @@ describe("Marketplace release verification", () => {
       delay: () => Promise.resolve(),
       install: () => {
         installs += 1;
-        return installs < 3
-          ? Promise.reject(marketplaceInstallError("Extension 'willibrandon.systemd' not found."))
+        if (installs === 1) {
+          return Promise.reject(
+            marketplaceInstallError("Extension 'willibrandon.systemd' not found."),
+          );
+        }
+        return installs === 2
+          ? Promise.reject(marketplaceInstallError("Server returned 503"))
           : Promise.resolve();
       },
     });
     expect(installs).toBe(3);
+    expect(
+      marketplace.isMarketplacePropagationError(
+        marketplaceInstallError("Error while installing extensions: Server returned 503"),
+      ),
+    ).toBe(true);
 
     const activationFailure = new Error("activation failed");
     await expect(

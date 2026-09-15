@@ -13,6 +13,7 @@ import {
   sshConfigPath,
   sshNullDevice,
 } from "./remote-smoke-host.mjs";
+import { waitForMarketplaceInstallation } from "./verify-marketplace-release.mjs";
 import { createIsolatedVSCodeEnvironment } from "./vscode-test-environment.mjs";
 
 const executeFile = promisify(execFile);
@@ -134,19 +135,24 @@ try {
   const version = process.env.VSCODE_VERSION ?? "stable";
   const vscodeExecutable = await downloadAndUnzipVSCode(version);
   const commandEnvironment = createIsolatedVSCodeEnvironment();
-  await runCodeCommand(
-    [
-      "--user-data-dir",
-      bootstrapUserDataDirectory,
-      "--extensions-dir",
-      extensionsDirectory,
-      "--install-extension",
-      `ms-vscode-remote.remote-ssh@${remoteSshVersion}`,
-      "--force",
-    ],
-    version,
-    commandEnvironment,
-  );
+  await waitForMarketplaceInstallation({
+    attempts: 5,
+    delay: () => delay(10_000),
+    install: () =>
+      runCodeCommand(
+        [
+          "--user-data-dir",
+          bootstrapUserDataDirectory,
+          "--extensions-dir",
+          extensionsDirectory,
+          "--install-extension",
+          `ms-vscode-remote.remote-ssh@${remoteSshVersion}`,
+          "--force",
+        ],
+        version,
+        commandEnvironment,
+      ),
+  });
   const { stdout: versionOutput } = await runCodeCommand(
     ["--version", "--user-data-dir", bootstrapUserDataDirectory],
     version,
