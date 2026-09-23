@@ -797,7 +797,7 @@
     "@vscode/test-cli": "0.0.15",
     "@vscode/test-electron": "3.1.0",
     "@vscode/test-web": "0.0.81",
-    "@vscode/vsce": "3.9.2",
+    "@vscode/vsce": "4.0.0",
     "esbuild": "0.28.2",
     "eslint": "10.10.0",
     "fast-check": "4.10.1",
