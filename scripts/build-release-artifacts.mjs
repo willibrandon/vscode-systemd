@@ -26,6 +26,7 @@ if (!/^[0-9a-f]{40}$/u.test(sourceRevision)) {
   throw new Error(`Unable to determine the source revision, received ${sourceRevision}.`);
 }
 
+process.env.SOURCE_DATE_EPOCH = "0";
 await Promise.all([
   rm(vsix, { force: true }),
   rm(sbom, { force: true }),
