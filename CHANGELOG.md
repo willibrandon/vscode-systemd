@@ -4,6 +4,8 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-09-26
+
 ### Added
 
 - Added systemd 262 group record `aliases` support to completion and the bundled JSON schema.
@@ -103,7 +105,8 @@ Notable changes are listed here. Releases follow semantic versioning.
 - Release artifacts include a reproducible VSIX, SHA-256 checksum, CycloneDX SBOM, and build
   attestations.
 
-[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.0...v0.4.1
