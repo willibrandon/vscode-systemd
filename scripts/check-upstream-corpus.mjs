@@ -134,7 +134,7 @@ let quadletReleases = 0;
 let quadletReleaseFixtures = 0;
 let systemdReleaseFixtures = 0;
 let mkosiReleaseFixtures = 0;
-const systemdReleases = ["v250", "v252", "v254", "v256", "v258", "v260", "v261"];
+const systemdReleases = ["v250", "v252", "v254", "v256", "v258", "v260", "v261", "v262"];
 for (const tag of systemdReleases) {
   const paths = gitPaths(sources.systemd, tag, "test/fuzz");
   const units = new Map();
@@ -190,7 +190,7 @@ for (const tag of systemdReleases) {
   }
 }
 
-const mkosiReleases = Array.from({ length: 11 }, (_, index) => "v" + (index + 16));
+const mkosiReleases = Array.from({ length: 12 }, (_, index) => "v" + (index + 16));
 for (const tag of mkosiReleases) {
   const fixtures = gitPaths(sources.mkosi, tag, ".").filter(
     (path) =>
@@ -298,7 +298,7 @@ console.log(
     systemdReleases.length +
     " representative releases, and " +
     mkosiReleaseFixtures +
-    " maintained mkosi configurations across releases v16 through v26, without diagnostics.",
+    " maintained mkosi configurations across releases v16 through v27, without diagnostics.",
 );
 
 function gitPaths(source, tag, path) {

@@ -4,6 +4,17 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Added systemd 262 group record `aliases` support to completion and the bundled JSON schema.
+- Added preview metadata for `DelegateRanges=` in mkosi and `EncryptAddToken=` in repart files.
+
+### Changed
+
+- Updated bundled stable language data to systemd 262 and Podman 6.1.2, making systemd 262 settings
+  available in the stable channel.
+- Updated the `Layer2SpecificHeader=` hover description from the systemd 262 documentation.
+
 ## [0.4.3] - 2026-09-14
 
 ### Changed

@@ -4,20 +4,20 @@
   "sources": {
     "systemd": {
       "repository": "https://github.com/systemd/systemd.git",
-      "tag": "v261",
-      "revision": "102d5065bc82a875cfa0f6fcae6a5bda651cbf0a",
-      "tree": "bcdd832c31c509f3126f7a5b88e809ea1d8172e0",
-      "previewRevision": "e2c84823ede8fdfbb6a6e06233070a68f81af676",
-      "previewTree": "b3dc73e8c067b1579f9a303ced7fcd8e44d1b395",
+      "tag": "v262",
+      "revision": "1f7dffaf714cc4488159c498b7a17cf34c5a96d5",
+      "tree": "caee668810accedd03b98370d48cdf92def5abd9",
+      "previewRevision": "885fe07ee37cff7316680b5088d11081e01813b1",
+      "previewTree": "672528eaa422e059deb27ceb6e43e6e4228eeaba",
       "license": "LGPL-2.1-or-later"
     },
     "podman": {
       "repository": "https://github.com/podman-container-tools/podman.git",
-      "tag": "v6.1.1",
-      "revision": "e0977ecff66d0b8feb3901df03b037e8716dd090",
-      "tree": "8448caac49a715c728cc086244cd466a93c73ba3",
-      "previewRevision": "2962afff4151134a70693c3c2cd1603e7e1b427c",
-      "previewTree": "5589b6f775d1ad27faf9e584fcf3148a33544c33",
+      "tag": "v6.1.2",
+      "revision": "b3f4e073dc6641ca8efc0bf261b35e35835e633d",
+      "tree": "2b11174e1ae9e12625137f85f3df67311f4dac59",
+      "previewRevision": "a1ce95d761224506086878e712264961c5d1cdae",
+      "previewTree": "aa314021fb9fb5035744a73a8ace0a61618a0e22",
       "license": "Apache-2.0"
     },
     "mkosi": {
@@ -25,8 +25,8 @@
       "tag": "v27",
       "revision": "f2b04fcd671110e3a7372027162752f71de0c9b0",
       "tree": "3ada761de2e14a0760f99c92d3c633e12248d7ef",
-      "previewRevision": "847d113863affa6d6ed393ae6a0b8cd5590e00d6",
-      "previewTree": "9347a930c796d081f8696142e614a018c1b32c6e",
+      "previewRevision": "dde1bf020f108a300d729f6a5f689375fb46c943",
+      "previewTree": "8ad3eb1ee3a205e2fe720bc8d035ef54b857f9ef",
       "license": "LGPL-2.1-or-later"
     }
   }

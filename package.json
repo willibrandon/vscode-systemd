@@ -626,7 +626,7 @@
           "default": "latest",
           "pattern": "^(?:latest|auto|v?[0-9]+)$",
           "scope": "resource",
-          "markdownDescription": "Target systemd release (`latest`, trusted desktop auto-detection with `auto`, or a number such as `261`)."
+          "markdownDescription": "Target systemd release (`latest`, trusted desktop auto-detection with `auto`, or a number such as `262`)."
         },
         "systemd.target.podmanVersion": {
           "type": "string",

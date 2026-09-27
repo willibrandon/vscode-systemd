@@ -30,6 +30,14 @@ describe("systemd JSON editor intelligence", () => {
 
   it("exposes the generated userdb records and fields through typed accessors", () => {
     expect(userDbDefinition("group").required).toEqual(["groupName"]);
+    expect(userDbFieldFor("group", "aliases")).toMatchObject({
+      name: "aliases",
+      types: ["array"],
+      itemTypes: ["string"],
+    });
+    expect(systemdJsonFieldsFor("systemd-json:group", []).map(({ name }) => name)).toContain(
+      "aliases",
+    );
     expect(userDbFieldFor("user", "uid")).toMatchObject({
       name: "uid",
       types: ["integer"],
