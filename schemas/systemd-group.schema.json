@@ -10,6 +10,11 @@
       "type": "string",
       "description": "UNIX group name for this public group record."
     },
+    "aliases": {
+      "type": "array",
+      "description": "Source-defined JSON group record field aliases.",
+      "items": { "type": "string" }
+    },
     "realm": { "type": "string", "description": "Source-defined JSON group record field realm." },
     "uuid": { "type": "string", "description": "Source-defined JSON group record field uuid." },
     "description": {

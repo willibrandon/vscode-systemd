@@ -1756,28 +1756,54 @@ describe("language server JSON-RPC contract", () => {
   });
 
   it("switches indexed language data between stable and preview channels", async () => {
-    const unitUri = "file:///workspace/preview.service";
-    const stableDiagnostics = nextDiagnostics(client, unitUri);
+    const mkosiUri = "file:///workspace/mkosi.conf";
+    const stableDiagnostics = nextDiagnostics(client, mkosiUri);
     await client.sendNotification("textDocument/didOpen", {
       textDocument: {
-        uri: unitUri,
-        languageId: "systemd-unit",
+        uri: mkosiUri,
+        languageId: "mkosi",
         version: 1,
-        text: "[Service]\nRestartRandomizedDelaySec=1s\n",
+        text: "[Build]\nDelegateRanges=3\n",
       },
     });
     expect((await stableDiagnostics).map(({ code }) => code)).toContain("unknown-setting");
 
-    const previewDiagnostics = nextDiagnostics(client, unitUri);
+    const previewDiagnostics = nextDiagnostics(client, mkosiUri);
     await client.sendNotification("systemd/registry/dataChannel", { channel: "preview" });
     expect((await previewDiagnostics).map(({ code }) => code)).not.toContain("unknown-setting");
     const completions = await request<CompletionItem[]>(client, "textDocument/completion", {
-      textDocument: { uri: unitUri },
+      textDocument: { uri: mkosiUri },
       position: { line: 2, character: 0 },
     });
-    expect(completions.some(({ label }) => label === "RestartRandomizedDelaySec")).toBe(true);
+    expect(completions.some(({ label }) => label === "DelegateRanges")).toBe(true);
 
-    await client.sendNotification("textDocument/didClose", { textDocument: { uri: unitUri } });
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: mkosiUri } });
+    await client.sendNotification("systemd/registry/dataChannel", { channel: "stable" });
+  });
+
+  it("serves the refreshed L2TP description in stable and preview hovers", async () => {
+    const netdevUri = "file:///workspace/tunnel.netdev";
+    await client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: netdevUri,
+        languageId: "systemd-network",
+        version: 1,
+        text: "[NetDev]\nName=tunnel\nKind=l2tp\n[L2TPSession]\nLayer2SpecificHeader=default\n",
+      },
+    });
+
+    for (const channel of ["stable", "preview"] as const) {
+      await client.sendNotification("systemd/registry/dataChannel", { channel });
+      const hover = await request<Hover | null>(client, "textDocument/hover", {
+        textDocument: { uri: netdevUri },
+        position: { line: 4, character: 5 },
+      });
+      expect(JSON.stringify(hover?.contents)).toContain(
+        "Specifies the layer 2 specific header type of the session.",
+      );
+    }
+
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: netdevUri } });
     await client.sendNotification("systemd/registry/dataChannel", { channel: "stable" });
   });
 

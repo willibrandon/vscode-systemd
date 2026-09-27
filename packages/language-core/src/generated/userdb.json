@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "upstream": "102d5065bc82a875cfa0f6fcae6a5bda651cbf0a",
+  "upstream": "1f7dffaf714cc4488159c498b7a17cf34c5a96d5",
   "user": {
     "documentation": "https://systemd.io/USER_RECORD/",
     "required": [
@@ -814,6 +814,16 @@
           "string"
         ],
         "description": "UNIX group name for this public group record."
+      },
+      {
+        "name": "aliases",
+        "types": [
+          "array"
+        ],
+        "description": "Source-defined JSON group record field aliases.",
+        "itemTypes": [
+          "string"
+        ]
       },
       {
         "name": "realm",
