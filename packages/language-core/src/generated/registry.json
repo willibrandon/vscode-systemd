@@ -1228,7 +1228,7 @@
       "Build",
       "DelegateRanges",
       "number",
-      "preview",
+      "27.1",
       0,
       "https://www.freedesktop.org/software/mkosi/man/mkosi.html",
       "Delegate this number of UID ranges in the foreign UID range.",

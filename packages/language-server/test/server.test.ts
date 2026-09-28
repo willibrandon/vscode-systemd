@@ -1756,28 +1756,28 @@ describe("language server JSON-RPC contract", () => {
   });
 
   it("switches indexed language data between stable and preview channels", async () => {
-    const mkosiUri = "file:///workspace/mkosi.conf";
-    const stableDiagnostics = nextDiagnostics(client, mkosiUri);
+    const quadletUri = "file:///workspace/demo.container";
+    const stableDiagnostics = nextDiagnostics(client, quadletUri);
     await client.sendNotification("textDocument/didOpen", {
       textDocument: {
-        uri: mkosiUri,
-        languageId: "mkosi",
+        uri: quadletUri,
+        languageId: "podman-quadlet",
         version: 1,
-        text: "[Build]\nDelegateRanges=3\n",
+        text: "[Container]\nUmask=0022\n",
       },
     });
     expect((await stableDiagnostics).map(({ code }) => code)).toContain("unknown-setting");
 
-    const previewDiagnostics = nextDiagnostics(client, mkosiUri);
+    const previewDiagnostics = nextDiagnostics(client, quadletUri);
     await client.sendNotification("systemd/registry/dataChannel", { channel: "preview" });
     expect((await previewDiagnostics).map(({ code }) => code)).not.toContain("unknown-setting");
     const completions = await request<CompletionItem[]>(client, "textDocument/completion", {
-      textDocument: { uri: mkosiUri },
+      textDocument: { uri: quadletUri },
       position: { line: 2, character: 0 },
     });
-    expect(completions.some(({ label }) => label === "DelegateRanges")).toBe(true);
+    expect(completions.some(({ label }) => label === "Umask")).toBe(true);
 
-    await client.sendNotification("textDocument/didClose", { textDocument: { uri: mkosiUri } });
+    await client.sendNotification("textDocument/didClose", { textDocument: { uri: quadletUri } });
     await client.sendNotification("systemd/registry/dataChannel", { channel: "stable" });
   });
 
