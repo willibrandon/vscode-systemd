@@ -4,12 +4,11 @@
   "upstream": {
     "systemd": "1f7dffaf714cc4488159c498b7a17cf34c5a96d5",
     "podman": "b3f4e073dc6641ca8efc0bf261b35e35835e633d",
-    "mkosi": "f2b04fcd671110e3a7372027162752f71de0c9b0"
+    "mkosi": "9bb5d145c8d8df700c0455c234fa8d51c1fab1ea"
   },
   "hwdbPropertyRemove": [],
   "hwdbProperties": [],
   "remove": [
-    "mkosi\u0000Build\u0000DelegateRanges",
     "podman-quadlet\u0000Container\u0000Umask",
     "systemd-config\u0000Partition\u0000EncryptAddToken"
   ],

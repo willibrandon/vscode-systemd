@@ -22,9 +22,9 @@
     },
     "mkosi": {
       "repository": "https://github.com/systemd/mkosi.git",
-      "tag": "v27",
-      "revision": "f2b04fcd671110e3a7372027162752f71de0c9b0",
-      "tree": "3ada761de2e14a0760f99c92d3c633e12248d7ef",
+      "tag": "v27.1",
+      "revision": "9bb5d145c8d8df700c0455c234fa8d51c1fab1ea",
+      "tree": "b2567ba4817e2934b30a6d064cc428a1201dd8d7",
       "previewRevision": "dde1bf020f108a300d729f6a5f689375fb46c943",
       "previewTree": "8ad3eb1ee3a205e2fe720bc8d035ef54b857f9ef",
       "license": "LGPL-2.1-or-later"
