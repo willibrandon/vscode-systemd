@@ -358,7 +358,7 @@ describe("registry queries", () => {
       "Specifies the layer 2 specific header type of the session.",
     );
     expect(definitionFor("systemd-config", "Partition", "EncryptAddToken")).toBeUndefined();
-    expect(definitionFor("mkosi", "Build", "DelegateRanges")).toBeUndefined();
+    expect(definitionFor("podman-quadlet", "Container", "Umask")).toBeUndefined();
 
     configureRegistryChannel("preview");
     try {
@@ -402,7 +402,7 @@ describe("registry queries", () => {
         "Specifies the layer 2 specific header type of the session.",
       );
       expect(definitionFor("systemd-config", "Partition", "EncryptAddToken")?.since).toBe("262");
-      expect(definitionFor("mkosi", "Build", "DelegateRanges")?.since).toBe("preview");
+      expect(definitionFor("podman-quadlet", "Container", "Umask")?.since).toBe("preview");
     } finally {
       configureRegistryChannel("stable");
     }

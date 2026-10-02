@@ -35,6 +35,7 @@ if (userData === undefined) throw new Error("Unable to create an integration-tes
 try {
   await runTests({
     version: process.env.VSCODE_VERSION ?? "1.102.0",
+    timeout: 60_000,
     extensionDevelopmentPath: installedSmoke ? resolve(root, "test/package/host") : root,
     extensionTestsPath: resolve(root, "test/integration/suite/index.cjs"),
     launchArgs: [
