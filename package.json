@@ -790,10 +790,10 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/mocha": "10.0.10",
-    "@types/node": "24.13.6",
+    "@types/node": "24.19.1",
     "@types/vscode": "1.102.0",
     "@typescript/native": "npm:typescript@7.0.2",
-    "@vitest/coverage-v8": "5.0.2",
+    "@vitest/coverage-v8": "5.0.3",
     "@vscode/test-cli": "0.0.15",
     "@vscode/test-electron": "3.1.0",
     "@vscode/test-web": "0.0.81",
@@ -807,8 +807,8 @@
     "prettier": "3.9.9",
     "prettier-plugin-astro": "1.1.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
-    "typescript-eslint": "8.70.1",
-    "vitest": "5.0.2",
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.0.3",
     "vscode-jsonrpc": "9.0.3",
     "vscode-oniguruma": "2.0.1",
     "vscode-textmate": "9.3.2",
@@ -823,6 +823,7 @@
     "vscode-languageserver-textdocument": "1.0.14"
   },
   "overrides": {
+    "@vscode/vsce": "4.0.0",
     "cheerio": "1.0.0-rc.12",
     "diff": "8.0.3",
     "glob": "13.0.6",
