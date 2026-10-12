@@ -9,7 +9,7 @@ Notable changes are listed here. Releases follow semantic versioning.
 ### Added
 
 - Added preview language data for mkosi `UMask=`, Quadlet `SetMountsDependency=`, sysupdate
-  `PartitionZeroFill=`, and ukify `SignInitrdPCRs=`.
+  `PartitionZeroFill=`, ukify `SignInitrdPCRs=`, and networkd DHCPv4/DHCPv6 `SendHostnameUpdates=`.
 
 ### Changed
 

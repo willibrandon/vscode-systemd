@@ -151,7 +151,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: systemd/systemd
-          ref: 2d307730fa9620d656ac748d211b07e7b9da7bb6
+          ref: 37fcd0161aa576defb302c614f080d4dc8cc6804
           path: .systemd-upstream
           fetch-depth: 0
           persist-credentials: false

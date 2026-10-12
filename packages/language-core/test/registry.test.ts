@@ -333,6 +333,8 @@ describe("registry queries", () => {
       ["podman-quadlet", "Quadlet", "SetMountsDependency", { since: "preview" }],
       ["systemd-config", "Target", "PartitionZeroFill", { since: "263", choices: ["yes", "no"] }],
       ["systemd-config", "UKI", "SignInitrdPCRs", { since: "262" }],
+      ["systemd-network", "DHCPv4", "SendHostnameUpdates", { since: "263", valueKind: "boolean" }],
+      ["systemd-network", "DHCPv6", "SendHostnameUpdates", { since: "263", valueKind: "boolean" }],
     ] as const;
 
     configureRegistryChannel("stable");

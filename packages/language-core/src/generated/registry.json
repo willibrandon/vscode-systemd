@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "generatedAt": "1970-01-01T00:00:00.000Z",
   "upstream": {
-    "systemd": "2d307730fa9620d656ac748d211b07e7b9da7bb6",
+    "systemd": "37fcd0161aa576defb302c614f080d4dc8cc6804",
     "podman": "803f524fffba7972433a4b5fb445c352a46b2b1f",
     "mkosi": "66939e9d428ca4f8e9fbc2a46f55a1f131c951f4"
   },
@@ -24009,6 +24009,26 @@
     [
       "systemd-network",
       "DHCPv4",
+      "SendHostnameUpdates",
+      "boolean",
+      "263",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#SendHostnameUpdates=",
+      "Takes a boolean.",
+      [
+        "yes",
+        "no"
+      ],
+      {
+        "k": [
+          "systemd-network:network"
+        ],
+        "x": false
+      }
+    ],
+    [
+      "systemd-network",
+      "DHCPv4",
       "SendOption",
       "string",
       "244",
@@ -24676,6 +24696,22 @@
       0,
       "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#SendHostname=",
       "When true (the default), the machine's hostname (or the value specified with `Hostname=`, described below) will be sent to the DHCPv6 server.",
+      [],
+      {
+        "k": [
+          "systemd-network:network"
+        ]
+      }
+    ],
+    [
+      "systemd-network",
+      "DHCPv6",
+      "SendHostnameUpdates",
+      "boolean",
+      "263",
+      0,
+      "https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html#SendHostnameUpdates=",
+      "As in the [DHCPv4] section, but for the DHCPv6 client.",
       [],
       {
         "k": [
