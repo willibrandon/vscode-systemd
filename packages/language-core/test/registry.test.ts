@@ -322,6 +322,69 @@ describe("registry queries", () => {
     expect(definitionFor("podman-quadlet", "Container", "Volume")?.assignmentMode).toBe("append");
   });
 
+  it("keeps refreshed upstream settings exclusive to the preview channel", () => {
+    const settings = [
+      [
+        "mkosi",
+        "Build",
+        "UMask",
+        { since: "preview", valueKind: "number", mkosiScope: "multiversal" },
+      ],
+      ["podman-quadlet", "Quadlet", "SetMountsDependency", { since: "preview" }],
+      ["systemd-config", "Target", "PartitionZeroFill", { since: "263", choices: ["yes", "no"] }],
+      ["systemd-config", "UKI", "SignInitrdPCRs", { since: "262" }],
+    ] as const;
+
+    configureRegistryChannel("stable");
+    for (const [dialect, section, name] of settings) {
+      expect(definitionFor(dialect, section, name)).toBeUndefined();
+    }
+    try {
+      configureRegistryChannel("preview");
+      for (const [dialect, section, name, metadata] of settings) {
+        expect(definitionFor(dialect, section, name)).toMatchObject({ name, ...metadata });
+        expect(definitionsFor(dialect, section).map((definition) => definition.name)).toContain(
+          name,
+        );
+      }
+    } finally {
+      configureRegistryChannel("stable");
+    }
+    for (const [dialect, section, name] of settings) {
+      expect(definitionFor(dialect, section, name)).toBeUndefined();
+    }
+  });
+
+  it("preserves stable mkosi distributions while refreshing preview choices", () => {
+    const settings = [
+      ["Distribution", "Distribution"],
+      ["Build", "ToolsTreeDistribution"],
+      ...["Match", "Assert", "TriggerMatch", "TriggerAssert"].flatMap((section) => [
+        [section, "Distribution"] as const,
+        [section, "ToolsTreeDistribution"] as const,
+      ]),
+    ] as const;
+
+    try {
+      for (const channel of ["stable", "preview", "stable"] as const) {
+        configureRegistryChannel(channel);
+        for (const [section, name] of settings) {
+          const choices = definitionFor("mkosi", section, name)?.choices;
+          if (channel === "preview") {
+            expect(choices).toEqual(expect.arrayContaining(["nura", "buildstream"]));
+            expect(choices).not.toContain("postmarketos");
+          } else {
+            expect(choices).toContain("postmarketos");
+            expect(choices).not.toContain("nura");
+            expect(choices).not.toContain("buildstream");
+          }
+        }
+      }
+    } finally {
+      configureRegistryChannel("stable");
+    }
+  });
+
   it("exposes systemd 262 in stable while retaining preview-only settings", () => {
     configureRegistryChannel("stable");
     const stableRevision = registryMetadata.upstream.systemd;

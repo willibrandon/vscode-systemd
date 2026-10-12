@@ -58,6 +58,9 @@ jobs:
           node-version: 24.19.0
           package-manager: npm@12.0.2
 
+      - name: Audit documentation dependencies
+        run: npm --prefix docs-site run audit
+
       - name: Verify image popups across viewports
         run: node ./scripts/test-docs-popup.mjs
 

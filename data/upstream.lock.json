@@ -7,17 +7,17 @@
       "tag": "v262",
       "revision": "1f7dffaf714cc4488159c498b7a17cf34c5a96d5",
       "tree": "caee668810accedd03b98370d48cdf92def5abd9",
-      "previewRevision": "885fe07ee37cff7316680b5088d11081e01813b1",
-      "previewTree": "672528eaa422e059deb27ceb6e43e6e4228eeaba",
+      "previewRevision": "2d307730fa9620d656ac748d211b07e7b9da7bb6",
+      "previewTree": "82423e035c0908023a0d54dd70509298afb30a13",
       "license": "LGPL-2.1-or-later"
     },
     "podman": {
       "repository": "https://github.com/podman-container-tools/podman.git",
-      "tag": "v6.1.2",
-      "revision": "b3f4e073dc6641ca8efc0bf261b35e35835e633d",
-      "tree": "2b11174e1ae9e12625137f85f3df67311f4dac59",
-      "previewRevision": "a1ce95d761224506086878e712264961c5d1cdae",
-      "previewTree": "aa314021fb9fb5035744a73a8ace0a61618a0e22",
+      "tag": "v6.1.3",
+      "revision": "46cd8dbefbbd6890790097123f4ece88df856433",
+      "tree": "d02cfd66899114f2e50023697ef4410365b30470",
+      "previewRevision": "803f524fffba7972433a4b5fb445c352a46b2b1f",
+      "previewTree": "7ef4c9e4123c79d2680b240b324884d66919ea24",
       "license": "Apache-2.0"
     },
     "mkosi": {
@@ -25,8 +25,8 @@
       "tag": "v27.1",
       "revision": "9bb5d145c8d8df700c0455c234fa8d51c1fab1ea",
       "tree": "b2567ba4817e2934b30a6d064cc428a1201dd8d7",
-      "previewRevision": "dde1bf020f108a300d729f6a5f689375fb46c943",
-      "previewTree": "8ad3eb1ee3a205e2fe720bc8d035ef54b857f9ef",
+      "previewRevision": "66939e9d428ca4f8e9fbc2a46f55a1f131c951f4",
+      "previewTree": "77e592af16c6ba307bb43c05c042e1de68513ab0",
       "license": "LGPL-2.1-or-later"
     }
   }
