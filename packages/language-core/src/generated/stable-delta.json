@@ -14,7 +14,9 @@
     "podman-quadlet\u0000Quadlet\u0000SetMountsDependency",
     "systemd-config\u0000Partition\u0000EncryptAddToken",
     "systemd-config\u0000Target\u0000PartitionZeroFill",
-    "systemd-config\u0000UKI\u0000SignInitrdPCRs"
+    "systemd-config\u0000UKI\u0000SignInitrdPCRs",
+    "systemd-network\u0000DHCPv4\u0000SendHostnameUpdates",
+    "systemd-network\u0000DHCPv6\u0000SendHostnameUpdates"
   ],
   "directives": [
     [
