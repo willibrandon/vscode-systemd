@@ -2,7 +2,7 @@
   "name": "systemd",
   "displayName": "systemd Unit Files",
   "description": "Complete language support for systemd, Podman Quadlet, and mkosi configuration",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "license": "MIT",
   "publisher": "willibrandon",
   "author": {
@@ -768,7 +768,7 @@
     "test:grammar": "vitest run test/grammar",
     "test:performance": "npm run build && node ./test/performance/language-server.mjs",
     "test:package": "vitest run test/package",
-    "test:docs": "npm --prefix docs-site run build && node ./scripts/test-docs-popup.mjs",
+    "test:docs": "npm --prefix docs-site run audit && npm --prefix docs-site run build && node ./scripts/test-docs-popup.mjs",
     "capture:docs": "npm run package && node ./scripts/capture-docs-screenshots.mjs",
     "build": "node ./esbuild.mjs",
     "check:bundles": "node ./scripts/check-bundles.mjs",

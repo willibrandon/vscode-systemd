@@ -4,6 +4,25 @@ Notable changes are listed here. Releases follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-12
+
+### Added
+
+- Added preview language data for mkosi `UMask=`, Quadlet `SetMountsDependency=`, sysupdate
+  `PartitionZeroFill=`, and ukify `SignInitrdPCRs=`.
+
+### Changed
+
+- Updated bundled stable language data to Podman 6.1.3 and mkosi 27.1, including stable
+  `DelegateRanges=` support.
+- Updated mkosi preview distribution choices to include `nura` and `buildstream`, while preserving
+  `postmarketos` in the stable channel.
+- Updated language server, workspace ignore, packaging, testing, and documentation dependencies.
+
+### Security
+
+- Updated vulnerable documentation dependencies and added a documentation dependency audit to CI.
+
 ## [0.4.4] - 2026-09-26
 
 ### Added
@@ -105,7 +124,8 @@ Notable changes are listed here. Releases follow semantic versioning.
 - Release artifacts include a reproducible VSIX, SHA-256 checksum, CycloneDX SBOM, and build
   attestations.
 
-[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/willibrandon/vscode-systemd/compare/v0.4.1...v0.4.2
