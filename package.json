@@ -809,7 +809,7 @@
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-eslint": "8.71.2",
     "vitest": "5.0.5",
-    "vscode-jsonrpc": "9.0.3",
+    "vscode-jsonrpc": "10.0.0",
     "vscode-oniguruma": "2.0.1",
     "vscode-textmate": "9.3.2",
     "yaml": "2.9.1",
