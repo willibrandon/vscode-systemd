@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { BaseLanguageClient, LanguageClientOptions } from "vscode-languageclient";
+import { DidChangeConfigurationNotification } from "vscode-languageserver-protocol";
 import type { DialectId } from "@systemd/language-core";
 import {
   dataChannelNotification,
@@ -65,7 +66,6 @@ export function clientOptions(
     outputChannel: output,
     markdown: { isTrusted: false },
     initializationOptions: { dataChannel, workspaceRoots, ...initializationOptions },
-    synchronize: { configurationSection: "systemd" },
     middleware: {
       handleDiagnostics(uri, diagnostics, next): void {
         const supportedDocument = vscode.workspace.textDocuments.some(
@@ -250,6 +250,14 @@ export function registerCommonFeatures(
           await runtime.client.sendNotification(dataChannelNotification, { channel });
           await refreshIndex();
         })();
+      }
+      if (
+        event.affectsConfiguration("systemd.validation") ||
+        event.affectsConfiguration("systemd.target")
+      ) {
+        void runtime.client.sendNotification(DidChangeConfigurationNotification.type, {
+          settings: null,
+        });
       }
       if (
         event.affectsConfiguration("systemd.index") ||
