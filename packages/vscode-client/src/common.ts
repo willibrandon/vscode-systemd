@@ -65,7 +65,6 @@ export function clientOptions(
     outputChannel: output,
     markdown: { isTrusted: false },
     initializationOptions: { dataChannel, workspaceRoots, ...initializationOptions },
-    synchronize: { configurationSection: "systemd" },
     middleware: {
       handleDiagnostics(uri, diagnostics, next): void {
         const supportedDocument = vscode.workspace.textDocuments.some(
