@@ -133,7 +133,13 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-## minimatch@10.2.6
+## @isaacs/nonrecursive-glob-match@1.0.3
+
+Blue Oak Model License 1.0.0
+
+License: <https://blueoakcouncil.org/license/1.0.0>
+
+## minimatch@11.0.4
 
 # Blue Oak Model License
 
