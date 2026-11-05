@@ -3,7 +3,7 @@ FROM node:24.19.0-trixie-slim@sha256:ab3eebe934147fee049b5eb83c570f68c849a13c930
 RUN npm install --global npm@12.0.2 \
     && rm -rf -- /root/.npm
 
-FROM mcr.microsoft.com/devcontainers/base:2-trixie@sha256:6ee2b4097c75d33e9a94d941577a3286e5d629434fba384688b06daeeaaeac99
+FROM mcr.microsoft.com/devcontainers/base:2-trixie@sha256:71b6fe7c4e07ec747a94a72b2a17f2f8c286eaa7b1c59862888df764efb8b6c6
 
 COPY --from=node-toolchain /usr/local/bin/node /usr/local/bin/node
 COPY --from=node-toolchain /usr/local/lib/node_modules /usr/local/lib/node_modules
